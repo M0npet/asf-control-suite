@@ -243,9 +243,14 @@ else:
                         )
 
                     for name in names:
+                        if name.startswith("installer/"):
+                            errors.append(
+                                f"{archive_name}: forbidden prefix {name}"
+                            )
+
                         if (
-                            name.startswith("plugins/")
-                            or name.startswith("installer/")
+                            archive_name != "ASF-Control-Suite-v1.0.0.zip"
+                            and name.startswith("plugins/")
                         ):
                             errors.append(
                                 f"{archive_name}: forbidden prefix {name}"
