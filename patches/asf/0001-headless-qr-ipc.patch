@@ -1,18 +1,18 @@
 diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
 --- a/ArchiSteamFarm/Steam/Bot.cs
 +++ b/ArchiSteamFarm/Steam/Bot.cs
-@@
+@@ -4319,12 +4319,33 @@
  	private async Task<bool> WantsQrCodeLogin() {
 -		if (Program.Service || (ASF.GlobalConfig?.Headless ?? GlobalConfig.DefaultHeadless)) {
 -			// In headless/service mode, we always fallback to the other inputs instead, as we never want to wait in blocked call
--			return false;
--		}
--
- 		if (HasMobileAuthenticator || HasLoginCodeReady) {
- 			// We don't want qr login under any circumstance, we can provide the code on our own
++		if (HasMobileAuthenticator || HasLoginCodeReady) {
++			// We don't want qr login under any circumstance, we can provide the code on our own
  			return false;
  		}
  
+-		if (HasMobileAuthenticator || HasLoginCodeReady) {
+-			// We don't want qr login under any circumstance, we can provide the code on our own
+-			return false;
 +		if (Program.Service || (ASF.GlobalConfig?.Headless ?? GlobalConfig.DefaultHeadless)) {
 +			// Control Suite compatibility: in headless/service mode, expose the
 +			// existing native QR-login decision through ASF's authenticated IPC
@@ -37,9 +37,6 @@ diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
 +					RequiredInput = ASF.EUserInputType.None;
 +				}
 +			}
-+		}
-+
- 		string? input = await RequestInput(ASF.EUserInputType.QrCodeLogin, false).ConfigureAwait(false);
+ 		}
  
- 		return input?.Equals("Y", StringComparison.OrdinalIgnoreCase) == true;
- 	}
+ 		string? input = await RequestInput(ASF.EUserInputType.QrCodeLogin, false).ConfigureAwait(false);
