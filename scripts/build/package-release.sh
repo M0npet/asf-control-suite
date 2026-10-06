@@ -28,6 +28,13 @@ cd "$ASF_ROOT"
     exit 3
 }
 
+ASF_RUNTIME="ArchiSteamFarm/bin/Release/net10.0/ArchiSteamFarm.dll"
+
+[[ -s "$ASF_RUNTIME" ]] || {
+    echo "missing patched ASF runtime: $ASF_RUNTIME" >&2
+    exit 4
+}
+
 for plugin in \
     PlaytimeGoals \
     AccountManager \
@@ -182,6 +189,7 @@ rm -f \
 
 python3 "$SCRIPT_DIR/create-native-zips.py" \
     --stage "$STAGE_ROOT" \
+    --runtime "$ASF_RUNTIME" \
     --out "$OUT_PARENT" \
     --suite-version "$CONTROL_SUITE_VERSION" \
     --playtimegoals-version "$PLAYTIMEGOALS_VERSION"
@@ -254,7 +262,7 @@ payload = {
         "dotnetSdkVersion": sdk_version,
     },
     "install": {
-        "extractInto": "<ASF>/plugins/",
+        "extractInto": "<ASF>/",
         "webPath": "/Control/",
     },
     # Public Control Suite release assets only.
