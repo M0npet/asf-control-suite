@@ -85,6 +85,44 @@ for token, reason in (
     )
 
 
+
+# README pinned revisions must reflect canonical release/pins.env values.
+pins = {}
+
+for raw in (ROOT / "release" / "pins.env").read_text(
+    encoding="utf-8"
+).splitlines():
+    line = raw.strip()
+
+    if (
+        not line
+        or line.startswith("#")
+        or "=" not in line
+    ):
+        continue
+
+    key, value = line.split("=", 1)
+    pins[key] = value
+
+for key, label in (
+    ("ASF_COMMIT", "ASF"),
+    ("ASF_UI_COMMIT", "ASF-ui"),
+    ("PLAYTIMEGOALS_COMMIT", "PlaytimeGoals"),
+):
+    value = pins.get(key, "")
+
+    if not value:
+        errors.append(
+            f"release/pins.env missing {key}"
+        )
+        continue
+
+    require(
+        "README.md",
+        value,
+        f"{label} pinned revision",
+    )
+
 # Installation documentation must describe the real current
 # release pipeline and native ZIP layout.
 manual = "docs/installation/manual.md"
