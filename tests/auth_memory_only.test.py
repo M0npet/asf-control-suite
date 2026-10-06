@@ -87,14 +87,34 @@ if app.count("state.password = '';") < 2:
     )
 
 
-# The former persistent password key is forbidden entirely.
+# The old storage key may exist only for one-way cleanup.
+if "PASSWORD_KEY" in app:
+    errors.append(
+        "obsolete PASSWORD_KEY identifier remains"
+    )
+
+if (
+    "const LEGACY_IPC_STORAGE_KEY = 'asf.control.ipcPassword';"
+    not in app
+):
+    errors.append(
+        "legacy password cleanup key missing"
+    )
+
+if app.count(
+    "sessionStorage.removeItem(LEGACY_IPC_STORAGE_KEY);"
+) != 1:
+    errors.append(
+        "legacy IPC password key is not removed exactly once"
+    )
+
 for forbidden in (
-    "PASSWORD_KEY",
-    "asf.control.ipcPassword",
+    "sessionStorage.getItem(LEGACY_IPC_STORAGE_KEY)",
+    "sessionStorage.setItem(LEGACY_IPC_STORAGE_KEY",
 ):
     if forbidden in app:
         errors.append(
-            f"app.js still contains persistent password marker: {forbidden}"
+            f"legacy IPC password key is read/written: {forbidden}"
         )
 
 
@@ -102,7 +122,7 @@ for forbidden in (
 storage_calls = re.findall(
     r"sessionStorage\."
     r"(getItem|setItem|removeItem)"
-    r"\(([^)]]*)\)",
+    r"\(([^)]*)\)",
     app,
 )
 
@@ -112,9 +132,19 @@ if not storage_calls:
     )
 
 for operation, arguments in storage_calls:
-    if (
-        "VIEW_KEY" not in arguments
-        and "LOCK_KEY" not in arguments
+    allowed_preference = (
+        "VIEW_KEY" in arguments
+        or "LOCK_KEY" in arguments
+    )
+
+    allowed_legacy_cleanup = (
+        operation == "removeItem"
+        and "LEGACY_IPC_STORAGE_KEY" in arguments
+    )
+
+    if not (
+        allowed_preference
+        or allowed_legacy_cleanup
     ):
         errors.append(
             "sessionStorage used for non-allowlisted data: "

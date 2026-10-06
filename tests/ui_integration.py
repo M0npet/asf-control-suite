@@ -67,6 +67,11 @@ mock=r'''(() => {
 html=index.replace('<link rel="stylesheet" href="/Control/app.css">',f'<style>{css}</style>').replace('<script src="/Control/i18n.js"></script>',f'<script>{mock}</script><script>{i18n}</script>').replace('<script src="/Control/core.js"></script>',f'<script>{core}</script>').replace('<script src="/Control/qrcode.min.js"></script>',f'<script>{qrcode}</script>').replace('<script src="/Control/app.js" defer></script>',f'<script>{app}</script>')
 html_uk=html.replace("[['asf-ui:locale','\\\"en-US\\\"']]", "[['asf-ui:locale','\\\"uk-UA\\\"']]")
 html_uk_alias=html.replace("[['asf-ui:locale','\\\"en-US\\\"']]", "[['asf-ui:locale','\\\"uk\\\"']]")
+html_legacy_auth=html.replace(
+   'const mem=new Map();',
+   "const mem=new Map([['asf.control.view','dashboard'],['asf.control.lockMinutes','30'],['asf.control.ipcPassword','legacy-secret']]);",
+   1
+)
 
 def login(page):
     page.fill('#password','secret')
@@ -96,6 +101,18 @@ with sync_playwright() as pw:
     page=browser.new_page(viewport={"width":1440,"height":1050}, device_scale_factor=1)
     errors=[]; page.on('pageerror',lambda e:errors.append(str(e)))
     page.set_content(html,wait_until='load'); login(page)
+    # RAM-only IPC authentication regression
+    assert page.evaluate("sessionStorage.getItem('asf.control.ipcPassword')") is None
+    legacy=browser.new_page(viewport={"width":1000,"height":800})
+    legacy.set_content(html_legacy_auth,wait_until='load')
+    legacy.wait_for_selector('#authGate:not(.hidden)')
+    assert legacy.locator('#app').is_hidden()
+    assert legacy.evaluate("sessionStorage.getItem('asf.control.ipcPassword')") is None
+    assert legacy.evaluate("sessionStorage.getItem('asf.control.view')") == 'dashboard'
+    assert legacy.evaluate("sessionStorage.getItem('asf.control.lockMinutes')") == '30'
+    login(legacy)
+    assert legacy.evaluate("sessionStorage.getItem('asf.control.ipcPassword')") is None
+    legacy.close()
     assert page.locator('text=Control Suite 1.0').count() == 1
     assert_no_horizontal_overflow(page); assert_accessible_controls(page)
     page.screenshot(path=str(SHOT/'dashboard-desktop.png'),full_page=True)

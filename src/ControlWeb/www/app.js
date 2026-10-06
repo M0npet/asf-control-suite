@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const PASSWORD_KEY = 'asf.control.ipcPassword';
+  const LEGACY_IPC_STORAGE_KEY = 'asf.control.ipcPassword';
   const LOCK_KEY = 'asf.control.lockMinutes';
   const VIEW_KEY = 'asf.control.view';
   const DEFAULT_LOCK_MINUTES = 15;
@@ -20,8 +20,11 @@
     advanced: ['Advanced', 'Architecture, pinned targets and native API access.'],
   };
 
+  // Remove credentials persisted by pre-RAM-only releases.
+  sessionStorage.removeItem(LEGACY_IPC_STORAGE_KEY);
+
   const state = {
-    password: sessionStorage.getItem(PASSWORD_KEY) || '',
+    password: '',
     view: VIEW_META[sessionStorage.getItem(VIEW_KEY)] ? sessionStorage.getItem(VIEW_KEY) : 'dashboard',
     accounts: [],
     selectedBot: '',
@@ -122,7 +125,6 @@
     }, 15000);
   }
   function lockSession(message = '') {
-    sessionStorage.removeItem(PASSWORD_KEY);
     state.password = '';
     if (lockTimer) { clearInterval(lockTimer); lockTimer = null; }
     if (qrPollTimer) { clearTimeout(qrPollTimer); qrPollTimer = null; }
@@ -170,7 +172,6 @@
   async function authenticate(password) {
     state.password = password;
     await api('/Api/ASF');
-    sessionStorage.setItem(PASSWORD_KEY, password);
     showApp();
     setConnection(true);
     startLockWatch();
@@ -541,7 +542,7 @@
 
   async function renderSecurity() {
     const options = [0,5,15,30,60].map((minutes) => `<option value="${minutes}" ${Number(state.lockMinutes) === minutes ? 'selected' : ''}>${minutes === 0 ? 'Never in this tab' : `${minutes} min`}</option>`).join('');
-    return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Authentication boundary</h3><p>Defense in depth around ASF IPC.</p></div><span class="pill good">active</span></div><div class="boundary"><span class="boundary-index">1</span><div><strong>HTTPS / Tailscale</strong><small>Transport and network reachability remain outside ASF.</small></div></div><div class="boundary"><span class="boundary-index">2</span><div><strong>ASF IPCPassword</strong><small>Every /Api request from this UI carries the native Authentication header.</small></div></div><div class="boundary"><span class="boundary-index">3</span><div><strong>Tab-scoped session</strong><small>The IPC password exists only in sessionStorage and is cleared when the session locks.</small></div></div></div><div class="card"><div class="card-head"><div><h3>Session lock</h3><p>Protect an unattended browser tab.</p></div></div><label for="lockMinutes">Auto-lock after inactivity</label><select id="lockMinutes">${options}</select><span class="field-help">Activity resets the timer. “Never” applies only to this tab.</span><div class="toolbar section"><button id="lockNow" class="secondary">Lock now</button></div></div></div><div class="card section"><div class="card-head"><div><h3>Security invariants</h3><p>What Control Suite 1.0 intentionally does not expose.</p></div></div><div class="grid three"><div class="notice good">No arbitrary shell or process execution endpoint.</div><div class="notice good">Steam credentials are never persisted by AccountManager.</div><div class="notice good">Destructive actions require an explicit confirmation dialog.</div></div></div>`;
+    return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Authentication boundary</h3><p>Defense in depth around ASF IPC.</p></div><span class="pill good">active</span></div><div class="boundary"><span class="boundary-index">1</span><div><strong>HTTPS / Tailscale</strong><small>Transport and network reachability remain outside ASF.</small></div></div><div class="boundary"><span class="boundary-index">2</span><div><strong>ASF IPCPassword</strong><small>Every /Api request from this UI carries the native Authentication header.</small></div></div><div class="boundary"><span class="boundary-index">3</span><div><strong>Tab-scoped session</strong><small>The IPC password is kept only in page memory and is lost on refresh, lock, or tab close.</small></div></div></div><div class="card"><div class="card-head"><div><h3>Session lock</h3><p>Protect an unattended browser tab.</p></div></div><label for="lockMinutes">Auto-lock after inactivity</label><select id="lockMinutes">${options}</select><span class="field-help">Activity resets the timer. “Never” applies only to this tab.</span><div class="toolbar section"><button id="lockNow" class="secondary">Lock now</button></div></div></div><div class="card section"><div class="card-head"><div><h3>Security invariants</h3><p>What Control Suite 1.0 intentionally does not expose.</p></div></div><div class="grid three"><div class="notice good">No arbitrary shell or process execution endpoint.</div><div class="notice good">Steam credentials are never persisted by AccountManager.</div><div class="notice good">Destructive actions require an explicit confirmation dialog.</div></div></div>`;
   }
 
   async function renderSystem() {
@@ -736,25 +737,11 @@
   for (const eventName of ['pointerdown','keydown','touchstart']) window.addEventListener(eventName, markActivity, { passive:true });
   wireModal();
   $('togglePassword').addEventListener('click', () => { const input = $('password'); const show = input.type === 'password'; input.type = show ? 'text' : 'password'; $('togglePassword').textContent = show ? 'Hide' : 'Show'; $('togglePassword').setAttribute('aria-label', show ? 'Hide password' : 'Show password'); });
-  $('authForm').addEventListener('submit', async (event) => { event.preventDefault(); $('authError').textContent = ''; const submit = $('authForm').querySelector('button[type="submit"]'); submit.disabled = true; try { await authenticate($('password').value); } catch (error) { state.password = ''; sessionStorage.removeItem(PASSWORD_KEY); showAuth(error.message); } finally { submit.disabled = false; } });
+  $('authForm').addEventListener('submit', async (event) => { event.preventDefault(); $('authError').textContent = ''; const submit = $('authForm').querySelector('button[type="submit"]'); submit.disabled = true; try { await authenticate($('password').value); } catch (error) { state.password = ''; showAuth(error.message); } finally { submit.disabled = false; } });
   $('nav').addEventListener('click', async (event) => { const button = event.target.closest('[data-view]'); if (!button) return; state.view = button.dataset.view; updateNav(); await render(); });
   $('logout').addEventListener('click', () => lockSession());
   $('refreshView').addEventListener('click', async () => { const button = $('refreshView'); button.disabled = true; try { await loadAccounts(); await render(); toast('Refreshed', VIEW_META[state.view][0]); } catch (error) { toast('Refresh failed', error.message, 'bad'); } finally { button.disabled = false; } });
 
-  (async () => {
-    updateNav();
-    if (!state.password) { showAuth(); return; }
-    try {
-      await api('/Api/ASF');
-      showApp();
-      setConnection(true);
-      startLockWatch();
-      await loadAccounts();
-      await render();
-    } catch (_) {
-      sessionStorage.removeItem(PASSWORD_KEY);
-      state.password = '';
-      showAuth('Session expired or password is no longer valid.');
-    }
-  })();
+  updateNav();
+  showAuth();
 })();

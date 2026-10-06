@@ -9,7 +9,7 @@
   const UK = Object.freeze({
     'Secure control plane': 'Захищена панель керування',
     'Connect to ASF': 'Підключення до ASF',
-    'Enter the existing ASF IPC password. It is kept only in this browser tab and is cleared when the session locks.': 'Введіть чинний пароль ASF IPC. Він зберігається лише в цій вкладці браузера та очищається, коли сесія блокується.',
+    'Enter the existing ASF IPC password. It is kept only in page memory and is lost on refresh, lock, or tab close.': 'Введіть чинний пароль ASF IPC. Він зберігається лише в цій вкладці браузера та очищається, коли сесія блокується.',
     'IPC password': 'Пароль IPC',
     'Show password': 'Показати пароль',
     'Hide password': 'Сховати пароль',
@@ -200,7 +200,7 @@
     'ASF IPCPassword': 'ASF IPCPassword',
     'Every /Api request from this UI carries the native Authentication header.': 'Кожен запит /Api з цього інтерфейсу містить штатний заголовок Authentication.',
     'Tab-scoped session': 'Сесія в межах вкладки',
-    'The IPC password exists only in sessionStorage and is cleared when the session locks.': 'Пароль IPC існує лише в sessionStorage та очищається під час блокування сесії.',
+    'The IPC password is kept only in page memory and is lost on refresh, lock, or tab close.': 'Пароль IPC зберігається лише в пам’яті сторінки та втрачається після оновлення, блокування або закриття вкладки.',
     'Session lock': 'Блокування сесії',
     'Protect an unattended browser tab.': 'Захист вкладки браузера, залишеної без нагляду.',
     'Auto-lock after inactivity': 'Автоблокування після бездіяльності',
