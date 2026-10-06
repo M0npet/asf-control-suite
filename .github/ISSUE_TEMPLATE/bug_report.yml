@@ -1,0 +1,87 @@
+name: Bug report
+description: Report a reproducible problem
+title: "[Bug] "
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include passwords, IPC credentials, Steam credentials,
+        tokens, cookies or other private data.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - AccountManager
+        - ControlCenter
+        - ControlWeb
+        - PlaytimeGoals integration
+        - Packaging / release
+        - Phone deployment
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: suite
+    attributes:
+      label: ASF Control Suite version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: asf
+    attributes:
+      label: ArchiSteamFarm version
+      placeholder: "6.3.10.3"
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "Linux / Windows / macOS / Termux, architecture"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove credentials and private account data first.
+      render: text
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked existing issues.
+          required: true
+        - label: I removed credentials and private data.
+          required: true
