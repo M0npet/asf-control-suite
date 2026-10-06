@@ -26,14 +26,16 @@ DOTNET_BIN="$(
 DOTNET_DIR="$(cd "$(dirname "$DOTNET_BIN")" && pwd)"
 export PATH="$DOTNET_DIR:$PATH"
 
-python3 "$SUITE_ROOT/tests/static_contracts.py"
-python3 "$SUITE_ROOT/tests/pins_single_source.test.py"
+PYTHON="${CONTROL_PYTHON:-python3}"
+
+"$PYTHON" "$SUITE_ROOT/tests/static_contracts.py"
+"$PYTHON" "$SUITE_ROOT/tests/pins_single_source.test.py"
 bash "$SUITE_ROOT/tests/pins_parser.test.sh"
 node "$SUITE_ROOT/tests/control_core.test.js"
 bash "$SUITE_ROOT/tests/phone_transaction.test.sh"
 
 if [[ "${CONTROL_RUN_BROWSER_TESTS:-0}" == "1" ]]; then
-    python3 "$SUITE_ROOT/tests/ui_integration.py"
+    "$PYTHON" "$SUITE_ROOT/tests/ui_integration.py"
 fi
 
 bash \
