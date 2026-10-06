@@ -36,6 +36,7 @@ required_pins = (
     "CONTROL_MODULE_VERSION",
     "ASF_VERSION",
     "ASF_COMMIT",
+    "ASF_PATCH_SHA256",
     "ASF_UI_COMMIT",
     "PLAYTIMEGOALS_VERSION",
     "PLAYTIMEGOALS_COMMIT",
@@ -64,6 +65,7 @@ else:
         "BuildInfo.ControlModuleVersion",
         "BuildInfo.TargetAsfVersion",
         "BuildInfo.TargetAsfCommit",
+        "BuildInfo.TargetAsfPatchSha256",
         "BuildInfo.TargetAsfUiCommit",
         "BuildInfo.TargetPlaytimeGoalsVersion",
         "BuildInfo.TargetPlaytimeGoalsCommit",
@@ -79,6 +81,7 @@ else:
     for key in (
         "ASF_VERSION",
         "ASF_COMMIT",
+        "ASF_PATCH_SHA256",
         "PLAYTIMEGOALS_VERSION",
         "PLAYTIMEGOALS_COMMIT",
     ):
@@ -109,6 +112,7 @@ for runtime_path in runtime_metadata_consumers:
     for key in (
         "ASF_VERSION",
         "ASF_COMMIT",
+        "ASF_PATCH_SHA256",
         "ASF_UI_COMMIT",
         "PLAYTIMEGOALS_VERSION",
         "PLAYTIMEGOALS_COMMIT",
