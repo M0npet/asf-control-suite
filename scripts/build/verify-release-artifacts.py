@@ -17,6 +17,7 @@ REQUIRED_PINS = (
     "CONTROL_MODULE_VERSION",
     "ASF_VERSION",
     "ASF_COMMIT",
+    "ASF_PATCH_SHA256",
     "ASF_UI_COMMIT",
     "PLAYTIMEGOALS_VERSION",
     "PLAYTIMEGOALS_COMMIT",
@@ -385,6 +386,11 @@ def verify_metadata(
             "asfCommit":
                 pins[
                     "ASF_COMMIT"
+                ],
+
+            "asfPatchSha256":
+                pins[
+                    "ASF_PATCH_SHA256"
                 ],
 
             "asfUiCommit":
