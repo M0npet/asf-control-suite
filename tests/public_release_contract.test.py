@@ -161,8 +161,8 @@ for token, reason in (
         "release checksums",
     ),
     (
-        "<ASF>/plugins/",
-        "native extraction target",
+        "<ASF>/",
+        "suite extraction target",
     ),
     (
         "CONTROL_DOTNET",
