@@ -171,6 +171,9 @@ def expected_members() -> dict[str, set[str]]:
         "PlaytimeGoals": {
             "PlaytimeGoals/PlaytimeGoals.dll",
         },
+        "Runtime": {
+            "ArchiSteamFarm.dll",
+        },
     }
 
 
@@ -209,6 +212,14 @@ def expected_build_sources(
             / "Release"
             / "net10.0"
             / "PlaytimeGoals.dll",
+
+        "ArchiSteamFarm.dll":
+            build_root
+            / "ArchiSteamFarm"
+            / "bin"
+            / "Release"
+            / "net10.0"
+            / "ArchiSteamFarm.dll",
     }
 
     for asset in CONTROLWEB_ASSETS:
@@ -399,7 +410,7 @@ def verify_metadata(
 
         "install": {
             "extractInto":
-                "<ASF>/plugins/",
+                "<ASF>/",
 
             "webPath":
                 "/Control/",
