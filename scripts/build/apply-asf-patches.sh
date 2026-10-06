@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 ROOT="${1:-$(pwd)}"
 PATCH="${2:-$(cd "$(dirname "$0")/../.." && pwd)/patches/asf/0001-headless-qr-ipc.patch}"
-ASF_PATCH_SHA256="320b6873713c36a844ed2cc764b8d7569752d736e2db0dc6ab41f3e4ea14f728"
+ASF_PATCH_SHA256="650b7cf9109d7c4d5d9d2a8d6bd37f1a591b920ad918eecebaed9ee0ad0a1432"
 
 [[ -d "$ROOT/.git" ]] || { echo "ASF git worktree not found: $ROOT" >&2; exit 2; }
 [[ -f "$PATCH" ]] || { echo "ASF patch missing: $PATCH" >&2; exit 3; }
