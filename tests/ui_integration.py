@@ -1,12 +1,23 @@
 from pathlib import Path
+import os, tempfile
 from playwright.sync_api import sync_playwright
 from browser_runtime import resolve_chromium_executable
 import json, re, sys
 
 ROOT=Path(__file__).resolve().parents[1]
 WWW=ROOT/'src'/'ControlWeb'/'www'
-SHOT=ROOT/'docs'/'screenshots'
-SHOT.mkdir(parents=True,exist_ok=True)
+_shot_override = os.environ.get('CONTROL_SCREENSHOT_DIR')
+
+if _shot_override:
+    SHOT = Path(_shot_override).expanduser().resolve()
+    _SHOT_TMP = None
+else:
+    _SHOT_TMP = tempfile.TemporaryDirectory(
+        prefix='asf-control-suite-ui-'
+    )
+    SHOT = Path(_SHOT_TMP.name)
+
+SHOT.mkdir(parents=True, exist_ok=True)
 index=(WWW/'index.html').read_text(encoding='utf-8')
 css=(WWW/'app.css').read_text(encoding='utf-8')
 core=(WWW/'core.js').read_text(encoding='utf-8')
