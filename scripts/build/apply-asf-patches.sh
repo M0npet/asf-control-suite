@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SUITE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ROOT="${1:-$(pwd)}"
-PATCH="${2:-$(cd "$(dirname "$0")/../.." && pwd)/patches/asf/0001-headless-qr-ipc.patch}"
-ASF_PATCH_SHA256="650b7cf9109d7c4d5d9d2a8d6bd37f1a591b920ad918eecebaed9ee0ad0a1432"
+PATCH="${2:-$SUITE_ROOT/patches/asf/0001-headless-qr-ipc.patch}"
+
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/pins.sh"
+load_release_pins "$SUITE_ROOT/release/pins.env"
 
 [[ -d "$ROOT/.git" ]] || { echo "ASF git worktree not found: $ROOT" >&2; exit 2; }
 [[ -f "$PATCH" ]] || { echo "ASF patch missing: $PATCH" >&2; exit 3; }
