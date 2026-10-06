@@ -12,6 +12,7 @@ REQUIRED = (
     "CONTROL_MODULE_VERSION",
     "ASF_VERSION",
     "ASF_COMMIT",
+    "ASF_PATCH_SHA256",
     "ASF_UI_COMMIT",
     "PLAYTIMEGOALS_VERSION",
     "PLAYTIMEGOALS_COMMIT",
@@ -30,6 +31,9 @@ VALIDATORS = {
 
     "ASF_COMMIT":
         re.compile(r"[0-9a-f]{40}"),
+
+    "ASF_PATCH_SHA256":
+        re.compile(r"[0-9a-f]{64}"),
 
     "ASF_UI_COMMIT":
         re.compile(r"[0-9a-f]{40}"),
@@ -118,6 +122,10 @@ def render(values: dict[str, str]) -> str:
         (
             "TargetAsfCommit",
             "ASF_COMMIT",
+        ),
+        (
+            "TargetAsfPatchSha256",
+            "ASF_PATCH_SHA256",
         ),
         (
             "TargetAsfUiCommit",
