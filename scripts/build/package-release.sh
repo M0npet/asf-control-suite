@@ -296,6 +296,11 @@ PY
         "SHA256SUMS"
 )
 
+python3 "$SCRIPT_DIR/verify-release-artifacts.py" \
+    --build-root "$ASF_ROOT" \
+    --artifacts "$OUT_PARENT" \
+    --pins "$SUITE_ROOT/release/pins.env"
+
 echo
 echo "Native ASF release artifacts:"
 printf '  %s\n' \
