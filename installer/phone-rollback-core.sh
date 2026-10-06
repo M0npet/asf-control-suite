@@ -61,8 +61,8 @@ wait_base() {
 
 stop_asf_child || { echo "could not stop ASF child" >&2; exit 4; }
 mkdir -p "$ASF_ROOT/plugins" "$ASF_ROOT/control-suite"
-[[ -s "$BACKUP/ArchiSteamFarm.dll" ]] || { echo "backup ASF core missing" >&2; exit 6; }
-cp -a "$BACKUP/ArchiSteamFarm.dll" "$ASF_ROOT/ArchiSteamFarm.dll"
+[[ -s "$BACKUP/ArchiSteamFarm" ]] || { echo "backup ASF core missing" >&2; exit 6; }
+cp -a "$BACKUP/ArchiSteamFarm" "$ASF_ROOT/ArchiSteamFarm"
 
 for plugin in "${PLUGINS[@]}"; do
   rm -rf "$ASF_ROOT/plugins/$plugin"
