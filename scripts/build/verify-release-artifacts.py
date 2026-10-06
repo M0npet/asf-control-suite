@@ -611,9 +611,17 @@ def main() -> int:
 
     groups = expected_members()
 
-    bundle_expected = set().union(
-        *groups.values()
+    plugin_members = set().union(
+        groups["AccountManager"],
+        groups["ControlCenter"],
+        groups["ControlWeb"],
+        groups["PlaytimeGoals"],
     )
+
+    bundle_expected = {
+        "ArchiSteamFarm.dll",
+        *(f"plugins/{relative}" for relative in plugin_members),
+    }
 
     bundle_name = (
         "ASF-Control-Suite-v"
@@ -672,47 +680,55 @@ def main() -> int:
         build_root
     )
 
-    if set(sources) != bundle_expected:
+    source_expected = (
+        plugin_members
+        | {"ArchiSteamFarm.dll"}
+    )
+
+    if set(sources) != source_expected:
         fail(
             "internal build-source/member map mismatch"
         )
 
-    for relative in sorted(
-        bundle_expected
-    ):
-        source = sources[
-            relative
-        ]
+    for relative in sorted(source_expected):
+        source = sources[relative]
 
         if not source.is_file():
             fail(
                 f"build output missing: {source}"
             )
 
-        build_bytes = (
-            source.read_bytes()
-        )
+        build_bytes = source.read_bytes()
 
         if not build_bytes:
             fail(
                 f"build output empty: {source}"
             )
 
-        bundle_bytes = bundle[
+        bundle_name_for_source = (
             relative
-        ]
-
-        individual_bytes = (
-            individual_payloads[
-                relative
-            ]
+            if relative == "ArchiSteamFarm.dll"
+            else f"plugins/{relative}"
         )
+
+        bundle_bytes = bundle[
+            bundle_name_for_source
+        ]
 
         if bundle_bytes != build_bytes:
             fail(
                 "build -> bundle byte mismatch: "
                 + relative
             )
+
+        if relative == "ArchiSteamFarm.dll":
+            continue
+
+        individual_bytes = (
+            individual_payloads[
+                relative
+            ]
+        )
 
         if individual_bytes != build_bytes:
             fail(
