@@ -36,15 +36,22 @@ prepare_text = prepare.read_text(encoding="utf-8")
 require("apply-asf-patches.sh" in prepare_text, "release worktree does not apply ASF compatibility patch")
 
 build_text = build.read_text(encoding="utf-8")
-require("ArchiSteamFarm.dll" in build_text, "build does not require patched ArchiSteamFarm.dll")
+require("dotnet publish" in build_text, "build does not publish patched ASF runtime")
+require("-p:ASFVariant=linux-arm64" in build_text, "ASF runtime is not built as linux-arm64")
+require("-p:PublishSingleFile=true" in build_text, "ASF runtime is not single-file")
+require("-p:PublishTrimmed=true" in build_text, "ASF runtime is not trimmed")
+require("-r linux-arm64" in build_text, "ASF runtime RID is not linux-arm64")
+require("--self-contained" in build_text, "ASF runtime is not self-contained")
+require('ASF_RUNTIME="$ASF_RUNTIME_DIR/ArchiSteamFarm"' in build_text, "build does not require patched ASF executable")
 
 package_text = package.read_text(encoding="utf-8")
 require("--runtime" in package_text, "packager does not receive patched ASF runtime")
-require("ArchiSteamFarm.dll" in package_text, "package stage does not include patched ASF runtime")
+require('ASF_RUNTIME="out/control-suite-linux-arm64/ArchiSteamFarm"' in package_text, "package stage does not include patched ASF executable")
 
 zipper_text = zipper.read_text(encoding="utf-8")
 require("--runtime" in zipper_text, "ZIP creator has no runtime input")
-require("ArchiSteamFarm.dll" in zipper_text, "suite bundle does not include ArchiSteamFarm.dll")
+require('"ArchiSteamFarm"' in zipper_text, "suite bundle does not include ArchiSteamFarm executable")
+require("EXECUTABLE_FILE_MODE" in zipper_text, "suite bundle does not preserve ASF executable mode")
 require('f"plugins/{relative}"' in zipper_text, "suite bundle does not install plugins under plugins/")
 
 for path, label in (
@@ -53,7 +60,7 @@ for path, label in (
     (verify, "phone verify"),
 ):
     text = path.read_text(encoding="utf-8")
-    require("ArchiSteamFarm.dll" in text, f"{label} does not manage patched ASF runtime")
+    require("ArchiSteamFarm" in text, f"{label} does not manage patched ASF runtime")
 
 if errors:
     print("HEADLESS QR RUNTIME CONTRACT: FAIL")
