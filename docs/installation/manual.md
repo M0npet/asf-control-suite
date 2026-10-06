@@ -82,7 +82,7 @@ A successful canonical build produces:
     artifacts/CONTROL-SUITE-METADATA.json
     artifacts/SHA256SUMS
 
-The combined Control Suite ZIP contains the audited patched `ArchiSteamFarm.dll` plus `plugins/...`. Individual plugin ZIPs remain plugin-only.
+The combined Control Suite ZIP contains the audited patched `ArchiSteamFarm` plus `plugins/...`. Individual plugin ZIPs remain plugin-only.
 
 `CONTROL-SUITE-METADATA.json` and `SHA256SUMS` are release metadata and are not extracted into ASF.
 
@@ -118,7 +118,7 @@ The bundle contains the patched ASF core at the install root and plugins under t
 
 After extraction, the important paths are:
 
-    <ASF>/ArchiSteamFarm.dll
+    <ASF>/ArchiSteamFarm
     <ASF>/plugins/AccountManager/AccountManager.dll
     <ASF>/plugins/ControlCenter/ControlCenter.dll
     <ASF>/plugins/ControlWeb/ControlWeb.dll
@@ -197,7 +197,7 @@ Do not delete existing ASF config or PlaytimeGoals state databases during a norm
 If an update fails:
 
 1. stop ASF;
-2. restore the previous `ArchiSteamFarm.dll` and plugin directories from backup;
+2. restore the previous `ArchiSteamFarm` and plugin directories from backup;
 4. start ASF;
 5. verify `/Control/` and PlaytimeGoals state.
 
