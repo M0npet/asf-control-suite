@@ -244,7 +244,7 @@ else:
                         )
 
                     if archive_name == "ASF-Control-Suite-v1.0.0.zip":
-                        runtime_info = archive.getinfo("ArchiSteamFarm")
+                        runtime_info = handle.getinfo("ArchiSteamFarm")
                         runtime_mode = runtime_info.external_attr >> 16
                         if not (runtime_mode & 0o111):
                             errors.append(
