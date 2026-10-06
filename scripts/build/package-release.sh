@@ -28,9 +28,9 @@ cd "$ASF_ROOT"
     exit 3
 }
 
-ASF_RUNTIME="ArchiSteamFarm/bin/Release/net10.0/ArchiSteamFarm.dll"
+ASF_RUNTIME="out/control-suite-linux-arm64/ArchiSteamFarm"
 
-[[ -s "$ASF_RUNTIME" ]] || {
+[[ -s "$ASF_RUNTIME" && -x "$ASF_RUNTIME" ]] || {
     echo "missing patched ASF runtime: $ASF_RUNTIME" >&2
     exit 4
 }
