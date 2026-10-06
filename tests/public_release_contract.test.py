@@ -55,7 +55,7 @@ for relative in (
     read(relative)
 
 
-# README must describe the actual current release.
+# README must describe the current unpublished development state.
 for token, reason in (
     (
         "A public release is intentionally withheld",
@@ -72,14 +72,6 @@ for token, reason in (
     (
         "docs/installation/manual.md",
         "current installation documentation",
-    ),
-    (
-        "ASF-Control-Suite-v1.0.0.zip",
-        "native bundle artifact",
-    ),
-    (
-        "<ASF>/plugins/",
-        "native ASF extraction target",
     ),
     (
         "page memory",
