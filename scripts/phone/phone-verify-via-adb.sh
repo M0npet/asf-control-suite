@@ -37,7 +37,10 @@ done
 while IFS= read -r line; do
   expected="${line%% *}"
   rel="${line#*  }"
-  [[ "$rel" == plugins/* ]] || continue
+  case "$rel" in
+    ArchiSteamFarm.dll|plugins/*) ;;
+    *) continue ;;
+  esac
   [[ -f "$ASF/$rel" ]] || { echo "installed file missing: $rel" >&2; exit 22; }
   actual="$(sha256sum "$ASF/$rel" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || { echo "installed checksum mismatch: $rel" >&2; exit 23; }
