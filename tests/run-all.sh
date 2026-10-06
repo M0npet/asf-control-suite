@@ -8,6 +8,7 @@ PYTHON="${CONTROL_PYTHON:-python3}"
 echo '=== ASF CONTROL SUITE 1.0 SANDBOX SUITE ==='
 "$PYTHON" tests/migration_structure.test.py
 "$PYTHON" tests/pins_single_source.test.py
+"$PYTHON" tests/build_info_contract.test.py
 bash tests/pins_parser.test.sh
 "$PYTHON" tests/static_contracts.py
 node tests/control_core.test.js
