@@ -41,6 +41,9 @@ expected = {
     "TargetAsfCommit":
         pins["ASF_COMMIT"],
 
+    "TargetAsfPatchSha256":
+        pins["ASF_PATCH_SHA256"],
+
     "TargetAsfUiCommit":
         pins["ASF_UI_COMMIT"],
 
