@@ -58,12 +58,12 @@ for relative in (
 # README must describe the actual current release.
 for token, reason in (
     (
-        "ASF Control Suite v1.0.0",
-        "current release branding",
+        "[**Download v1.0.0**]",
+        "current release call-to-action",
     ),
     (
-        "PlaytimeGoals 0.5.1.0",
-        "current PlaytimeGoals version",
+        "| PlaytimeGoals | **0.5.1.0** |",
+        "current PlaytimeGoals compatibility version",
     ),
     (
         "release/pins.env",

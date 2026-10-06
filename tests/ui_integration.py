@@ -1,5 +1,6 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from browser_runtime import resolve_chromium_executable
 import json, re, sys
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -95,7 +96,15 @@ def assert_no_horizontal_overflow(page):
     assert dims['sw'] <= dims['iw'] + 2, dims
 
 with sync_playwright() as pw:
-    browser=pw.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+    chromium_executable = resolve_chromium_executable()
+    launch_options = {
+        'headless': True,
+        'args': ['--no-sandbox'],
+    }
+    if chromium_executable is not None:
+        launch_options['executable_path'] = chromium_executable
+
+    browser=pw.chromium.launch(**launch_options)
 
     # Desktop functional flow
     page=browser.new_page(viewport={"width":1440,"height":1050}, device_scale_factor=1)
