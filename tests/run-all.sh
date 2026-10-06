@@ -13,6 +13,7 @@ echo '=== ASF CONTROL SUITE 1.0 SANDBOX SUITE ==='
 "$PYTHON" tests/dotnet_supply_chain.test.py
 "$PYTHON" tests/native_zip_packaging.test.py
 "$PYTHON" tests/release_provenance.test.py
+"$PYTHON" tests/public_asset_ownership.test.py
 "$PYTHON" tests/public_release_contract.test.py
 "$PYTHON" tests/build_info_generator.test.py
 bash tests/pins_parser.test.sh
