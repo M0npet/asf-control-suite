@@ -1,4 +1,8 @@
 from pathlib import Path
+import hashlib
+import io
+import shutil
+import tarfile
 import os
 import re
 import subprocess
@@ -328,6 +332,115 @@ else:
             errors.append(
                 "corrupted SDK archive unexpectedly passed verification"
             )
+
+
+# User-supplied existing install directories must fail closed.
+#
+# A typo in --install-dir must never turn the bootstrap into a
+# recursive directory deletion primitive. Existing custom directories
+# are allowed only when they already contain the exact SDK and the
+# bootstrap can return without modifying them.
+with tempfile.TemporaryDirectory() as td:
+    temp_root = Path(td)
+    fake_suite = temp_root / "suite"
+
+    (fake_suite / "scripts" / "dev").mkdir(parents=True)
+    (fake_suite / "scripts" / "build").mkdir(parents=True)
+    (fake_suite / "release").mkdir(parents=True)
+
+    shutil.copy2(
+        BOOTSTRAP,
+        fake_suite / "scripts" / "dev" / BOOTSTRAP.name,
+    )
+    shutil.copy2(
+        ROOT / "scripts" / "build" / "pins.sh",
+        fake_suite / "scripts" / "build" / "pins.sh",
+    )
+    shutil.copy2(
+        PINS,
+        fake_suite / "release" / "pins.env",
+    )
+
+    fake_archive = temp_root / (
+        f"dotnet-sdk-{sdk_version}-linux-x64.tar.gz"
+    )
+
+    fake_dotnet = (
+        "#!/usr/bin/env bash\n"
+        "if [[ \"${1:-}\" == \"--list-sdks\" ]]; then\n"
+        f"    echo \"{sdk_version} [/fake/sdk]\"\n"
+        "    exit 0\n"
+        "fi\n"
+        "exit 0\n"
+    ).encode("utf-8")
+
+    with tarfile.open(
+        fake_archive,
+        mode="w:gz",
+    ) as archive:
+        info = tarfile.TarInfo("dotnet")
+        info.mode = 0o755
+        info.size = len(fake_dotnet)
+
+        archive.addfile(
+            info,
+            io.BytesIO(fake_dotnet),
+        )
+
+    fake_hash = hashlib.sha512(
+        fake_archive.read_bytes()
+    ).hexdigest()
+
+    (
+        fake_suite / "release" / "dotnet-sdk.sha512"
+    ).write_text(
+        f"linux-x64={fake_hash}\n",
+        encoding="utf-8",
+    )
+
+    custom_install = temp_root / "important-user-directory"
+    custom_install.mkdir()
+
+    sentinel = custom_install / "DO-NOT-DELETE.txt"
+    sentinel.write_text(
+        "unrelated user data\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            "/usr/bin/bash",
+            str(
+                fake_suite
+                / "scripts"
+                / "dev"
+                / "bootstrap-dotnet-sdk.sh"
+            ),
+            "--archive",
+            str(fake_archive),
+            "--rid",
+            "linux-x64",
+            "--install-dir",
+            str(custom_install),
+        ],
+        cwd=fake_suite,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+
+    if result.returncode == 0:
+        errors.append(
+            "user-supplied existing install directory was "
+            "silently replaced instead of failing closed"
+        )
+
+    if not sentinel.is_file():
+        errors.append(
+            "user-supplied existing install directory lost "
+            "pre-existing data"
+        )
 
 
 if errors:
