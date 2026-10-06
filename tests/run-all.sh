@@ -4,6 +4,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 echo '=== ASF CONTROL SUITE 1.0 SANDBOX SUITE ==='
+python tests/migration_structure.test.py
 python tests/static_contracts.py
 node tests/control_core.test.js
 python tests/ui_integration.py
