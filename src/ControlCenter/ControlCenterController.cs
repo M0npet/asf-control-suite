@@ -42,6 +42,7 @@ public sealed class ControlCenterController : ControllerBase {
             ControlModuleVersion = ControlCenterPlugin.ControlModuleVersion,
             TargetAsfVersion = ControlCenterPlugin.TargetAsfVersion,
             TargetAsfCommit = ControlCenterPlugin.TargetAsfCommit,
+            TargetAsfPatchSha256 = ControlCenterPlugin.TargetAsfPatchSha256,
             TargetAsfUiCommit = ControlCenterPlugin.TargetAsfUiCommit,
             TargetPlaytimeGoalsCommit = ControlCenterPlugin.TargetPlaytimeGoalsCommit,
             TargetPlaytimeGoalsVersion = ControlCenterPlugin.TargetPlaytimeGoalsVersion,
