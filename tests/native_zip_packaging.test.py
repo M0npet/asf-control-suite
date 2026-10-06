@@ -93,6 +93,9 @@ else:
         out1 = temp / "out1"
         out2 = temp / "out2"
 
+        runtime = temp / "ArchiSteamFarm.dll"
+        runtime.write_bytes(b"patched-asf-core\n")
+
         fixture = {
             "AccountManager/AccountManager.dll":
                 b"account-manager-dll\n",
@@ -128,6 +131,8 @@ else:
                     str(ZIPPER),
                     "--stage",
                     str(stage),
+                    "--runtime",
+                    str(runtime),
                     "--out",
                     str(out),
                     "--suite-version",
@@ -207,8 +212,10 @@ else:
                     "PlaytimeGoals/PlaytimeGoals.dll",
                 },
 
-                "ASF-Control-Suite-v1.0.0.zip":
-                    set(fixture),
+                "ASF-Control-Suite-v1.0.0.zip": {
+                    "ArchiSteamFarm.dll",
+                    *(f"plugins/{name}" for name in fixture),
+                },
             }
 
             bundle_payloads = {}
@@ -287,7 +294,7 @@ else:
 
                         if (
                             bundle_payloads.get(
-                                info.filename
+                                f"plugins/{info.filename}"
                             )
                             != payload
                         ):
