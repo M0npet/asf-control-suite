@@ -113,7 +113,7 @@ Pinned revisions:
 
 - ASF: `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
 - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
-- PlaytimeGoals: `fe7343303cb6d8a253a9622904accd4bf37895c0`
+- PlaytimeGoals: `6795172c59a43153c4065ed7ae9e17f0862687a3`
 
 ## Release policy
 
