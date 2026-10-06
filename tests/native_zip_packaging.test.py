@@ -93,8 +93,9 @@ else:
         out1 = temp / "out1"
         out2 = temp / "out2"
 
-        runtime = temp / "ArchiSteamFarm.dll"
-        runtime.write_bytes(b"patched-asf-core\n")
+        runtime = temp / "ArchiSteamFarm"
+        runtime.write_bytes(b"patched-asf-runtime\n")
+        runtime.chmod(0o755)
 
         fixture = {
             "AccountManager/AccountManager.dll":
@@ -213,7 +214,7 @@ else:
                 },
 
                 "ASF-Control-Suite-v1.0.0.zip": {
-                    "ArchiSteamFarm.dll",
+                    "ArchiSteamFarm",
                     *(f"plugins/{name}" for name in fixture),
                 },
             }
@@ -241,6 +242,14 @@ else:
                             f"{archive_name}: unexpected members "
                             f"{sorted(names)!r}"
                         )
+
+                    if archive_name == "ASF-Control-Suite-v1.0.0.zip":
+                        runtime_info = archive.getinfo("ArchiSteamFarm")
+                        runtime_mode = runtime_info.external_attr >> 16
+                        if not (runtime_mode & 0o111):
+                            errors.append(
+                                "ASF runtime executable mode missing"
+                            )
 
                     for name in names:
                         if name.startswith("installer/"):
