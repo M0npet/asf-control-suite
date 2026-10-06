@@ -137,11 +137,29 @@ for path in tracked_files():
         except ValueError:
             continue
 
-        cgnat = address in ipaddress.ip_network(
-            "100.64.0.0/10"
+        octets = tuple(
+            int(part)
+            for part in raw.split(".")
         )
 
-        if address.is_private or cgnat:
+        rfc1918 = (
+            octets[0] == 10
+            or (
+                octets[0] == 172
+                and 16 <= octets[1] <= 31
+            )
+            or (
+                octets[0] == 192
+                and octets[1] == 168
+            )
+        )
+
+        cgnat = (
+            octets[0] == 100
+            and 64 <= octets[1] <= 127
+        )
+
+        if rfc1918 or cgnat:
             errors.append(
                 f"{relative}: private/CGNAT IPv4: {raw!r}"
             )
