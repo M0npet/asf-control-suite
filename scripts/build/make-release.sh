@@ -46,10 +46,9 @@ bash \
     "$SCRIPT_DIR/build-release.sh" \
     "$WORKTREE"
 
-CONTROL_SUITE_SOURCE="$SUITE_ROOT" \
-    bash \
+bash \
     "$SCRIPT_DIR/package-release.sh" \
     "$WORKTREE" \
     "$OUT_PARENT"
 
-echo "RELEASE READY: $OUT_PARENT/asf-control-suite-v1.0-dist.tar.gz"
+echo "RELEASE READY: $OUT_PARENT/ASF-Control-Suite-v$CONTROL_SUITE_VERSION.zip"

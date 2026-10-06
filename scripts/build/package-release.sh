@@ -7,15 +7,11 @@ SUITE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/pins.sh"
 
-load_release_pins "$SUITE_ROOT/release/pins.env"
+load_release_pins \
+    "$SUITE_ROOT/release/pins.env"
 
 ASF_ROOT="${1:-$(pwd)}"
-OUT_PARENT="${2:-$ASF_ROOT/artifacts}"
-
-# Transitional v1 package layout.
-# Phase 8 replaces this with native ASF ZIP artifacts.
-DIST_NAME="asf-control-suite-v1.0-dist"
-OUT="$OUT_PARENT/$DIST_NAME"
+OUT_PARENT="${2:-$SUITE_ROOT/artifacts}"
 
 cd "$ASF_ROOT"
 
@@ -24,114 +20,289 @@ cd "$ASF_ROOT"
     exit 2
 }
 
-[[ "$(git -C ASF-ui rev-parse HEAD)" == "$ASF_UI_COMMIT" ]] || {
+[[ \
+    "$(git -C ASF-ui rev-parse HEAD)" \
+    == "$ASF_UI_COMMIT" \
+]] || {
     echo "wrong ASF-ui HEAD" >&2
     exit 3
 }
 
-rm -rf "$OUT"
+for plugin in \
+    PlaytimeGoals \
+    AccountManager \
+    ControlCenter \
+    ControlWeb
+do
+    DLL="$plugin/bin/Release/net10.0/$plugin.dll"
 
-mkdir -p \
-    "$OUT/plugins"/{PlaytimeGoals,AccountManager,ControlCenter,ControlWeb} \
-    "$OUT/installer"
+    [[ -s "$DLL" ]] || {
+        echo "missing release DLL: $DLL" >&2
+        exit 4
+    }
+done
 
-cp \
-    PlaytimeGoals/bin/Release/net10.0/PlaytimeGoals.dll \
-    "$OUT/plugins/PlaytimeGoals/"
-
-cp \
-    AccountManager/bin/Release/net10.0/AccountManager.dll \
-    "$OUT/plugins/AccountManager/"
-
-cp \
-    ControlCenter/bin/Release/net10.0/ControlCenter.dll \
-    "$OUT/plugins/ControlCenter/"
-
-cp \
-    ControlWeb/bin/Release/net10.0/ControlWeb.dll \
-    "$OUT/plugins/ControlWeb/"
-
-cp -a \
-    ControlWeb/bin/Release/net10.0/www \
-    "$OUT/plugins/ControlWeb/www"
-
-SUITE_SOURCE="${CONTROL_SUITE_SOURCE:-}"
-
-[[ \
-    -n "$SUITE_SOURCE" && \
-    -f "$SUITE_SOURCE/installer/phone-transaction.sh" && \
-    -f "$SUITE_SOURCE/installer/phone-rollback-core.sh" \
-]] || {
-    echo "set CONTROL_SUITE_SOURCE to the ASF Control Suite source directory" >&2
-    exit 4
-}
-
-cp \
-    "$SUITE_SOURCE/installer/phone-transaction.sh" \
-    "$SUITE_SOURCE/installer/phone-rollback-core.sh" \
-    "$OUT/installer/"
-
-chmod 0755 \
-    "$OUT/installer/phone-transaction.sh" \
-    "$OUT/installer/phone-rollback-core.sh"
-
-cat > "$OUT/BUILD-METADATA.txt" <<TXT
-Release: ASF Control Suite v$CONTROL_SUITE_VERSION
-Control modules: $CONTROL_MODULE_VERSION
-PlaytimeGoals: $PLAYTIMEGOALS_VERSION
-PlaytimeGoals commit: $PLAYTIMEGOALS_COMMIT
-ASF version: $ASF_VERSION
-ASF commit: $(git rev-parse HEAD)
-ASF-ui commit: $(git -C ASF-ui rev-parse HEAD)
-.NET SDK: $(dotnet --version)
-Build UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
-Install target: /opt/asf
-Web path: /Control/
-TXT
-
-cat > "$OUT/INSTALL-LAYOUT.txt" <<'TXT'
-plugins/PlaytimeGoals/PlaytimeGoals.dll
-plugins/AccountManager/AccountManager.dll
-plugins/ControlCenter/ControlCenter.dll
-plugins/ControlWeb/ControlWeb.dll
-plugins/ControlWeb/www/index.html
-plugins/ControlWeb/www/i18n.js
-plugins/ControlWeb/www/core.js
-plugins/ControlWeb/www/qrcode.min.js
-plugins/ControlWeb/www/qrcode.LICENSE.txt
-plugins/ControlWeb/www/app.js
-plugins/ControlWeb/www/app.css
-
-No /opt/asf/www files are replaced. Existing config/database files remain in /opt/asf/config.
-TXT
-
-(
-    cd "$OUT"
-
-    find \
-        plugins \
-        installer \
-        BUILD-METADATA.txt \
-        INSTALL-LAYOUT.txt \
-        -type f \
-        -print0 |
-        sort -z |
-        xargs -0 sha256sum \
-        > SHA256SUMS
-
-    sha256sum -c SHA256SUMS
-)
+for asset in \
+    index.html \
+    i18n.js \
+    core.js \
+    qrcode.min.js \
+    qrcode.LICENSE.txt \
+    app.js \
+    app.css
+do
+    [[ \
+        -s \
+        "ControlWeb/bin/Release/net10.0/www/$asset" \
+    ]] || {
+        echo \
+            "missing ControlWeb release asset: $asset" \
+            >&2
+        exit 5
+    }
+done
 
 mkdir -p "$OUT_PARENT"
 
-ARCHIVE="$OUT_PARENT/$DIST_NAME.tar.gz"
+STAGE_ROOT="$(
+    mktemp \
+        -d \
+        "$OUT_PARENT/.native-stage.XXXXXX"
+)" || exit 6
 
-rm -f "$ARCHIVE"
+cleanup_stage() {
+    rm -rf "$STAGE_ROOT"
+}
 
-tar \
-    -C "$OUT_PARENT" \
-    -czf "$ARCHIVE" \
-    "$DIST_NAME"
+trap cleanup_stage EXIT
 
-printf 'Archive: %s\n' "$ARCHIVE"
-sha256sum "$ARCHIVE"
+mkdir -p \
+    "$STAGE_ROOT/PlaytimeGoals" \
+    "$STAGE_ROOT/AccountManager" \
+    "$STAGE_ROOT/ControlCenter" \
+    "$STAGE_ROOT/ControlWeb/www"
+
+cp \
+    PlaytimeGoals/bin/Release/net10.0/PlaytimeGoals.dll \
+    "$STAGE_ROOT/PlaytimeGoals/PlaytimeGoals.dll"
+
+cp \
+    AccountManager/bin/Release/net10.0/AccountManager.dll \
+    "$STAGE_ROOT/AccountManager/AccountManager.dll"
+
+cp \
+    ControlCenter/bin/Release/net10.0/ControlCenter.dll \
+    "$STAGE_ROOT/ControlCenter/ControlCenter.dll"
+
+cp \
+    ControlWeb/bin/Release/net10.0/ControlWeb.dll \
+    "$STAGE_ROOT/ControlWeb/ControlWeb.dll"
+
+cp -a \
+    ControlWeb/bin/Release/net10.0/www/. \
+    "$STAGE_ROOT/ControlWeb/www/"
+
+if find "$STAGE_ROOT" \
+    -type l \
+    -print \
+    -quit |
+    grep -q .
+then
+    echo \
+        "symlinks are forbidden in native plugin stage" \
+        >&2
+    exit 7
+fi
+
+EXPECTED_STAGE_FILES=(
+    "AccountManager/AccountManager.dll"
+    "ControlCenter/ControlCenter.dll"
+    "ControlWeb/ControlWeb.dll"
+    "ControlWeb/www/app.css"
+    "ControlWeb/www/app.js"
+    "ControlWeb/www/core.js"
+    "ControlWeb/www/i18n.js"
+    "ControlWeb/www/index.html"
+    "ControlWeb/www/qrcode.LICENSE.txt"
+    "ControlWeb/www/qrcode.min.js"
+    "PlaytimeGoals/PlaytimeGoals.dll"
+)
+
+mapfile -t ACTUAL_STAGE_FILES < <(
+    cd "$STAGE_ROOT"
+
+    find \
+        . \
+        -type f \
+        -printf '%P\n' |
+        sort
+)
+
+mapfile -t EXPECTED_SORTED < <(
+    printf '%s\n' \
+        "${EXPECTED_STAGE_FILES[@]}" |
+        sort
+)
+
+if [[ \
+    "$(printf '%s\n' "${ACTUAL_STAGE_FILES[@]}")" \
+    != \
+    "$(printf '%s\n' "${EXPECTED_SORTED[@]}")" \
+]]
+then
+    echo \
+        "canonical native stage does not match expected layout" \
+        >&2
+
+    echo "Expected:" >&2
+    printf '  %s\n' \
+        "${EXPECTED_SORTED[@]}" \
+        >&2
+
+    echo "Actual:" >&2
+    printf '  %s\n' \
+        "${ACTUAL_STAGE_FILES[@]}" \
+        >&2
+
+    exit 8
+fi
+
+BUNDLE_ZIP="$OUT_PARENT/ASF-Control-Suite-v$CONTROL_SUITE_VERSION.zip"
+ACCOUNT_ZIP="$OUT_PARENT/AccountManager-v$CONTROL_SUITE_VERSION.zip"
+CENTER_ZIP="$OUT_PARENT/ControlCenter-v$CONTROL_SUITE_VERSION.zip"
+WEB_ZIP="$OUT_PARENT/ControlWeb-v$CONTROL_SUITE_VERSION.zip"
+PTG_ZIP="$OUT_PARENT/PlaytimeGoals-v${PLAYTIMEGOALS_VERSION%.0}.zip"
+
+rm -f \
+    "$BUNDLE_ZIP" \
+    "$ACCOUNT_ZIP" \
+    "$CENTER_ZIP" \
+    "$WEB_ZIP" \
+    "$PTG_ZIP"
+
+python3 "$SCRIPT_DIR/create-native-zips.py" \
+    --stage "$STAGE_ROOT" \
+    --out "$OUT_PARENT" \
+    --suite-version "$CONTROL_SUITE_VERSION" \
+    --playtimegoals-version "$PLAYTIMEGOALS_VERSION"
+
+for archive in \
+    "$BUNDLE_ZIP" \
+    "$ACCOUNT_ZIP" \
+    "$CENTER_ZIP" \
+    "$WEB_ZIP" \
+    "$PTG_ZIP"
+do
+    [[ -s "$archive" ]] || {
+        echo \
+            "native release archive missing: $archive" \
+            >&2
+        exit 9
+    }
+done
+
+METADATA="$OUT_PARENT/CONTROL-SUITE-METADATA.json"
+SHA256SUMS="$OUT_PARENT/SHA256SUMS"
+
+python3 - \
+    "$METADATA" \
+    "$CONTROL_SUITE_VERSION" \
+    "$CONTROL_MODULE_VERSION" \
+    "$PLAYTIMEGOALS_VERSION" \
+    "$PLAYTIMEGOALS_COMMIT" \
+    "$ASF_VERSION" \
+    "$ASF_COMMIT" \
+    "$ASF_UI_COMMIT" \
+    "$DOTNET_SDK_VERSION" \
+    "$(basename "$BUNDLE_ZIP")" \
+    "$(basename "$ACCOUNT_ZIP")" \
+    "$(basename "$CENTER_ZIP")" \
+    "$(basename "$WEB_ZIP")" \
+    "$(basename "$PTG_ZIP")" \
+    <<'PY'
+import json
+import sys
+from pathlib import Path
+
+(
+    metadata_path,
+    suite_version,
+    module_version,
+    ptg_version,
+    ptg_commit,
+    asf_version,
+    asf_commit,
+    asf_ui_commit,
+    sdk_version,
+    bundle_zip,
+    account_zip,
+    center_zip,
+    web_zip,
+    ptg_zip,
+) = sys.argv[1:]
+
+payload = {
+    "schemaVersion": 1,
+    "release": {
+        "controlSuiteVersion": suite_version,
+        "controlModuleVersion": module_version,
+        "playtimeGoalsVersion": ptg_version,
+    },
+    "targets": {
+        "asfVersion": asf_version,
+        "asfCommit": asf_commit,
+        "asfUiCommit": asf_ui_commit,
+        "playtimeGoalsCommit": ptg_commit,
+        "dotnetSdkVersion": sdk_version,
+    },
+    "install": {
+        "extractInto": "<ASF>/plugins/",
+        "webPath": "/Control/",
+    },
+    "artifacts": [
+        bundle_zip,
+        account_zip,
+        center_zip,
+        web_zip,
+        ptg_zip,
+    ],
+}
+
+Path(metadata_path).write_text(
+    json.dumps(
+        payload,
+        indent=2,
+        sort_keys=True,
+    )
+    + "\n",
+    encoding="utf-8",
+)
+PY
+
+(
+    cd "$OUT_PARENT" || exit 1
+
+    sha256sum \
+        "$(basename "$BUNDLE_ZIP")" \
+        "$(basename "$ACCOUNT_ZIP")" \
+        "$(basename "$CENTER_ZIP")" \
+        "$(basename "$WEB_ZIP")" \
+        "$(basename "$PTG_ZIP")" \
+        "CONTROL-SUITE-METADATA.json" \
+        > "SHA256SUMS"
+
+    sha256sum \
+        -c \
+        "SHA256SUMS"
+)
+
+echo
+echo "Native ASF release artifacts:"
+printf '  %s\n' \
+    "$BUNDLE_ZIP" \
+    "$ACCOUNT_ZIP" \
+    "$CENTER_ZIP" \
+    "$WEB_ZIP" \
+    "$PTG_ZIP" \
+    "$METADATA" \
+    "$SHA256SUMS"
