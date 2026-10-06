@@ -26,6 +26,7 @@ FIXED_ZIP_TIME = (
 )
 
 REGULAR_FILE_MODE = 0o100644
+EXECUTABLE_FILE_MODE = 0o100755
 
 
 def fail(message: str) -> None:
@@ -176,7 +177,12 @@ def write_deterministic_zip(
             info.create_system = 3
             info.compress_type = ZIP_DEFLATED
             info.external_attr = (
-                REGULAR_FILE_MODE << 16
+                (
+                    EXECUTABLE_FILE_MODE
+                    if archive_name == "ArchiSteamFarm"
+                    else REGULAR_FILE_MODE
+                )
+                << 16
             )
 
             archive.writestr(
@@ -262,15 +268,18 @@ def main() -> int:
     runtime = args.runtime.resolve()
     out = args.out.resolve()
 
-    if not runtime.is_file() or runtime.name != "ArchiSteamFarm.dll":
-        fail("patched ASF runtime must be an ArchiSteamFarm.dll file")
+    if not runtime.is_file() or runtime.name != "ArchiSteamFarm":
+        fail("patched ASF runtime must be the linux-arm64 ArchiSteamFarm executable")
+
+    if runtime.is_symlink() or not (runtime.stat().st_mode & 0o111):
+        fail("patched ASF runtime must be a regular executable file")
 
     members = collect_stage_members(
         stage
     )
 
     bundle_entries = (
-        (("ArchiSteamFarm.dll", runtime),)
+        (("ArchiSteamFarm", runtime),)
         + tuple(
             (f"plugins/{relative}", stage / relative)
             for plugin in PLUGIN_NAMES
