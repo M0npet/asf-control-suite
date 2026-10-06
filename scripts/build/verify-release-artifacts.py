@@ -214,13 +214,11 @@ def expected_build_sources(
             / "net10.0"
             / "PlaytimeGoals.dll",
 
-        "ArchiSteamFarm.dll":
+        "ArchiSteamFarm":
             build_root
-            / "ArchiSteamFarm"
-            / "bin"
-            / "Release"
-            / "net10.0"
-            / "ArchiSteamFarm.dll",
+            / "out"
+            / "control-suite-linux-arm64"
+            / "ArchiSteamFarm",
     }
 
     for asset in CONTROLWEB_ASSETS:
@@ -633,7 +631,7 @@ def main() -> int:
     )
 
     bundle_expected = {
-        "ArchiSteamFarm.dll",
+        "ArchiSteamFarm",
         *(f"plugins/{relative}" for relative in plugin_members),
     }
 
@@ -696,7 +694,7 @@ def main() -> int:
 
     source_expected = (
         plugin_members
-        | {"ArchiSteamFarm.dll"}
+        | {"ArchiSteamFarm"}
     )
 
     if set(sources) != source_expected:
@@ -721,7 +719,7 @@ def main() -> int:
 
         bundle_name_for_source = (
             relative
-            if relative == "ArchiSteamFarm.dll"
+            if relative == "ArchiSteamFarm"
             else f"plugins/{relative}"
         )
 
@@ -735,7 +733,7 @@ def main() -> int:
                 + relative
             )
 
-        if relative == "ArchiSteamFarm.dll":
+        if relative == "ArchiSteamFarm":
             continue
 
         individual_bytes = (
