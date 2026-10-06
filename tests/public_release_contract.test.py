@@ -58,8 +58,8 @@ for relative in (
 # README must describe the actual current release.
 for token, reason in (
     (
-        "[**Download v1.0.0**]",
-        "current release call-to-action",
+        "A public release is intentionally withheld",
+        "deferred public release notice",
     ),
     (
         "| PlaytimeGoals | **0.5.1.0** |",

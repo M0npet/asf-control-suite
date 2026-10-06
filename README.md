@@ -5,14 +5,8 @@
 ### Native account control, web UI and playtime automation for ArchiSteamFarm
 
 <p>
-  <a href="https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0">
-    <img alt="Release" src="https://img.shields.io/github/v/release/M0npet/asf-control-suite?display_name=tag&sort=semver">
-  </a>
   <img alt="ASF 6.3.10.3" src="https://img.shields.io/badge/ASF-6.3.10.3-2f81f7">
   <img alt=".NET 10.0.400" src="https://img.shields.io/badge/.NET_SDK-10.0.400-512BD4?logo=dotnet&logoColor=white">
-  <a href="https://github.com/M0npet/asf-control-suite/releases">
-    <img alt="Downloads" src="https://img.shields.io/github/downloads/M0npet/asf-control-suite/total">
-  </a>
   <a href="LICENSE">
     <img alt="License" src="https://img.shields.io/github/license/M0npet/asf-control-suite">
   </a>
@@ -20,8 +14,6 @@
 
 **One self-hosted `/Control/` UI · ASF-native APIs · reproducible releases · RAM-only IPC credentials**
 
-[**Download v1.0.0**](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0)
-&nbsp;·&nbsp;
 [Installation](docs/installation/manual.md)
 &nbsp;·&nbsp;
 [Security](SECURITY.md)
@@ -87,18 +79,13 @@ No second daemon. No arbitrary shell API. No separate credential database.
 
 </details>
 
-## Quick install
+## Installation
 
-1. Download **ASF-Control-Suite-v1.0.0.zip** from the
-   [v1.0.0 release](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
-2. Stop ASF.
-3. Extract the archive directly into `<ASF>/plugins/`.
-4. Start ASF.
-5. Open `/Control/`.
-6. Authenticate with your normal ASF IPC password.
+A public release is intentionally withheld while repository hardening
+and final verification are in progress.
 
-For individual packages, upgrades and manual builds, see the
-[installation guide](docs/installation/manual.md).
+For pinned-source builds, native ZIP packaging and installation
+instructions, see the [installation guide](docs/installation/manual.md).
 
 ## Highlights
 
@@ -128,25 +115,14 @@ Pinned revisions:
 - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
 - PlaytimeGoals: `fe7343303cb6d8a253a9622904accd4bf37895c0`
 
-## Release integrity
+## Release policy
 
-The verified `v1.0.0` release is anchored to commit `e5a8227`.
+Public release publication is intentionally deferred until repository
+hardening and final verification are complete.
 
-Public Control Suite release assets:
-
-    ASF-Control-Suite-v1.0.0.zip
-    AccountManager-v1.0.0.zip
-    ControlCenter-v1.0.0.zip
-    ControlWeb-v1.0.0.zip
-    CONTROL-SUITE-METADATA.json
-    SHA256SUMS
-
-Verify downloads with:
-
-    sha256sum -c SHA256SUMS
-
-PlaytimeGoals is built and provenance-verified with the suite, but its
-standalone ZIP belongs to the separate PlaytimeGoals public release.
+The release pipeline still builds and provenance-verifies Control Suite
+artifacts and the pinned external PlaytimeGoals build. Standalone
+PlaytimeGoals release ownership remains separate.
 
 ## Security
 
