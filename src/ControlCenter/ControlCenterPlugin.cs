@@ -14,6 +14,7 @@ internal sealed class ControlCenterPlugin : IPlugin {
     internal const string ControlModuleVersion = BuildInfo.ControlModuleVersion;
     internal const string TargetAsfVersion = BuildInfo.TargetAsfVersion;
     internal const string TargetAsfCommit = BuildInfo.TargetAsfCommit;
+    internal const string TargetAsfPatchSha256 = BuildInfo.TargetAsfPatchSha256;
     internal const string TargetAsfUiCommit = BuildInfo.TargetAsfUiCommit;
     internal const string TargetPlaytimeGoalsVersion = BuildInfo.TargetPlaytimeGoalsVersion;
     internal const string TargetPlaytimeGoalsCommit = BuildInfo.TargetPlaytimeGoalsCommit;
