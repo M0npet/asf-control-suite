@@ -1,0 +1,11 @@
+# Official .NET release metadata:
+# https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json
+#
+# The SDK version itself is intentionally NOT duplicated here.
+# release/pins.env remains the only source of DOTNET_SDK_VERSION.
+#
+# Format:
+# RID=SHA512
+
+linux-x64=1033977dd837150e0814cf0c5d5b17ceb63925fda7ba2158b47258a4bd7c048cf82eac3bc1166f3146f53124a3f5fba09db1de1260d2ce96399860303b404b48
+linux-arm64=a1b45da58e5591fff909a6126ac6bfc1ef9c12bc72c0625f7815e83a82be1a902317ee96926cbbf81324a45c6abf2ed8102a216d0507879cc166159af78d1b77

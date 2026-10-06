@@ -165,7 +165,7 @@ else:
         "pins.sh",
         "load_release_pins",
         "DOTNET_SDK_VERSION",
-        "dotnet --list-sdks",
+        "--list-sdks",
     ):
         if required not in checker_text:
             errors.append(
@@ -201,6 +201,8 @@ else:
             fake_dotnet.chmod(0o755)
 
             env = dict(os.environ)
+            env.pop("CONTROL_DOTNET", None)
+            env.pop("DOTNET_ROOT", None)
             env["PATH"] = (
                 str(fake_dir)
                 + ":/usr/local/sbin:/usr/local/bin:/usr/bin:/bin"
