@@ -1,6 +1,6 @@
 # Final function matrix — v1.0
 
-## PlaytimeGoals 0.5.0.0
+## PlaytimeGoals 0.5.1.0
 
 - Finite target hours and unlimited (`null`) goals.
 - Batch scheduling (1..32) and stable queue position.
@@ -49,7 +49,7 @@
 - Finite/unlimited targets, batch size and Family View-write settings.
 - EXCLUDED rows cannot be newly selected; already-managed excluded/missing entries remain removable.
 - Enabling PlaytimeGoals forces native idle fields empty so there is one GamesPlayed owner.
-- IPCPassword kept only in `sessionStorage`; inactivity lock and manual lock.
+- IPCPassword kept only in page memory; refresh, inactivity lock, manual lock, logout and authentication rejection clear it.
 - Strict self-only CSP, no external scripts/fonts/CDNs and no referrer leakage.
 - Native ASF restart and exit with typed confirmation.
 - No arbitrary host/shell command surface.

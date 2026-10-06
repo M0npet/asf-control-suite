@@ -1,0 +1,191 @@
+<div align="center">
+
+# ASF Control Suite
+
+### Безпечний модульний центр керування для ArchiSteamFarm
+
+**v1.0.0 · ASF 6.3.10.3 · .NET 10.0.400**
+
+[English](README.md) · [Українська](README.uk.md) · [Deutsch](README.de.md)
+
+</div>
+
+---
+
+## Про проєкт
+
+ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс `/Control/`, при цьому автентифікація, життєвий цикл ботів і конфігурація залишаються під контролем самого ASF.
+
+Проєкт побудований як набір невеликих нативних ASF-плагінів без другого демона та без довільного shell-інтерфейсу.
+
+| Модуль | Призначення |
+| --- | --- |
+| **AccountManager** | Огляд кількох акаунтів, Steam-ім'я й аватар, керування ботами та QR/password onboarding |
+| **ControlCenter** | Стан системи, модулів і дані сумісності |
+| **ControlWeb** | Єдиний локальний вебінтерфейс `/Control/` |
+| **PlaytimeGoals** | Цілі ігрового часу, черги, FREE-ліцензії та відновлення Family View |
+
+---
+
+## Версії
+
+Єдине канонічне джерело версій і revision-пінів — [`release/pins.env`](release/pins.env).
+
+| Компонент | Версія / revision |
+| --- | --- |
+| ASF Control Suite | **1.0.0** |
+| Control-модулі | **1.0.0.0** |
+| ArchiSteamFarm | **6.3.10.3** |
+| ASF commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
+| ASF-ui commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
+| PlaytimeGoals | **0.5.1.0** |
+| PlaytimeGoals commit | `fe7343303cb6d8a253a9622904accd4bf37895c0` |
+| .NET SDK | **10.0.400** |
+
+---
+
+## Основні можливості
+
+### Керування акаунтами
+
+- Steam-імена та аватари
+- дії ASF окремо для кожного акаунта
+- нативний Steam QR login
+- додавання акаунтів через пароль із використанням ASF API
+- без окремого сховища облікових даних
+
+### PlaytimeGoals
+
+- обмежені та необмежені цілі часу
+- окремі черги ігор для акаунтів
+- підтримка Steam Family
+- автоматична робота з FREE-ліцензіями
+- відновлення Family View
+- виправлена логіка готовності F2P у PlaytimeGoals 0.5.1.0
+
+### ControlWeb
+
+- єдина сторінка `/Control/`
+- desktop і mobile layout
+- англійська та українська локалізація з інтеграцією ASF-ui locale
+- локальні JS, CSS і QR assets
+- без довільного shell/process API
+
+---
+
+## Модель безпеки
+
+Авторитетним механізмом автентифікації залишається ASF IPC.
+
+IPC password існує лише в **пам'яті сторінки** поточного автентифікованого документа. Він не зберігається в browser storage та зникає після refresh, lock, logout, помилки автентифікації або закриття сторінки.
+
+Steam-паролі шифруються через ASF до запису BotConfig.
+
+ControlWeb не надає API для довільного запуску shell-команд або процесів. QR-коди та вебресурси генеруються і зберігаються локально.
+
+Політика безпеки: [`SECURITY.md`](SECURITY.md).
+
+---
+
+## Нативні ASF-пакети
+
+Канонічна release-збірка створює:
+
+    ASF-Control-Suite-v1.0.0.zip
+    AccountManager-v1.0.0.zip
+    ControlCenter-v1.0.0.zip
+    ControlWeb-v1.0.0.zip
+    PlaytimeGoals-v0.5.1.zip
+    CONTROL-SUITE-METADATA.json
+    SHA256SUMS
+
+ZIP-файли вже мають нативну структуру ASF plugins.
+
+Для встановлення:
+
+1. Зупиніть ASF.
+2. Розпакуйте потрібний ZIP прямо в `<ASF>/plugins/`.
+3. Запустіть ASF.
+4. Відкрийте `/Control/` та перевірте потрібні модулі.
+
+Bundle містить усі чотири плагіни.
+
+---
+
+## Відтворювана release-збірка
+
+Release pipeline працює за принципом fail-closed:
+
+    release/pins.env
+          ↓
+    точні source revisions
+          ↓
+    точний .NET SDK 10.0.400
+          ↓
+    build із warnings-as-errors
+          ↓
+    єдиний canonical staging tree
+          ↓
+    детерміновані ZIP-файли
+          ↓
+    metadata + SHA256SUMS
+          ↓
+    provenance verification
+
+Verifier порівнює байти exact build з bundle та individual ZIP.
+
+Просте повторне обчислення `SHA256SUMS` після зміни артефакту не дозволяє обійти provenance-перевірку.
+
+---
+
+## Збірка
+
+За наявності локальних Git-репозиторіїв ASF і PlaytimeGoals з потрібними revision:
+
+    bash scripts/build/make-release.sh \
+      /path/to/ArchiSteamFarm \
+      /path/to/PlaytimeGoals
+
+Повна інструкція: [`docs/installation/manual.md`](docs/installation/manual.md).
+
+---
+
+## Тести
+
+Повний локальний набір тестів:
+
+    bash tests/run-all.sh
+
+Він перевіряє, зокрема:
+
+- цілісність release pins
+- generated BuildInfo
+- RAM-only IPC authentication
+- supply chain .NET SDK
+- deterministic ZIP packaging
+- byte identity build/package
+- release provenance
+- логіку ControlWeb
+- browser integration
+- transactional phone deployment і rollback fixtures
+
+---
+
+## Документація
+
+- [Встановлення](docs/installation/manual.md)
+- [Архітектура](docs/architecture/README.md)
+- [Розробка](docs/development/README.md)
+- [Матриця функцій](docs/FUNCTION_MATRIX.md)
+- [Політика безпеки](SECURITY.md)
+- [Участь у розробці](CONTRIBUTING.md)
+
+---
+
+<div align="center">
+
+**ASF Control Suite v1.0.0**
+
+ASF-native API, відтворювані збірки та чіткі межі безпеки.
+
+</div>

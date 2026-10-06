@@ -1,41 +1,193 @@
-# ASF Control Suite v1.0 — source release
+<div align="center">
 
-Modular control plane for the existing Mi Max 2 ASF setup. The release is pinned to:
+# ASF Control Suite
 
-- ArchiSteamFarm 6.3.10.3 — `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
-- ASF-ui — `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
-- PlaytimeGoals 0.5.0.0 — `fa959d3d4ffd09f7fd30e9ee8599aa5004b67033`
-- Control modules 1.0.0.0
-- .NET SDK build gate — 10.0.400
+### A safe, modular control layer for ArchiSteamFarm
 
-## Modules
+**v1.0.0 · ASF 6.3.10.3 · .NET 10.0.400**
 
-- **PlaytimeGoals** — game-goal engine, queue, Steam Family, FREE auto-claim and Family View recovery.
-- **AccountManager** — cross-bot summary with Steam persona/avatar/native QR challenge fields plus credential-free defaults.
-- **ControlCenter** — safe runtime/module health; filesystem telemetry is deliberately reported as `unavailable` on the trimmed target instead of probing optional `System.IO` members; no shell executor.
-- **ControlWeb** — unified `/Control/` UI with Steam-first multi-account management, native Steam QR/password onboarding, account-scoped PlaytimeGoals controls/sorting, and an ASF-ui-compatible locale bridge. Stock `/bots` stays available only as a legacy fallback.
+[English](README.md) · [Українська](README.uk.md) · [Deutsch](README.de.md)
 
-See `docs/FUNCTION_MATRIX.md` for the complete implemented function list, `docs/INSTALL.md` for build/install/rollback, and `docs/FIELD_TEST.md` for the final live Steam test.
+</div>
 
-## Security / ownership
+---
 
-PlaytimeGoals remains the sole owner of its managed GamesPlayed and managed Family View state. ControlWeb never gets a shell surface. ASF IPCPassword stays authoritative; the browser keeps it only in sessionStorage and removes it on lock. New Steam passwords are encrypted by ASF AES before BotConfig persistence. The UI keeps scripts, styles, API traffic and QR generation local/self-hosted. CSP permits images only from self/data and the pinned Steam avatar host; QR challenge URLs are never sent to a third-party QR service. Language preference reuses the stock ASF-ui `asf-ui:locale` key; `uk-UA` is fully localized in ControlWeb and English remains the fallback.
+## Overview
 
-## Deployment model
+ASF Control Suite adds a unified `/Control/` interface to ArchiSteamFarm while keeping ASF itself in control of authentication, bot lifecycle and configuration.
 
-One exact release archive contains all four plugins. Phone installation is transactional: SHA verification → staging → backup → stop ASF child → plugin swap → byte verification → root/API/Control/OpenAPI health → success, otherwise automatic rollback.
+The project is split into small ASF-native modules instead of introducing a second daemon or an arbitrary shell interface.
 
-Stock `/opt/asf/www`, the Termux `asf` supervisor, `asf-proxy` and `tailscale-watch` are not intentionally replaced or killed by the installer.
+| Module | Purpose |
+| --- | --- |
+| **AccountManager** | Multi-account overview, Steam persona/avatar data, bot controls and QR/password onboarding |
+| **ControlCenter** | Runtime health, module status and compatibility metadata |
+| **ControlWeb** | Unified self-hosted `/Control/` web interface |
+| **PlaytimeGoals** | Per-game playtime goals, queue management, FREE-license handling and Family View recovery |
 
-## Validation available in this sandbox
+---
 
-- static/security contracts
-- pure JS configuration tests
-- real Chromium UI integration test, including stock ASF-ui `uk-UA` auto-detection and shared locale persistence
-- fake-phone successful install transaction
-- fake-phone manual rollback
-- fake-phone forced post-swap failure with automatic rollback
-- JS and shell syntax
-- secret/private-address scan
+## Version matrix
 
-The only gate that cannot run in this sandbox is the exact C# compile because `dotnet` is not installed and the container cannot download SDK 10.0.400. `scripts/make-release.sh` makes that compile mandatory before an install archive is created.
+The canonical release source of truth is [`release/pins.env`](release/pins.env).
+
+| Component | Version / revision |
+| --- | --- |
+| ASF Control Suite | **1.0.0** |
+| Control modules | **1.0.0.0** |
+| ArchiSteamFarm | **6.3.10.3** |
+| ASF commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
+| ASF-ui commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
+| PlaytimeGoals | **0.5.1.0** |
+| PlaytimeGoals commit | `fe7343303cb6d8a253a9622904accd4bf37895c0` |
+| .NET SDK | **10.0.400** |
+
+---
+
+## Highlights
+
+### Account management
+
+- Steam persona names and avatars
+- account-scoped ASF actions
+- native Steam QR login flow
+- password onboarding through ASF-native APIs
+- no separate credential database
+
+### PlaytimeGoals
+
+- finite and unlimited playtime targets
+- account-scoped game queues
+- Steam Family awareness
+- FREE-license auto-claim handling
+- Family View recovery
+- fixed F2P readiness behavior in PlaytimeGoals 0.5.1.0
+
+### Control interface
+
+- unified `/Control/` page
+- desktop and mobile layouts
+- English, Ukrainian and ASF-ui locale integration
+- self-hosted JavaScript, CSS and QR rendering
+- no arbitrary shell/process execution surface
+
+---
+
+## Security model
+
+ASF IPC authentication remains authoritative.
+
+The IPC password exists only in JavaScript **page memory** for the currently authenticated document. It is not persisted in browser storage and is discarded on refresh, lock, logout, authentication rejection or page close.
+
+Steam passwords are encrypted through ASF before BotConfig persistence.
+
+ControlWeb does not expose an arbitrary shell or process execution API. QR rendering and web assets are local and self-hosted.
+
+See [`SECURITY.md`](SECURITY.md) for the project security policy.
+
+---
+
+## Native ASF packages
+
+The canonical release build produces:
+
+    ASF-Control-Suite-v1.0.0.zip
+    AccountManager-v1.0.0.zip
+    ControlCenter-v1.0.0.zip
+    ControlWeb-v1.0.0.zip
+    PlaytimeGoals-v0.5.1.zip
+    CONTROL-SUITE-METADATA.json
+    SHA256SUMS
+
+The bundle and individual ZIP files use the native ASF plugin layout.
+
+To install a package:
+
+1. Stop ASF.
+2. Extract the selected ZIP directly into `<ASF>/plugins/`.
+3. Start ASF.
+4. Open `/Control/` and verify the required modules.
+
+The bundle ZIP contains all four plugins.
+
+---
+
+## Reproducible release pipeline
+
+The release path is deliberately fail-closed:
+
+    release/pins.env
+          ↓
+    exact source revisions
+          ↓
+    exact .NET SDK 10.0.400
+          ↓
+    warnings-as-errors build
+          ↓
+    canonical plugin staging tree
+          ↓
+    deterministic native ZIP files
+          ↓
+    metadata + SHA256SUMS
+          ↓
+    release provenance verification
+
+The verifier compares the exact build output with both the bundle and individual archives.
+
+Recalculating `SHA256SUMS` after modifying an artifact is not enough to bypass the provenance gate.
+
+---
+
+## Build
+
+With local ASF and PlaytimeGoals Git repositories containing the pinned revisions:
+
+    bash scripts/build/make-release.sh \
+      /path/to/ArchiSteamFarm \
+      /path/to/PlaytimeGoals
+
+The release build requires the exact SDK selected by the repository policy.
+
+Full instructions are available in [`docs/installation/manual.md`](docs/installation/manual.md).
+
+---
+
+## Testing
+
+Run the complete local test suite:
+
+    bash tests/run-all.sh
+
+The suite covers, among other things:
+
+- release pin integrity
+- generated build metadata
+- RAM-only IPC authentication
+- .NET SDK supply-chain verification
+- deterministic ZIP packaging
+- build/package byte identity
+- release provenance
+- ControlWeb logic
+- browser integration
+- transactional phone deployment and rollback fixtures
+
+---
+
+## Documentation
+
+- [Installation](docs/installation/manual.md)
+- [Architecture](docs/architecture/README.md)
+- [Development](docs/development/README.md)
+- [Function matrix](docs/FUNCTION_MATRIX.md)
+- [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
+
+---
+
+<div align="center">
+
+**ASF Control Suite v1.0.0**
+
+Built around ASF-native APIs, reproducible builds and explicit security boundaries.
+
+</div>

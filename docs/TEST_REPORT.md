@@ -46,7 +46,7 @@ Screenshots produced by the Chromium suite are in `docs/screenshots/`.
 
 ## Not claimable inside this sandbox
 
-The sandbox does not contain `dotnet`, and direct binary download of the pinned SDK is blocked by the container network boundary. Therefore the exact C# compile against ASF 6.3.10.3 is still a mandatory build gate in `scripts/make-release.sh`. The script pins .NET SDK 10.0.400 and refuses to produce an install archive until all plugin builds pass with warnings as errors.
+The exact C# compile against ASF 6.3.10.3 has now passed with .NET SDK 10.0.400. The release pipeline requires the exact SDK, builds all plugin projects with warnings as errors, creates deterministic native ASF ZIP artifacts and runs release provenance verification before declaring the release ready.
 
 Real Steam/Family/Family View behavior is intentionally reserved for the live post-install test in `FIELD_TEST.md`.
 

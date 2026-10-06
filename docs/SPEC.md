@@ -12,7 +12,7 @@ Baseline: ASF 6.3.10.3 `27bd1d5d...`, ASF-ui `2b361255...`, PlaytimeGoals `6d167
 
 ## Account and security rules
 
-Account lifecycle uses native ASF endpoints. New SteamPassword is encrypted through native ASF AES before BotConfig write. Defaults never persist known credentials or secret-like keys. IPCPassword remains ASF's API boundary and is held only in tab sessionStorage. UI assets are local-only with CSP and no-referrer policy. ControlWeb reuses the stock ASF-ui `asf-ui:locale` preference; `uk-UA` has a complete ControlWeb catalog and unsupported locales fall back to English without changing the stock preference.
+Account lifecycle uses native ASF endpoints. New SteamPassword is encrypted through native ASF AES before BotConfig write. Defaults never persist known credentials or secret-like keys. IPCPassword remains ASF's API boundary and is held only in page memory for the current authenticated document. UI assets are local-only with CSP and no-referrer policy. ControlWeb reuses the stock ASF-ui `asf-ui:locale` preference; `uk-UA` has a complete ControlWeb catalog and unsupported locales fall back to English without changing the stock preference.
 
 ## PlaytimeGoals editing
 

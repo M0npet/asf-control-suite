@@ -42,7 +42,7 @@ Control Suite 1.0 is the first polished release of the modular ASF control plane
 ## Safety
 
 - No arbitrary shell/process executor exists in browser-facing plugins.
-- IPCPassword stays native ASF authentication and is stored only in tab-scoped `sessionStorage`.
+- IPCPassword stays native ASF authentication and is kept only in page memory for the current authenticated document.
 - Manual/inactivity lock clears the browser credential.
 - Deployment remains out-of-band through the transactional ADB installer with persistent backup and rollback.
 
