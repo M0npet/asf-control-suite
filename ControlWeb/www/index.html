@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#090d14">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://avatars.akamai.steamstatic.com; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <title>ASF Control</title>
+  <link rel="stylesheet" href="/Control/app.css">
+</head>
+<body>
+  <div id="authGate" class="auth-gate">
+    <div class="auth-card" aria-labelledby="authTitle">
+      <div class="auth-topline"><div class="auth-brand"><span class="brand-mark" aria-hidden="true">A</span><span>ASF Control</span></div><select id="authLocaleSelect" class="locale-select" aria-label="Language"></select></div>
+      <div class="eyebrow">Secure control plane</div>
+      <h1 id="authTitle">Connect to ASF</h1>
+      <p>Enter the existing ASF IPC password. It is kept only in this browser tab and is cleared when the session locks.</p>
+      <form id="authForm" class="auth-form">
+        <label for="password">IPC password</label>
+        <div class="password-row">
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required autofocus>
+          <button id="togglePassword" class="icon-button" type="button" aria-label="Show password">Show</button>
+        </div>
+        <button type="submit" class="wide">Connect</button>
+      </form>
+      <div id="authError" class="form-error" role="alert" aria-live="polite"></div>
+      <div class="auth-foot"><span class="status-dot neutral"></span> HTTPS/Tailscale remains the outer transport boundary</div>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">A</span>
+        <div><strong>ASF Control</strong><small>Control Suite 1.0</small></div>
+      </div>
+      <nav id="nav">
+        <button data-view="dashboard" class="active"><span class="nav-icon" aria-hidden="true">D</span><span>Dashboard</span></button>
+        <button data-view="accounts"><span class="nav-icon" aria-hidden="true">A</span><span>Accounts</span></button>
+        <button data-view="playtime"><span class="nav-icon" aria-hidden="true">P</span><span>Playtime Goals</span></button>
+        <button data-view="security"><span class="nav-icon" aria-hidden="true">S</span><span>Security</span></button>
+        <button data-view="system"><span class="nav-icon" aria-hidden="true">Y</span><span>System</span></button>
+        <button data-view="advanced"><span class="nav-icon" aria-hidden="true">X</span><span>Advanced</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <div id="sidebarBotSummary" class="sidebar-summary"></div>
+        <button id="logout" class="ghost wide" type="button">Lock session</button>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div class="topbar-title"><div class="eyebrow">Mi Max 2 · ASF target 6.3.10.3</div><h2 id="title">Dashboard</h2><p id="subtitle" class="subtitle"></p></div>
+        <div class="topbar-actions">
+          <select id="localeSelect" class="locale-select" aria-label="Language"></select>
+          <button id="refreshView" class="icon-button" type="button" aria-label="Refresh current view">Refresh</button>
+          <div id="connection" class="pill neutral" role="status" aria-live="polite"><span class="status-dot neutral"></span>checking</div>
+        </div>
+      </header>
+      <section id="content" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+  <dialog id="modal" class="modal">
+    <form method="dialog" class="modal-card" id="modalForm">
+      <div class="modal-head"><div><div id="modalEyebrow" class="eyebrow"></div><h3 id="modalTitle"></h3></div><button id="modalClose" class="icon-button" value="cancel" aria-label="Close dialog">×</button></div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalError" class="form-error" role="alert"></div>
+      <div class="modal-actions"><button id="modalCancel" value="cancel" class="secondary">Cancel</button><button id="modalConfirm" value="default">Confirm</button></div>
+    </form>
+  </dialog>
+
+  <script src="/Control/i18n.js"></script>
+  <script src="/Control/core.js"></script>
+  <script src="/Control/qrcode.min.js"></script>
+  <script src="/Control/app.js" defer></script>
+</body>
+</html>

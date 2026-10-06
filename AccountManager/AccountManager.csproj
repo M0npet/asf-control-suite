@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>AccountManager</AssemblyName>
+    <RootNamespace>AccountManager</RootNamespace>
+    <Version>1.0.0.0</Version>
+    <Description>Safe account defaults and cross-bot summary for ArchiSteamFarm.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations.Sources" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" IncludeAssets="compile" />
+    <PackageReference Include="System.Composition.AttributedModel" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ArchiSteamFarm\ArchiSteamFarm.csproj" ExcludeAssets="all" Private="false" />
+  </ItemGroup>
+</Project>

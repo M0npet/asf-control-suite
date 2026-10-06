@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>ControlWeb</AssemblyName>
+    <RootNamespace>ControlWeb</RootNamespace>
+    <Version>1.0.0.0</Version>
+    <Description>Unified modular web shell for ASF control plugins.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations.Sources" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" IncludeAssets="compile" />
+    <PackageReference Include="System.Composition.AttributedModel" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ArchiSteamFarm\ArchiSteamFarm.csproj" ExcludeAssets="all" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="www/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
