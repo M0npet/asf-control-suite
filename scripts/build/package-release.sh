@@ -218,7 +218,6 @@ python3 - \
     "$(basename "$ACCOUNT_ZIP")" \
     "$(basename "$CENTER_ZIP")" \
     "$(basename "$WEB_ZIP")" \
-    "$(basename "$PTG_ZIP")" \
     <<'PY'
 import json
 import sys
@@ -238,7 +237,6 @@ from pathlib import Path
     account_zip,
     center_zip,
     web_zip,
-    ptg_zip,
 ) = sys.argv[1:]
 
 payload = {
@@ -259,12 +257,16 @@ payload = {
         "extractInto": "<ASF>/plugins/",
         "webPath": "/Control/",
     },
+    # Public Control Suite release assets only.
+    #
+    # The standalone PlaytimeGoals ZIP is still produced by the
+    # canonical build for byte-provenance verification, but belongs
+    # to the separate PlaytimeGoals public release.
     "artifacts": [
         bundle_zip,
         account_zip,
         center_zip,
         web_zip,
-        ptg_zip,
     ],
 }
 
@@ -282,12 +284,13 @@ PY
 (
     cd "$OUT_PARENT" || exit 1
 
+    # SHA256SUMS is the public Control Suite release manifest.
+    # PlaytimeGoals publishes its standalone ZIP from its own release.
     sha256sum \
         "$(basename "$BUNDLE_ZIP")" \
         "$(basename "$ACCOUNT_ZIP")" \
         "$(basename "$CENTER_ZIP")" \
         "$(basename "$WEB_ZIP")" \
-        "$(basename "$PTG_ZIP")" \
         "CONTROL-SUITE-METADATA.json" \
         > "SHA256SUMS"
 

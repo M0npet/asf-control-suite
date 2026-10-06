@@ -557,7 +557,11 @@ def main() -> int:
         ]
     )
 
-    artifact_names = [
+    # Public Control Suite release ownership is intentionally
+    # narrower than the canonical build output. The standalone
+    # PlaytimeGoals ZIP is built and verified below, but is published
+    # by the separate PlaytimeGoals release.
+    public_artifact_names = [
         (
             "ASF-Control-Suite-v"
             f"{suite_version}.zip"
@@ -574,14 +578,10 @@ def main() -> int:
             "ControlWeb-v"
             f"{suite_version}.zip"
         ),
-        (
-            "PlaytimeGoals-v"
-            f"{ptg_public}.zip"
-        ),
     ]
 
     checksum_names = (
-        artifact_names
+        public_artifact_names
         + [
             "CONTROL-SUITE-METADATA.json",
         ]
@@ -590,7 +590,7 @@ def main() -> int:
     verify_metadata(
         artifacts,
         pins,
-        artifact_names,
+        public_artifact_names,
     )
 
     verify_checksums(

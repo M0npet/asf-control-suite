@@ -378,10 +378,6 @@ if VERIFY.is_file():
                     "ControlWeb-v"
                     f"{suite_version}.zip"
                 ),
-                (
-                    "PlaytimeGoals-v"
-                    f"{ptg_public_version}.zip"
-                ),
             ],
         }
 
