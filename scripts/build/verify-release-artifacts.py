@@ -17,6 +17,7 @@ REQUIRED_PINS = (
     "CONTROL_MODULE_VERSION",
     "ASF_VERSION",
     "ASF_COMMIT",
+    "ASF_PATCH_SHA256",
     "ASF_UI_COMMIT",
     "PLAYTIMEGOALS_VERSION",
     "PLAYTIMEGOALS_COMMIT",
@@ -171,6 +172,9 @@ def expected_members() -> dict[str, set[str]]:
         "PlaytimeGoals": {
             "PlaytimeGoals/PlaytimeGoals.dll",
         },
+        "Runtime": {
+            "ArchiSteamFarm",
+        },
     }
 
 
@@ -209,6 +213,12 @@ def expected_build_sources(
             / "Release"
             / "net10.0"
             / "PlaytimeGoals.dll",
+
+        "ArchiSteamFarm":
+            build_root
+            / "out"
+            / "control-suite-linux-arm64"
+            / "ArchiSteamFarm",
     }
 
     for asset in CONTROLWEB_ASSETS:
@@ -306,6 +316,14 @@ def read_zip_payloads(
                             f"{archive_path.name}: non-regular ZIP member {name!r}"
                         )
 
+                if (
+                    name == "ArchiSteamFarm"
+                    and not (mode & 0o111)
+                ):
+                    fail(
+                        f"{archive_path.name}: ASF runtime is not executable"
+                    )
+
             return {
                 name: archive.read(name)
                 for name in names
@@ -376,6 +394,11 @@ def verify_metadata(
                     "ASF_COMMIT"
                 ],
 
+            "asfPatchSha256":
+                pins[
+                    "ASF_PATCH_SHA256"
+                ],
+
             "asfUiCommit":
                 pins[
                     "ASF_UI_COMMIT"
@@ -399,7 +422,7 @@ def verify_metadata(
 
         "install": {
             "extractInto":
-                "<ASF>/plugins/",
+                "<ASF>/",
 
             "webPath":
                 "/Control/",
@@ -600,9 +623,17 @@ def main() -> int:
 
     groups = expected_members()
 
-    bundle_expected = set().union(
-        *groups.values()
+    plugin_members = set().union(
+        groups["AccountManager"],
+        groups["ControlCenter"],
+        groups["ControlWeb"],
+        groups["PlaytimeGoals"],
     )
+
+    bundle_expected = {
+        "ArchiSteamFarm",
+        *(f"plugins/{relative}" for relative in plugin_members),
+    }
 
     bundle_name = (
         "ASF-Control-Suite-v"
@@ -661,47 +692,55 @@ def main() -> int:
         build_root
     )
 
-    if set(sources) != bundle_expected:
+    source_expected = (
+        plugin_members
+        | {"ArchiSteamFarm"}
+    )
+
+    if set(sources) != source_expected:
         fail(
             "internal build-source/member map mismatch"
         )
 
-    for relative in sorted(
-        bundle_expected
-    ):
-        source = sources[
-            relative
-        ]
+    for relative in sorted(source_expected):
+        source = sources[relative]
 
         if not source.is_file():
             fail(
                 f"build output missing: {source}"
             )
 
-        build_bytes = (
-            source.read_bytes()
-        )
+        build_bytes = source.read_bytes()
 
         if not build_bytes:
             fail(
                 f"build output empty: {source}"
             )
 
-        bundle_bytes = bundle[
+        bundle_name_for_source = (
             relative
-        ]
-
-        individual_bytes = (
-            individual_payloads[
-                relative
-            ]
+            if relative == "ArchiSteamFarm"
+            else f"plugins/{relative}"
         )
+
+        bundle_bytes = bundle[
+            bundle_name_for_source
+        ]
 
         if bundle_bytes != build_bytes:
             fail(
                 "build -> bundle byte mismatch: "
                 + relative
             )
+
+        if relative == "ArchiSteamFarm":
+            continue
+
+        individual_bytes = (
+            individual_payloads[
+                relative
+            ]
+        )
 
         if individual_bytes != build_bytes:
             fail(

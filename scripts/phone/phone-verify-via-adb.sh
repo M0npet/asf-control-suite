@@ -37,11 +37,16 @@ done
 while IFS= read -r line; do
   expected="${line%% *}"
   rel="${line#*  }"
-  [[ "$rel" == plugins/* ]] || continue
+  case "$rel" in
+    ArchiSteamFarm|plugins/*) ;;
+    *) continue ;;
+  esac
   [[ -f "$ASF/$rel" ]] || { echo "installed file missing: $rel" >&2; exit 22; }
   actual="$(sha256sum "$ASF/$rel" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || { echo "installed checksum mismatch: $rel" >&2; exit 23; }
 done < "$META/SHA256SUMS"
+
+[[ -x "$ASF/ArchiSteamFarm" ]] || { echo "installed ASF runtime is not executable" >&2; exit 29; }
 
 root="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/ 2>/dev/null || true)"
 api="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Api/ASF 2>/dev/null || true)"

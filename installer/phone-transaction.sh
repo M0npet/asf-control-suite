@@ -126,6 +126,10 @@ wait_for_base_health() {
 }
 
 restore_backup_files() {
+  if [[ -f "$BACKUP/ArchiSteamFarm" ]]; then
+    cp -a "$BACKUP/ArchiSteamFarm" "$ASF_ROOT/ArchiSteamFarm"
+  fi
+
   for plugin in "${PLUGINS[@]}"; do
     rm -rf "$PLUGIN_ROOT/$plugin"
     if [[ -d "$BACKUP/plugins/$plugin" ]]; then
@@ -178,6 +182,8 @@ unsafe_node="$(find "$DIST" ! -type f ! -type d -print -quit)"
 [[ -z "$unsafe_node" ]] || die "distribution contains unsupported filesystem node: $unsafe_node"
 require_file "$DIST/SHA256SUMS"
 require_file "$DIST/BUILD-METADATA.txt"
+require_file "$DIST/ArchiSteamFarm"
+[[ -x "$DIST/ArchiSteamFarm" ]] || die "patched ASF runtime is not executable"
 for plugin in "${PLUGINS[@]}"; do require_file "$DIST/plugins/$plugin/$plugin.dll"; done
 for asset in index.html i18n.js core.js qrcode.min.js qrcode.LICENSE.txt app.js app.css; do require_file "$DIST/plugins/ControlWeb/www/$asset"; done
 (
@@ -195,27 +201,30 @@ mkdir -p "$BACKUP_ROOT" "$META_ROOT"
 
 say "STAGE"
 rm -rf "$STAGE" "$META_STAGE"
-mkdir -p "$STAGE" "$META_STAGE"
-cp -a "$DIST/plugins/." "$STAGE/"
+mkdir -p "$STAGE/plugins" "$META_STAGE"
+cp "$DIST/ArchiSteamFarm" "$STAGE/ArchiSteamFarm"
+cp -a "$DIST/plugins/." "$STAGE/plugins/"
 find "$STAGE" -type d -exec chmod 0755 {} +
 find "$STAGE" -type f -exec chmod 0644 {} +
+chmod 0755 "$STAGE/ArchiSteamFarm"
 cp "$DIST/SHA256SUMS" "$DIST/BUILD-METADATA.txt" "$DIST/INSTALL-LAYOUT.txt" "$META_STAGE/"
 printf 'BackupId: %s\nInstalledUtc: %s\n' "$STAMP" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$META_STAGE/INSTALL-RECORD.txt"
 
 # Validate staged bytes against payload hashes before the running process is touched.
-for plugin in "${PLUGINS[@]}"; do
-  while IFS= read -r line; do
-    expected="${line%% *}"
-    rel="${line#*  }"
-    [[ "$rel" == plugins/$plugin/* ]] || continue
-    staged_rel="${rel#plugins/}"
-    actual="$(sha256sum "$STAGE/$staged_rel" | awk '{print $1}')"
-    [[ "$actual" == "$expected" ]] || die "staged checksum mismatch: $rel"
-  done < "$DIST/SHA256SUMS"
-done
+while IFS= read -r line; do
+  expected="${line%% *}"
+  rel="${line#*  }"
+  case "$rel" in
+    ArchiSteamFarm|plugins/*) ;;
+    *) continue ;;
+  esac
+  actual="$(sha256sum "$STAGE/$rel" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]] || die "staged checksum mismatch: $rel"
+done < "$DIST/SHA256SUMS"
 
 say "BACKUP CURRENT INSTALL"
 mkdir -p "$BACKUP/plugins"
+cp -a "$ASF_ROOT/ArchiSteamFarm" "$BACKUP/ArchiSteamFarm"
 for plugin in "${PLUGINS[@]}"; do
   if [[ -d "$PLUGIN_ROOT/$plugin" ]]; then
     cp -a "$PLUGIN_ROOT/$plugin" "$BACKUP/plugins/$plugin"
@@ -242,11 +251,12 @@ printf '%s\n' "$STAMP" > "$BACKUP_ROOT/LAST_BACKUP"
 say "STOP ASF CHILD"
 stop_asf_child || die "could not stop ArchiSteamFarm child safely"
 
-say "COMMIT PLUGIN SWAP"
+say "COMMIT RUNTIME + PLUGIN SWAP"
 MUTATION_STARTED=1
+mv "$STAGE/ArchiSteamFarm" "$ASF_ROOT/ArchiSteamFarm"
 for plugin in "${PLUGINS[@]}"; do
   rm -rf "$PLUGIN_ROOT/$plugin"
-  mv "$STAGE/$plugin" "$PLUGIN_ROOT/$plugin"
+  mv "$STAGE/plugins/$plugin" "$PLUGIN_ROOT/$plugin"
 done
 rm -rf "$META_ROOT/installed"
 mv "$META_STAGE" "$META_ROOT/installed"
@@ -257,7 +267,10 @@ say "VERIFY INSTALLED BYTES"
 while IFS= read -r line; do
   expected="${line%% *}"
   rel="${line#*  }"
-  [[ "$rel" == plugins/* ]] || continue
+  case "$rel" in
+    ArchiSteamFarm|plugins/*) ;;
+    *) continue ;;
+  esac
   actual="$(sha256sum "$ASF_ROOT/$rel" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || { rollback_now "installed checksum mismatch: $rel"; exit 20; }
 done < "$DIST/SHA256SUMS"

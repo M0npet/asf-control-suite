@@ -82,7 +82,7 @@ A successful canonical build produces:
     artifacts/CONTROL-SUITE-METADATA.json
     artifacts/SHA256SUMS
 
-The ZIP files contain only installable plugin payloads.
+The combined Control Suite ZIP contains the audited patched `ArchiSteamFarm` plus `plugins/...`. Individual plugin ZIPs remain plugin-only.
 
 `CONTROL-SUITE-METADATA.json` and `SHA256SUMS` are release metadata and are not extracted into ASF.
 
@@ -112,19 +112,20 @@ First stop ASF.
 
 Then extract the ZIP directly into:
 
-    <ASF>/plugins/
+    <ASF>/
 
-The ZIP already represents the contents of the ASF plugin directory.
+The bundle contains the patched ASF core at the install root and plugins under the native plugin directory.
 
 After extraction, the important paths are:
 
+    <ASF>/ArchiSteamFarm
     <ASF>/plugins/AccountManager/AccountManager.dll
     <ASF>/plugins/ControlCenter/ControlCenter.dll
     <ASF>/plugins/ControlWeb/ControlWeb.dll
     <ASF>/plugins/ControlWeb/www/
     <ASF>/plugins/PlaytimeGoals/PlaytimeGoals.dll
 
-Do not add another `plugins/` directory level.
+Do not extract the complete suite ZIP into `<ASF>/plugins/`; it is an install-root bundle.
 
 Start ASF again and open:
 
@@ -181,7 +182,7 @@ Recommended sequence:
 
 1. stop ASF;
 2. back up the current plugin directories;
-3. extract the new ZIP into `<ASF>/plugins/`;
+3. extract the complete suite ZIP into `<ASF>/`;
 4. start ASF;
 5. verify `/Control/`;
 6. verify account actions;
@@ -196,8 +197,7 @@ Do not delete existing ASF config or PlaytimeGoals state databases during a norm
 If an update fails:
 
 1. stop ASF;
-2. remove the newly installed plugin directories;
-3. restore the previous plugin directories from backup;
+2. restore the previous `ArchiSteamFarm` and plugin directories from backup;
 4. start ASF;
 5. verify `/Control/` and PlaytimeGoals state.
 
@@ -219,7 +219,7 @@ The normal public installation path remains:
 
     stop ASF
       ↓
-    extract ZIP into <ASF>/plugins/
+    extract complete suite ZIP into <ASF>/
       ↓
     start ASF
       ↓

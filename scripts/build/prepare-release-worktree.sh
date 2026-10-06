@@ -72,6 +72,8 @@ git -C "$WORKTREE" submodule update \
     exit 8
 }
 
+bash "$SCRIPT_DIR/apply-asf-patches.sh" "$WORKTREE"
+
 # Export exact committed PlaytimeGoals source, never dirty working-tree bytes.
 git -C "$PTG_REPO" archive \
     "$PLAYTIMEGOALS_COMMIT" \

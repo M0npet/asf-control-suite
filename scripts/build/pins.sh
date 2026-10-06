@@ -32,6 +32,7 @@ load_release_pins() {
             CONTROL_MODULE_VERSION|\
             ASF_VERSION|\
             ASF_COMMIT|\
+            ASF_PATCH_SHA256|\
             ASF_UI_COMMIT|\
             PLAYTIMEGOALS_VERSION|\
             PLAYTIMEGOALS_COMMIT|\
@@ -59,6 +60,7 @@ load_release_pins() {
         CONTROL_MODULE_VERSION \
         ASF_VERSION \
         ASF_COMMIT \
+        ASF_PATCH_SHA256 \
         ASF_UI_COMMIT \
         PLAYTIMEGOALS_VERSION \
         PLAYTIMEGOALS_COMMIT \
@@ -87,6 +89,11 @@ load_release_pins() {
 
     [[ "$ASF_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
         echo "invalid ASF_COMMIT" >&2
+        return 95
+    }
+
+    [[ "$ASF_PATCH_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+        echo "invalid ASF_PATCH_SHA256" >&2
         return 95
     }
 

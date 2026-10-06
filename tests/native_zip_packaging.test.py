@@ -93,6 +93,10 @@ else:
         out1 = temp / "out1"
         out2 = temp / "out2"
 
+        runtime = temp / "ArchiSteamFarm"
+        runtime.write_bytes(b"patched-asf-runtime\n")
+        runtime.chmod(0o755)
+
         fixture = {
             "AccountManager/AccountManager.dll":
                 b"account-manager-dll\n",
@@ -128,6 +132,8 @@ else:
                     str(ZIPPER),
                     "--stage",
                     str(stage),
+                    "--runtime",
+                    str(runtime),
                     "--out",
                     str(out),
                     "--suite-version",
@@ -207,8 +213,10 @@ else:
                     "PlaytimeGoals/PlaytimeGoals.dll",
                 },
 
-                "ASF-Control-Suite-v1.0.0.zip":
-                    set(fixture),
+                "ASF-Control-Suite-v1.0.0.zip": {
+                    "ArchiSteamFarm",
+                    *(f"plugins/{name}" for name in fixture),
+                },
             }
 
             bundle_payloads = {}
@@ -235,10 +243,23 @@ else:
                             f"{sorted(names)!r}"
                         )
 
+                    if archive_name == "ASF-Control-Suite-v1.0.0.zip":
+                        runtime_info = handle.getinfo("ArchiSteamFarm")
+                        runtime_mode = runtime_info.external_attr >> 16
+                        if not (runtime_mode & 0o111):
+                            errors.append(
+                                "ASF runtime executable mode missing"
+                            )
+
                     for name in names:
+                        if name.startswith("installer/"):
+                            errors.append(
+                                f"{archive_name}: forbidden prefix {name}"
+                            )
+
                         if (
-                            name.startswith("plugins/")
-                            or name.startswith("installer/")
+                            archive_name != "ASF-Control-Suite-v1.0.0.zip"
+                            and name.startswith("plugins/")
                         ):
                             errors.append(
                                 f"{archive_name}: forbidden prefix {name}"
@@ -287,7 +308,7 @@ else:
 
                         if (
                             bundle_payloads.get(
-                                info.filename
+                                f"plugins/{info.filename}"
                             )
                             != payload
                         ):

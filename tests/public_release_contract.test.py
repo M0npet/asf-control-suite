@@ -106,6 +106,7 @@ for raw in (ROOT / "release" / "pins.env").read_text(
 
 for key, label in (
     ("ASF_COMMIT", "ASF"),
+    ("ASF_PATCH_SHA256", "ASF compatibility patch"),
     ("ASF_UI_COMMIT", "ASF-ui"),
     ("PLAYTIMEGOALS_COMMIT", "PlaytimeGoals"),
 ):
@@ -161,8 +162,8 @@ for token, reason in (
         "release checksums",
     ),
     (
-        "<ASF>/plugins/",
-        "native extraction target",
+        "<ASF>/",
+        "suite extraction target",
     ),
     (
         "CONTROL_DOTNET",

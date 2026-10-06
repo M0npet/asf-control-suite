@@ -28,6 +28,13 @@ cd "$ASF_ROOT"
     exit 3
 }
 
+ASF_RUNTIME="out/control-suite-linux-arm64/ArchiSteamFarm"
+
+[[ -s "$ASF_RUNTIME" && -x "$ASF_RUNTIME" ]] || {
+    echo "missing patched ASF runtime: $ASF_RUNTIME" >&2
+    exit 4
+}
+
 for plugin in \
     PlaytimeGoals \
     AccountManager \
@@ -182,6 +189,7 @@ rm -f \
 
 python3 "$SCRIPT_DIR/create-native-zips.py" \
     --stage "$STAGE_ROOT" \
+    --runtime "$ASF_RUNTIME" \
     --out "$OUT_PARENT" \
     --suite-version "$CONTROL_SUITE_VERSION" \
     --playtimegoals-version "$PLAYTIMEGOALS_VERSION"
@@ -212,6 +220,7 @@ python3 - \
     "$PLAYTIMEGOALS_COMMIT" \
     "$ASF_VERSION" \
     "$ASF_COMMIT" \
+    "$ASF_PATCH_SHA256" \
     "$ASF_UI_COMMIT" \
     "$DOTNET_SDK_VERSION" \
     "$(basename "$BUNDLE_ZIP")" \
@@ -231,6 +240,7 @@ from pathlib import Path
     ptg_commit,
     asf_version,
     asf_commit,
+    asf_patch_sha256,
     asf_ui_commit,
     sdk_version,
     bundle_zip,
@@ -249,12 +259,13 @@ payload = {
     "targets": {
         "asfVersion": asf_version,
         "asfCommit": asf_commit,
+        "asfPatchSha256": asf_patch_sha256,
         "asfUiCommit": asf_ui_commit,
         "playtimeGoalsCommit": ptg_commit,
         "dotnetSdkVersion": sdk_version,
     },
     "install": {
-        "extractInto": "<ASF>/plugins/",
+        "extractInto": "<ASF>/",
         "webPath": "/Control/",
     },
     # Public Control Suite release assets only.

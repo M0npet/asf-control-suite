@@ -94,7 +94,7 @@ instructions, see the [installation guide](docs/installation/manual.md).
 - **Responsive UI** — desktop and mobile layouts.
 - **Self-hosted assets** — CSS, JavaScript and QR rendering stay local.
 - **Pinned supply chain** — ASF, ASF-ui, PlaytimeGoals and .NET SDK revisions are explicit.
-- **Verified release provenance** — archives are checked against canonical build output.
+- **Verified release provenance** — archives are checked against canonical build output, including the audited ASF compatibility patch.
 - **Transactional deployment** — validation, backup, verification and rollback support.
 
 ## Compatibility
@@ -112,6 +112,7 @@ The canonical source of truth is [`release/pins.env`](release/pins.env).
 Pinned revisions:
 
 - ASF: `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
+- ASF compatibility patch SHA-256: `650b7cf9109d7c4d5d9d2a8d6bd37f1a591b920ad918eecebaed9ee0ad0a1432`
 - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
 - PlaytimeGoals: `6795172c59a43153c4065ed7ae9e17f0862687a3`
 
@@ -159,6 +160,7 @@ The suite covers:
 ## Repository layout
 
     src/          ASF plugin source
+    patches/      audited patches applied to the pinned ASF source
     release/      canonical release pins
     scripts/      build, packaging and deployment tools
     installer/    transactional phone deployment

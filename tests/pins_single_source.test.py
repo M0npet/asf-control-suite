@@ -12,6 +12,7 @@ required = (
     "CONTROL_MODULE_VERSION",
     "ASF_VERSION",
     "ASF_COMMIT",
+    "ASF_PATCH_SHA256",
     "ASF_UI_COMMIT",
     "PLAYTIMEGOALS_VERSION",
     "PLAYTIMEGOALS_COMMIT",
@@ -78,6 +79,9 @@ validators = {
     "ASF_COMMIT":
         r"[0-9a-f]{40}",
 
+    "ASF_PATCH_SHA256":
+        r"[0-9a-f]{64}",
+
     "ASF_UI_COMMIT":
         r"[0-9a-f]{40}",
 
@@ -107,12 +111,14 @@ controlled_files = (
     "scripts/build/make-release.sh",
     "scripts/build/package-release.sh",
     "scripts/build/prepare-release-worktree.sh",
+    "scripts/build/apply-asf-patches.sh",
     "installer/phone-transaction.sh",
 )
 
 pin_keys_for_tooling = (
     "ASF_VERSION",
     "ASF_COMMIT",
+    "ASF_PATCH_SHA256",
     "ASF_UI_COMMIT",
     "PLAYTIMEGOALS_VERSION",
     "PLAYTIMEGOALS_COMMIT",

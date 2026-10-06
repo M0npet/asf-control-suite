@@ -155,6 +155,16 @@ if VERIFY.is_file():
                 b"real-playtime-goals-dll\n",
         }
 
+        runtime = (
+            build
+            / "out"
+            / "control-suite-linux-arm64"
+            / "ArchiSteamFarm"
+        )
+        runtime.parent.mkdir(parents=True, exist_ok=True)
+        runtime.write_bytes(b"patched-asf-runtime\n")
+        runtime.chmod(0o755)
+
         for plugin, payload in build_payloads.items():
             target = (
                 build
@@ -285,6 +295,8 @@ if VERIFY.is_file():
                 str(ZIPPER),
                 "--stage",
                 str(stage),
+                "--runtime",
+                str(runtime),
                 "--out",
                 str(artifacts),
                 "--suite-version",
@@ -337,6 +349,11 @@ if VERIFY.is_file():
                         "ASF_COMMIT"
                     ],
 
+                "asfPatchSha256":
+                    pins[
+                        "ASF_PATCH_SHA256"
+                    ],
+
                 "asfUiCommit":
                     pins[
                         "ASF_UI_COMMIT"
@@ -355,7 +372,7 @@ if VERIFY.is_file():
 
             "install": {
                 "extractInto":
-                    "<ASF>/plugins/",
+                    "<ASF>/",
 
                 "webPath":
                     "/Control/",
@@ -511,6 +528,8 @@ if VERIFY.is_file():
                 str(ZIPPER),
                 "--stage",
                 str(stage),
+                "--runtime",
+                str(runtime),
                 "--out",
                 str(artifacts),
                 "--suite-version",
