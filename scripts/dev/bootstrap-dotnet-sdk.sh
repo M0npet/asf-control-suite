@@ -16,6 +16,7 @@ ARCHIVE=""
 INSTALL_DIR=""
 VERIFY_ONLY=0
 ARCHIVE_IS_USER_SUPPLIED=0
+INSTALL_DIR_IS_USER_SUPPLIED=0
 
 usage() {
     cat >&2 <<USAGE
@@ -63,6 +64,7 @@ while (( $# > 0 )); do
             }
 
             INSTALL_DIR="$2"
+            INSTALL_DIR_IS_USER_SUPPLIED=1
             shift 2
             ;;
 
@@ -269,6 +271,18 @@ if [[ -x "$INSTALL_DIR/dotnet" ]]; then
     fi
 fi
 
+# An explicitly supplied install path is outside our managed namespace.
+# Never recursively replace an existing custom path: a typo in
+# --install-dir must fail closed instead of deleting unrelated data.
+if (( INSTALL_DIR_IS_USER_SUPPLIED == 1 )) &&
+    [[ -e "$INSTALL_DIR" || -L "$INSTALL_DIR" ]]
+then
+    echo "refusing to replace existing user-supplied install directory:" >&2
+    echo "  $INSTALL_DIR" >&2
+    echo "remove or rename it explicitly before retrying" >&2
+    exit 19
+fi
+
 STAGE="$(
     mktemp \
         -d \
@@ -319,13 +333,27 @@ then
     exit 18
 fi
 
-rm -rf "$INSTALL_DIR"
+if (( INSTALL_DIR_IS_USER_SUPPLIED == 1 )); then
+    # Re-check immediately before commit so a path created after the
+    # earlier validation is not recursively removed.
+    if [[ -e "$INSTALL_DIR" || -L "$INSTALL_DIR" ]]; then
+        echo "user-supplied install path appeared during installation:" >&2
+        echo "  $INSTALL_DIR" >&2
+        echo "refusing to overwrite it" >&2
+        exit 19
+    fi
+else
+    # Only the deterministic suite-managed default path may be replaced.
+    rm -rf -- "$INSTALL_DIR"
+fi
 
 mv \
+    -T \
+    -- \
     "$STAGE" \
     "$INSTALL_DIR" || {
         echo "failed to commit verified SDK installation" >&2
-        exit 19
+        exit 20
     }
 
 trap - EXIT
