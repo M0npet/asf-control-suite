@@ -10,7 +10,10 @@ PATCH="${2:-$SUITE_ROOT/patches/asf/0001-headless-qr-ipc.patch}"
 . "$SCRIPT_DIR/pins.sh"
 load_release_pins "$SUITE_ROOT/release/pins.env"
 
-[[ -d "$ROOT/.git" ]] || { echo "ASF git worktree not found: $ROOT" >&2; exit 2; }
+[[ "$(git -C "$ROOT" rev-parse --is-inside-work-tree 2>/dev/null || true)" == "true" ]] || {
+  echo "ASF git worktree not found: $ROOT" >&2
+  exit 2
+}
 [[ -f "$PATCH" ]] || { echo "ASF patch missing: $PATCH" >&2; exit 3; }
 
 actual="$(sha256sum "$PATCH" | awk '{print $1}')"
