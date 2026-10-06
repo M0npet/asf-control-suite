@@ -13,6 +13,9 @@
   <a href="https://github.com/M0npet/asf-control-suite/releases">
     <img alt="Downloads" src="https://img.shields.io/github/downloads/M0npet/asf-control-suite/total">
   </a>
+  <a href="LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/M0npet/asf-control-suite">
+  </a>
 </p>
 
 **One self-hosted `/Control/` UI · ASF-native APIs · reproducible releases · RAM-only IPC credentials**
@@ -196,6 +199,7 @@ The suite covers:
 - [Test report](docs/TEST_REPORT.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
+- [License](LICENSE)
 
 ---
 
