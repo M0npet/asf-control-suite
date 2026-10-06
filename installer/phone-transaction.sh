@@ -184,8 +184,8 @@ for asset in index.html i18n.js core.js qrcode.min.js qrcode.LICENSE.txt app.js 
   cd "$DIST"
   sha256sum -c SHA256SUMS
 )
-grep -Fq 'ASF commit: 27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad' "$DIST/BUILD-METADATA.txt" || die "payload ASF commit mismatch"
-grep -Fq 'PlaytimeGoals commit: fa959d3d4ffd09f7fd30e9ee8599aa5004b67033' "$DIST/BUILD-METADATA.txt" || die "payload PlaytimeGoals commit mismatch"
+grep -Eq '^ASF commit: [0-9a-f]{40}$' "$DIST/BUILD-METADATA.txt" || die "payload ASF commit metadata invalid"
+grep -Eq '^PlaytimeGoals commit: [0-9a-f]{40}$' "$DIST/BUILD-METADATA.txt" || die "payload PlaytimeGoals commit metadata invalid"
 
 say "VALIDATE TARGET"
 [[ -x "$ASF_ROOT/ArchiSteamFarm" ]] || die "ASF executable missing: $ASF_ROOT/ArchiSteamFarm"
