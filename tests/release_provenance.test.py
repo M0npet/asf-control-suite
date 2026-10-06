@@ -350,6 +350,11 @@ if VERIFY.is_file():
                         "ASF_COMMIT"
                     ],
 
+                "asfPatchSha256":
+                    pins[
+                        "ASF_PATCH_SHA256"
+                    ],
+
                 "asfUiCommit":
                     pins[
                         "ASF_UI_COMMIT"
