@@ -30,7 +30,7 @@ public sealed class ControlCenterController : ControllerBase {
     private static object BuildStatusResult() {
         Bot[] bots = Bot.BotsReadOnly?.Values.ToArray() ?? Array.Empty<Bot>();
         DateTime now = DateTime.UtcNow;
-        Version version = typeof(ControlCenterPlugin).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
+        Version version = typeof(ControlCenterPlugin).Assembly.GetName().Version ?? new Version(ControlCenterPlugin.ControlModuleVersion);
         // Keep ControlCenter independent from optional runtime metadata members. ASF's linux-arm64
         // self-contained runtime is trimmed and can remove otherwise-normal Environment accessors.
         // Host/runtime details are rendered from ASF's own /Api/ASF response in ControlWeb instead.
@@ -38,9 +38,13 @@ public sealed class ControlCenterController : ControllerBase {
         return new {
             Healthy = true,
             PluginVersion = version.ToString(),
+            ControlSuiteVersion = ControlCenterPlugin.ControlSuiteVersion,
+            ControlModuleVersion = ControlCenterPlugin.ControlModuleVersion,
             TargetAsfVersion = ControlCenterPlugin.TargetAsfVersion,
             TargetAsfCommit = ControlCenterPlugin.TargetAsfCommit,
+            TargetAsfUiCommit = ControlCenterPlugin.TargetAsfUiCommit,
             TargetPlaytimeGoalsCommit = ControlCenterPlugin.TargetPlaytimeGoalsCommit,
+            TargetPlaytimeGoalsVersion = ControlCenterPlugin.TargetPlaytimeGoalsVersion,
             LoadedAtUtc = ControlCenterPlugin.LoadedAtUtc.ToString("O"),
             UptimeSeconds = Math.Max(0, (long) (now - ControlCenterPlugin.LoadedAtUtc).TotalSeconds),
             ManagedBots = bots.Length,
@@ -56,10 +60,10 @@ public sealed class ControlCenterController : ControllerBase {
             DiskTotalBytes = (long?) null,
             DiskFreeBytes = (long?) null,
             Modules = new[] {
-                Module("PlaytimeGoals", "0.5.0.0"),
-                Module("AccountManager", "1.0.0.0"),
-                Module("ControlCenter", "1.0.0.0"),
-                Module("ControlWeb", "1.0.0.0")
+                Module("PlaytimeGoals", ControlCenterPlugin.TargetPlaytimeGoalsVersion),
+                Module("AccountManager", ControlCenterPlugin.ControlModuleVersion),
+                Module("ControlCenter", ControlCenterPlugin.ControlModuleVersion),
+                Module("ControlWeb", ControlCenterPlugin.ControlModuleVersion)
             },
             Capabilities,
             Safety = new {

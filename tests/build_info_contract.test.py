@@ -64,6 +64,7 @@ else:
         "BuildInfo.ControlModuleVersion",
         "BuildInfo.TargetAsfVersion",
         "BuildInfo.TargetAsfCommit",
+        "BuildInfo.TargetAsfUiCommit",
         "BuildInfo.TargetPlaytimeGoalsVersion",
         "BuildInfo.TargetPlaytimeGoalsCommit",
     )
@@ -86,6 +87,39 @@ else:
         if value and value in text:
             errors.append(
                 f"ControlCenterPlugin hardcodes {key}"
+            )
+
+
+# Runtime/API/UI metadata consumers must not duplicate canonical release pins.
+runtime_metadata_consumers = (
+    ROOT / "src" / "ControlCenter" / "ControlCenterPlugin.cs",
+    ROOT / "src" / "ControlCenter" / "ControlCenterController.cs",
+    ROOT / "src" / "ControlWeb" / "www" / "app.js",
+)
+
+for runtime_path in runtime_metadata_consumers:
+    if not runtime_path.is_file():
+        errors.append(
+            f"runtime metadata consumer missing: {runtime_path.relative_to(ROOT)}"
+        )
+        continue
+
+    runtime_text = runtime_path.read_text(encoding="utf-8")
+
+    for key in (
+        "ASF_VERSION",
+        "ASF_COMMIT",
+        "ASF_UI_COMMIT",
+        "PLAYTIMEGOALS_VERSION",
+        "PLAYTIMEGOALS_COMMIT",
+        "CONTROL_SUITE_VERSION",
+        "CONTROL_MODULE_VERSION",
+    ):
+        value = pins.get(key)
+
+        if value and value in runtime_text:
+            errors.append(
+                f"{runtime_path.relative_to(ROOT)} hardcodes {key}"
             )
 
 

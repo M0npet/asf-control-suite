@@ -88,6 +88,16 @@ do
         "$WORKTREE/$plugin"
 done
 
+python3 \
+    "$SUITE_ROOT/scripts/dev/generate-build-info.py" \
+    "$SUITE_ROOT/release/pins.env" \
+    "$WORKTREE/ControlCenter/Generated/BuildInfo.cs"
+
+[[ -s "$WORKTREE/ControlCenter/Generated/BuildInfo.cs" ]] || {
+    echo "generated ControlCenter BuildInfo missing" >&2
+    exit 13
+}
+
 cat > "$WORKTREE/global.json" <<JSON
 {
   "sdk": {
