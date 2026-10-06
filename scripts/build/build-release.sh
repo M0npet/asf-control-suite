@@ -86,6 +86,15 @@ dotnet build \
     -p:ContinuousIntegrationBuild=true \
     -p:UseAppHost=false
 
+ASF_CORE_DLL="ArchiSteamFarm/bin/Release/net10.0/ArchiSteamFarm.dll"
+
+[[ -s "$ASF_CORE_DLL" ]] || {
+    echo "missing patched ASF core output $ASF_CORE_DLL" >&2
+    exit 9
+}
+
+sha256sum "$ASF_CORE_DLL"
+
 for project in \
     PlaytimeGoals \
     AccountManager \
