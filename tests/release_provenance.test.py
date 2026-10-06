@@ -157,14 +157,13 @@ if VERIFY.is_file():
 
         runtime = (
             build
+            / "out"
+            / "control-suite-linux-arm64"
             / "ArchiSteamFarm"
-            / "bin"
-            / "Release"
-            / "net10.0"
-            / "ArchiSteamFarm.dll"
         )
         runtime.parent.mkdir(parents=True, exist_ok=True)
-        runtime.write_bytes(b"patched-asf-core\n")
+        runtime.write_bytes(b"patched-asf-runtime\n")
+        runtime.chmod(0o755)
 
         for plugin, payload in build_payloads.items():
             target = (
