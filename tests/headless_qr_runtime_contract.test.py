@@ -31,6 +31,14 @@ if apply_script.is_file():
     text = apply_script.read_text(encoding="utf-8")
     require("git apply --check" in text, "ASF patch is not preflight-checked")
     require("ASF_PATCH_SHA256" in text, "ASF patch digest is not verified")
+    require(
+        'git -C "$ROOT" rev-parse --is-inside-work-tree' in text,
+        "ASF patch application does not accept linked git worktrees",
+    )
+    require(
+        '[[ -d "$ROOT/.git" ]]' not in text,
+        "ASF patch application incorrectly requires .git to be a directory",
+    )
 
 prepare_text = prepare.read_text(encoding="utf-8")
 require("apply-asf-patches.sh" in prepare_text, "release worktree does not apply ASF compatibility patch")
