@@ -173,7 +173,7 @@ def expected_members() -> dict[str, set[str]]:
             "PlaytimeGoals/PlaytimeGoals.dll",
         },
         "Runtime": {
-            "ArchiSteamFarm.dll",
+            "ArchiSteamFarm",
         },
     }
 
@@ -317,6 +317,14 @@ def read_zip_payloads(
                         fail(
                             f"{archive_path.name}: non-regular ZIP member {name!r}"
                         )
+
+                if (
+                    name == "ArchiSteamFarm"
+                    and not (mode & 0o111)
+                ):
+                    fail(
+                        f"{archive_path.name}: ASF runtime is not executable"
+                    )
 
             return {
                 name: archive.read(name)
