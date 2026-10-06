@@ -220,6 +220,7 @@ python3 - \
     "$PLAYTIMEGOALS_COMMIT" \
     "$ASF_VERSION" \
     "$ASF_COMMIT" \
+    "$ASF_PATCH_SHA256" \
     "$ASF_UI_COMMIT" \
     "$DOTNET_SDK_VERSION" \
     "$(basename "$BUNDLE_ZIP")" \
@@ -239,6 +240,7 @@ from pathlib import Path
     ptg_commit,
     asf_version,
     asf_commit,
+    asf_patch_sha256,
     asf_ui_commit,
     sdk_version,
     bundle_zip,
@@ -257,6 +259,7 @@ payload = {
     "targets": {
         "asfVersion": asf_version,
         "asfCommit": asf_commit,
+        "asfPatchSha256": asf_patch_sha256,
         "asfUiCommit": asf_ui_commit,
         "playtimeGoalsCommit": ptg_commit,
         "dotnetSdkVersion": sdk_version,
