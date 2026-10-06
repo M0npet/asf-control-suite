@@ -86,14 +86,29 @@ dotnet build \
     -p:ContinuousIntegrationBuild=true \
     -p:UseAppHost=false
 
-ASF_CORE_DLL="ArchiSteamFarm/bin/Release/net10.0/ArchiSteamFarm.dll"
+ASF_RUNTIME_DIR="out/control-suite-linux-arm64"
+ASF_RUNTIME="$ASF_RUNTIME_DIR/ArchiSteamFarm"
 
-[[ -s "$ASF_CORE_DLL" ]] || {
-    echo "missing patched ASF core output $ASF_CORE_DLL" >&2
+rm -rf "$ASF_RUNTIME_DIR"
+
+dotnet publish \
+    ArchiSteamFarm/ArchiSteamFarm.csproj \
+    -c Release \
+    -o "$ASF_RUNTIME_DIR" \
+    -p:ASFVariant=linux-arm64 \
+    -p:ContinuousIntegrationBuild=true \
+    -p:PublishSingleFile=true \
+    -p:PublishTrimmed=true \
+    -r linux-arm64 \
+    --self-contained \
+    --nologo
+
+[[ -s "$ASF_RUNTIME" && -x "$ASF_RUNTIME" ]] || {
+    echo "missing patched linux-arm64 ASF runtime $ASF_RUNTIME" >&2
     exit 9
 }
 
-sha256sum "$ASF_CORE_DLL"
+sha256sum "$ASF_RUNTIME"
 
 for project in \
     PlaytimeGoals \
