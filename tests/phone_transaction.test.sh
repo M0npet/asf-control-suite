@@ -8,7 +8,8 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 make_dist() {
   local dist="$1"
   mkdir -p "$dist/plugins"/{PlaytimeGoals,AccountManager,ControlCenter,ControlWeb/www} "$dist/installer"
-  printf 'new-core\n' > "$dist/ArchiSteamFarm.dll"
+  printf '#!/bin/sh\n# new-core\nexit 0\n' > "$dist/ArchiSteamFarm"
+  chmod 0755 "$dist/ArchiSteamFarm"
   printf 'new-ptg\n' > "$dist/plugins/PlaytimeGoals/PlaytimeGoals.dll"
   printf 'new-account\n' > "$dist/plugins/AccountManager/AccountManager.dll"
   printf 'new-control\n' > "$dist/plugins/ControlCenter/ControlCenter.dll"
@@ -26,8 +27,8 @@ TXT
 make_asf() {
   local asf="$1"
   mkdir -p "$asf/plugins"/{PlaytimeGoals,AccountManager,ControlCenter,ControlWeb/www} "$asf/config"
-  printf '#!/bin/sh\nexit 0\n' > "$asf/ArchiSteamFarm"; chmod +x "$asf/ArchiSteamFarm"
-  printf 'old-core\n' > "$asf/ArchiSteamFarm.dll"
+  printf '#!/bin/sh\n# old-core\nexit 0\n' > "$asf/ArchiSteamFarm"
+  chmod 0755 "$asf/ArchiSteamFarm"
   printf 'old-ptg\n' > "$asf/plugins/PlaytimeGoals/PlaytimeGoals.dll"
   printf 'old-account\n' > "$asf/plugins/AccountManager/AccountManager.dll"
   printf 'old-control\n' > "$asf/plugins/ControlCenter/ControlCenter.dll"
@@ -53,10 +54,11 @@ grep -qx 'old-ptg' "$ASF_BAD/plugins/PlaytimeGoals/PlaytimeGoals.dll"
 # Successful transaction + backup creation.
 ASF1="$TMP/asf-success"; make_asf "$ASF1"
 CONTROL_ASF_ROOT="$ASF1" CONTROL_SKIP_PROCESS=1 CONTROL_BACKUP_ID=test-success bash "$TX" "$DIST"
-grep -qx 'new-core' "$ASF1/ArchiSteamFarm.dll"
+grep -q '# new-core' "$ASF1/ArchiSteamFarm"
+[[ -x "$ASF1/ArchiSteamFarm" ]]
 grep -qx 'new-ptg' "$ASF1/plugins/PlaytimeGoals/PlaytimeGoals.dll"
 grep -qx 'new-account' "$ASF1/plugins/AccountManager/AccountManager.dll"
-grep -qx 'old-core' "$ASF1/backups/control-suite/test-success/ArchiSteamFarm.dll"
+grep -q '# old-core' "$ASF1/backups/control-suite/test-success/ArchiSteamFarm"
 grep -qx 'old-ptg' "$ASF1/backups/control-suite/test-success/plugins/PlaytimeGoals/PlaytimeGoals.dll"
 [[ -s "$ASF1/control-suite/installed/SHA256SUMS" ]]
 [[ "$(cat "$ASF1/backups/control-suite/LAST_BACKUP")" == test-success ]]
@@ -64,7 +66,7 @@ grep -qx 'old-ptg' "$ASF1/backups/control-suite/test-success/plugins/PlaytimeGoa
 # Manual rollback restores plugin bytes but keeps current defaults unless requested.
 printf '{"after_install":true}\n' > "$ASF1/config/AccountManager.defaults.json"
 CONTROL_ASF_ROOT="$ASF1" CONTROL_SKIP_PROCESS=1 bash "$RB" test-success
-grep -qx 'old-core' "$ASF1/ArchiSteamFarm.dll"
+grep -q '# old-core' "$ASF1/ArchiSteamFarm"
 grep -qx 'old-ptg' "$ASF1/plugins/PlaytimeGoals/PlaytimeGoals.dll"
 grep -q 'after_install' "$ASF1/config/AccountManager.defaults.json"
 
@@ -75,7 +77,7 @@ CONTROL_ASF_ROOT="$ASF2" CONTROL_SKIP_PROCESS=1 CONTROL_TEST_FORCE_FAIL=1 CONTRO
 rc=$?
 set -e
 [[ "$rc" -ne 0 ]]
-grep -qx 'old-core' "$ASF2/ArchiSteamFarm.dll"
+grep -q '# old-core' "$ASF2/ArchiSteamFarm"
 grep -qx 'old-ptg' "$ASF2/plugins/PlaytimeGoals/PlaytimeGoals.dll"
 grep -qx 'old-account' "$ASF2/plugins/AccountManager/AccountManager.dll"
 grep -q '"safe":true' "$ASF2/config/AccountManager.defaults.json"
