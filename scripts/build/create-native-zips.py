@@ -146,9 +146,8 @@ def collect_stage_members(
 
 
 def write_deterministic_zip(
-    stage: Path,
     target: Path,
-    members: tuple[str, ...],
+    entries: tuple[tuple[str, Path], ...],
 ) -> None:
     target.parent.mkdir(
         parents=True,
@@ -166,13 +165,11 @@ def write_deterministic_zip(
         compresslevel=9,
         strict_timestamps=True,
     ) as archive:
-        for relative in sorted(members):
-            source = stage / relative
-
+        for archive_name, source in sorted(entries, key=lambda item: item[0]):
             payload = source.read_bytes()
 
             info = ZipInfo(
-                filename=relative,
+                filename=archive_name,
                 date_time=FIXED_ZIP_TIME,
             )
 
@@ -230,6 +227,12 @@ def main() -> int:
     )
 
     parser.add_argument(
+        "--runtime",
+        required=True,
+        type=Path,
+    )
+
+    parser.add_argument(
         "--suite-version",
         required=True,
     )
@@ -256,43 +259,50 @@ def main() -> int:
     )
 
     stage = args.stage.resolve()
+    runtime = args.runtime.resolve()
     out = args.out.resolve()
+
+    if not runtime.is_file() or runtime.name != "ArchiSteamFarm.dll":
+        fail("patched ASF runtime must be an ArchiSteamFarm.dll file")
 
     members = collect_stage_members(
         stage
     )
 
-    bundle_members = tuple(
-        relative
-        for plugin in PLUGIN_NAMES
-        for relative in members[plugin]
+    bundle_entries = (
+        (("ArchiSteamFarm.dll", runtime),)
+        + tuple(
+            (f"plugins/{relative}", stage / relative)
+            for plugin in PLUGIN_NAMES
+            for relative in members[plugin]
+        )
     )
 
     archives = {
         (
             f"ASF-Control-Suite-v"
             f"{suite_version}.zip"
-        ): bundle_members,
+        ): bundle_entries,
 
         (
             f"AccountManager-v"
             f"{suite_version}.zip"
-        ): members["AccountManager"],
+        ): tuple((relative, stage / relative) for relative in members["AccountManager"]),
 
         (
             f"ControlCenter-v"
             f"{suite_version}.zip"
-        ): members["ControlCenter"],
+        ): tuple((relative, stage / relative) for relative in members["ControlCenter"]),
 
         (
             f"ControlWeb-v"
             f"{suite_version}.zip"
-        ): members["ControlWeb"],
+        ): tuple((relative, stage / relative) for relative in members["ControlWeb"]),
 
         (
             f"PlaytimeGoals-v"
             f"{ptg_public}.zip"
-        ): members["PlaytimeGoals"],
+        ): tuple((relative, stage / relative) for relative in members["PlaytimeGoals"]),
     }
 
     out.mkdir(
@@ -304,7 +314,6 @@ def main() -> int:
         target = out / name
 
         write_deterministic_zip(
-            stage,
             target,
             archives[name],
         )
