@@ -3,15 +3,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+PYTHON="${CONTROL_PYTHON:-python3}"
+
 echo '=== ASF CONTROL SUITE 1.0 SANDBOX SUITE ==='
-python tests/migration_structure.test.py
-python tests/static_contracts.py
+"$PYTHON" tests/migration_structure.test.py
+"$PYTHON" tests/static_contracts.py
 node tests/control_core.test.js
-python tests/ui_integration.py
+"$PYTHON" tests/ui_integration.py
 bash tests/phone_transaction.test.sh
-node --check ControlWeb/www/i18n.js
-node --check ControlWeb/www/core.js
-node --check ControlWeb/www/app.js
-for f in scripts/*.sh installer/*.sh tests/*.sh; do bash -n "$f"; done
+node --check src/ControlWeb/www/i18n.js
+node --check src/ControlWeb/www/core.js
+node --check src/ControlWeb/www/app.js
+for f in scripts/build/*.sh scripts/phone/*.sh installer/*.sh tests/*.sh; do bash -n "$f"; done
 
 echo 'ALL SANDBOX TESTS: PASS'

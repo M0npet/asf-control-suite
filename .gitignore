@@ -1,0 +1,48 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# .NET
+bin/
+obj/
+Generated/
+
+# Build / release output
+artifacts/
+dist/
+.cache/
+
+# ASF runtime
+config/
+logs/
+plugins/
+www/
+*.db
+*.db.*
+*.log
+
+# Secrets / credentials / certificates
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cer
+cryptkey
+.env
+.env.*
+secrets/
+credentials/
+
+# Backups / patch leftovers
+*.bak
+*.backup
+*.orig
+*.rej
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

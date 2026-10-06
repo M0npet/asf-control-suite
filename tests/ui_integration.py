@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 import json, re, sys
 
 ROOT=Path(__file__).resolve().parents[1]
-WWW=ROOT/'ControlWeb'/'www'
+WWW=ROOT/'src'/'ControlWeb'/'www'
 SHOT=ROOT/'docs'/'screenshots'
 SHOT.mkdir(parents=True,exist_ok=True)
 index=(WWW/'index.html').read_text(encoding='utf-8')

@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CORE="$SCRIPT_DIR/../installer/phone-rollback-core.sh"
+CORE="$SCRIPT_DIR/../../installer/phone-rollback-core.sh"
 die(){ printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 [[ -x "$CORE" ]] || die "rollback core missing: $CORE"
 command -v adb >/dev/null 2>&1 || die "adb not found"

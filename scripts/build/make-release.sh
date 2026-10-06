@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SUITE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SUITE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ASF_REPO="${1:-}"
 PTG_REPO="${2:-}"
 WORKTREE="${3:-$HOME/.cache/asf-control-suite-6.3.10.3-v1.0}"

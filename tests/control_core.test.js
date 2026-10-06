@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const core = require('../ControlWeb/www/core.js');
+const core = require('../src/ControlWeb/www/core.js');
 assert.equal(core.parseTargetHours(''), null);
 assert.equal(core.parseTargetHours('  '), null);
 assert.equal(core.parseTargetHours('1.5'), 1.5);

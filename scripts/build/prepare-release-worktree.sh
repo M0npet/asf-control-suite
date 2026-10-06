@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SUITE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SUITE_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 ASF_REPO="${1:-}"
 PTG_REPO="${2:-}"
 WORKTREE="${3:-$HOME/.cache/asf-control-suite-6.3.10.3-v1.0}"
@@ -34,7 +34,7 @@ git -C "$WORKTREE" submodule update --init --recursive ASF-ui
 git -C "$PTG_REPO" archive "$PTG_COMMIT" PlaytimeGoals | tar -xf - -C "$WORKTREE"
 
 for plugin in AccountManager ControlCenter ControlWeb; do
-  cp -a "$SUITE_ROOT/$plugin" "$WORKTREE/$plugin"
+  cp -a "$SUITE_ROOT/src/$plugin" "$WORKTREE/$plugin"
 done
 
 cat > "$WORKTREE/global.json" <<'JSON'
