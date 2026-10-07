@@ -9,6 +9,7 @@ RESTORE_CONFIG="${CONTROL_ROLLBACK_CONFIG:-0}"
 PLUGINS=(PlaytimeGoals AccountManager ControlCenter ControlWeb)
 PROC_ROOT="${CONTROL_PROC_ROOT:-/proc}"
 GLOBAL_CONFIG="$ASF_ROOT/config/ASF.json"
+ROOT_UI_INDEX="$ASF_ROOT/www/index.html"
 
 [[ -n "$BACKUP_ID" ]] || BACKUP_ID="$(cat "$BACKUP_ROOT/LAST_BACKUP" 2>/dev/null || true)"
 [[ -n "$BACKUP_ID" ]] || { echo "no backup id supplied and LAST_BACKUP is unavailable" >&2; exit 2; }
@@ -81,6 +82,13 @@ if [[ -f "$BACKUP/ASF.json" ]]; then
   cp -a "$BACKUP/ASF.json" "$GLOBAL_CONFIG"
 elif [[ -f "$BACKUP/ASF_CONFIG_ABSENT" ]]; then
   rm -f "$GLOBAL_CONFIG"
+fi
+
+if [[ -f "$BACKUP/www/index.html" ]]; then
+  mkdir -p "$ASF_ROOT/www"
+  cp -a "$BACKUP/www/index.html" "$ROOT_UI_INDEX"
+elif [[ -f "$BACKUP/WWW_INDEX_ABSENT" ]]; then
+  rm -f "$ROOT_UI_INDEX"
 fi
 
 if [[ "$RESTORE_CONFIG" == "1" ]]; then
