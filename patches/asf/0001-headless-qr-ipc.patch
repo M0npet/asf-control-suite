@@ -1,53 +1,39 @@
 diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
 --- a/ArchiSteamFarm/Steam/Bot.cs
 +++ b/ArchiSteamFarm/Steam/Bot.cs
-@@ -180,6 +180,7 @@
- 	private readonly ConcurrentDictionary<UserNotificationsCallback.EUserNotification, uint> PastNotifications = new();
- 	private readonly SemaphoreSlim RefreshWebSessionSemaphore = new(1, 1);
-+	private bool QrLoginIdentityNeedsPersist;
- 	private readonly SemaphoreSlim SendCompleteTypesSemaphore = new(1, 1);
- 	private readonly SteamClient SteamClient;
- 	private readonly ConcurrentHashSet<ulong> SteamFamilySharingIDs = [];
-@@ -2787,6 +2788,8 @@
- 				ArchiLogger.LogGenericError(Strings.FormatErrorIsInvalid(nameof(pollResult.AccountName)));
- 
- 				return false;
-+			} else {
-+				QrLoginIdentityNeedsPersist = true;
- 			}
- 
- 			return TryApplyAuthPollResult(pollResult);
-@@ -3594,6 +3597,27 @@
- 		SteamPICSChanges.OnBotLoggedOn();
- 
- 		await PluginsCore.OnBotLoggedOn(this).ConfigureAwait(false);
+@@ -2540,6 +2540,14 @@
+ 		} else {
+ 			RefreshToken = null;
+ 		}
 +
-+		if (QrLoginIdentityNeedsPersist && BotConfig.UseLoginKeys && !string.IsNullOrEmpty(BotConfig.SteamLogin)) {
-+			string configFile = GetFilePath(EFileType.Config);
-+
-+			if (string.IsNullOrEmpty(configFile)) {
-+				throw new InvalidOperationException(nameof(configFile));
-+			}
-+
-+			// Control Suite compatibility: QR auth learns the Steam account name at runtime,
-+			// while ASF intentionally marks it as non-persistable. A persistent refresh token
-+			// still requires the username on later bot reloads, so persist only that identity
-+			// after the first successful logon. No Steam password is introduced or stored.
-+			BotConfig.IsSteamLoginSet = true;
-+			BotConfig.Saving = true;
-+
-+			try {
-+				if (await ArchiSteamFarm.Steam.Storage.BotConfig.Write(configFile, BotConfig).ConfigureAwait(false)) {
-+					QrLoginIdentityNeedsPersist = false;
-+				}
-+			} finally {
-+				BotConfig.Saving = false;
++		if (BotConfig.UseLoginKeys && string.IsNullOrEmpty(BotConfig.SteamLogin) && !string.IsNullOrEmpty(BotDatabase.QrSteamLogin)) {
++			if (!SetUserInput(ASF.EUserInputType.Login, BotDatabase.QrSteamLogin)) {
++				ArchiLogger.LogGenericError(Strings.FormatErrorIsInvalid(nameof(BotDatabase.QrSteamLogin)));
 +			}
 +		}
- 	}
  
- 	private async void OnPersonaState(SteamFriends.PersonaStateCallback callback) {
-@@ -4319,12 +4343,33 @@
+ 		CardsFarmer.SetInitialState(BotConfig.FarmingPreferences.HasFlag(BotConfig.EFarmingPreferences.FarmingPausedByDefault));
+ 
+@@ -2788,7 +2796,14 @@
+ 
+ 				return false;
+ 			}
+-
+-			return TryApplyAuthPollResult(pollResult);
++
++			if (!TryApplyAuthPollResult(pollResult)) {
++				return false;
++			}
++
++			if (BotConfig.UseLoginKeys) {
++				BotDatabase.QrSteamLogin = pollResult.AccountName;
++			}
++
++			return true;
+ 
+ 			async Task PublishQrChallengeUrl() {
+ 				QrChallengeURL = Uri.TryCreate(authSession.ChallengeURL, UriKind.Absolute, out Uri? challengeUrl) ? challengeUrl : null;
+@@ -4319,12 +4334,33 @@
  	private async Task<bool> WantsQrCodeLogin() {
 -		if (Program.Service || (ASF.GlobalConfig?.Headless ?? GlobalConfig.DefaultHeadless)) {
 -			// In headless/service mode, we always fallback to the other inputs instead, as we never want to wait in blocked call
@@ -86,3 +72,28 @@ diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
  		}
  
  		string? input = await RequestInput(ASF.EUserInputType.QrCodeLogin, false).ConfigureAwait(false);
+diff --git a/ArchiSteamFarm/Steam/Storage/BotDatabase.cs b/ArchiSteamFarm/Steam/Storage/BotDatabase.cs
+--- a/ArchiSteamFarm/Steam/Storage/BotDatabase.cs
++++ b/ArchiSteamFarm/Steam/Storage/BotDatabase.cs
+@@ -170,6 +170,21 @@
+ 		}
+ 	}
+ 
++	[JsonInclude]
++	[JsonPropertyName("ControlSuiteQrSteamLogin")]
++	internal string? QrSteamLogin {
++		get;
++
++		set {
++			if (field == value) {
++				return;
++			}
++
++			field = value;
++			Utilities.InBackground(Save);
++		}
++	}
++
+ 	[JsonInclude]
+ 	[JsonPropertyName("BackingSteamGuardData")]
+ 	internal string? SteamGuardData {
