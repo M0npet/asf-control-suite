@@ -205,6 +205,26 @@ with sync_playwright() as pw:
     assert page.evaluate('window.__m.commands.at(-1)') == 'status ASF'
     assert 'MOCK COMMAND: status ASF' in page.locator('#nativeCommandOutput').inner_text()
 
+    page.click('[data-native-tab="log"]'); page.wait_for_selector('#nativeLogOutput')
+    assert 'line two' in page.locator('#nativeLogOutput').inner_text()
+
+    page.click('[data-native-tab="2fa"]'); page.wait_for_selector('#refreshNative2FA')
+    assert 'MOCK2FA' in page.locator('#content').inner_text()
+    assert 'Creator 42' in page.locator('#content').inner_text()
+
+    page.click('[data-native-tab="bgr"]'); page.wait_for_selector('#nativeBgrInput')
+    page.fill('#nativeBgrInput','TEST-KEY|Mock game')
+    page.click('#addNativeBgrKeys'); page.wait_for_timeout(150)
+    assert page.evaluate("window.__m.bgr.main.UnusedKeys['TEST-KEY']") == 'Mock game'
+
+    page.click('[data-native-tab="bans"]'); page.wait_for_selector('[data-unban-ip="10.0.0.8"]')
+    page.click('[data-unban-ip="10.0.0.8"]'); page.wait_for_timeout(100)
+    assert page.evaluate('window.__m.bans.length') == 0
+
+    page.click('[data-native-tab="plugins"]'); page.wait_for_selector('[data-plugin-update]')
+    assert page.locator('[data-plugin-update][value="PlaytimeGoals"]').is_disabled()
+    assert not page.locator('[data-plugin-update][value="SamplePlugin"]').is_disabled()
+
     page.click('#nav button[data-view="accounts"]'); page.wait_for_selector('#requiredInputForm')
     page.fill('#requiredInputValue','12345'); page.click('#requiredInputForm button[type="submit"]'); page.wait_for_timeout(380)
     assert page.evaluate('window.__m.inputs.at(-1)')==['main',{'Type':1,'Value':'12345'}]
