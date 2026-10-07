@@ -155,7 +155,7 @@ with sync_playwright() as pw:
     login(legacy)
     assert legacy.evaluate("sessionStorage.getItem('asf.control.ipcPassword')") is None
     legacy.close()
-    assert page.locator('text=Control Suite 1.0').count() == 1
+    assert page.locator('text=Control Suite 1.1 candidate').count() == 1
     assert_no_horizontal_overflow(page); assert_accessible_controls(page)
     page.screenshot(path=str(SHOT/'dashboard-desktop.png'),full_page=True)
 
