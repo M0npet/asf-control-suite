@@ -103,6 +103,10 @@ grep -Fq "window.location.replace('/Control/' + window.location.search + window.
 grep -Fq '<title>Stock ASF-ui</title>' "$ASF1/backups/control-suite/test-success/www/index.html"
 ! grep -Fq 'data-asf-control-suite-root="1"' "$ASF1/backups/control-suite/test-success/www/index.html"
 
+# Reinstalling Control Suite keeps the root takeover idempotent.
+CONTROL_ASF_ROOT="$ASF1" CONTROL_SKIP_PROCESS=1 CONTROL_BACKUP_ID=test-repeat bash "$TX" "$DIST"
+[[ "$(grep -Fc 'data-asf-control-suite-root="1"' "$ASF1/www/index.html")" == 1 ]]
+
 # Manual rollback restores runtime-managed ASF.json byte-for-byte, but keeps
 # AccountManager defaults unless explicitly requested.
 printf '{"after_install":true}\n' > "$ASF1/config/AccountManager.defaults.json"
