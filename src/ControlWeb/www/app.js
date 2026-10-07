@@ -114,7 +114,7 @@
     next.UpdatePeriod = 0;
     return next;
   };
-  const BLOCKED_NATIVE_COMMANDS = new Set(['UPDATE','RESTART','EXIT']);
+  const BLOCKED_NATIVE_COMMANDS = new Set(['UPDATE','UPDATEPLUGINS','RESTART','EXIT']);
   const assertAllowedNativeCommand = (command, prefix) => {
     let normalized = String(command || '').trim();
     const commandPrefix = String(prefix || '').trim();
