@@ -404,13 +404,16 @@ with sync_playwright() as pw:
     assert ua.locator('h3',has_text='Межа автентифікації').count() == 1
     ua.click('#nav button[data-view="system"]'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Дії з процесом ASF').count() == 1
-    ua.click('#nav button[data-view="advanced"]'); ua.wait_for_timeout(80)
-    assert ua.locator('a[href="/bots?asfui=1"]').count() >= 1
+    ua.click('#nav button[data-view="advanced"]'); ua.wait_for_selector('#nativeConfigEditor'); ua.wait_for_timeout(80)
+    assert ua.locator('h3',has_text='Повна конфігурація бота').count() == 1
+    assert ua.locator('button',has_text='Зберегти конфігурацію бота').count() == 1
+    assert ua.locator('a[href="/bots?asfui=1"]').count() == 0
+    ua.click('[data-advanced-tab="diagnostics"]'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Зафіксована сумісність').count() == 1
-    assert ua.locator('h3',has_text='Межі відповідальності').count() == 1
+    assert ua.locator('a[href="/bots?asfui=1"]').count() == 1
     assert ua.locator('#localeSelect').input_value() == 'uk-UA'
     body=ua.locator('body').inner_text()
-    for phrase in ['Registered accounts','Add account','Authentication boundary','ASF process actions','Pinned compatibility','Ownership boundaries','Native API']:
+    for phrase in ['Registered accounts','Add account','Authentication boundary','ASF process actions','Full bot configuration','Compatibility fallback']:
         assert phrase not in body, phrase
     assert_no_horizontal_overflow(ua); assert_accessible_controls(ua)
     ua.screenshot(path=str(SHOT/'dashboard-uk-desktop.png'),full_page=True)
