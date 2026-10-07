@@ -356,6 +356,7 @@
   }
   function lockSession(message = '') {
     state.password = '';
+    state.commandLog = [];
     if (lockTimer) { clearInterval(lockTimer); lockTimer = null; }
     if (qrPollTimer) { clearTimeout(qrPollTimer); qrPollTimer = null; }
     if ($('modal')?.open) closeModal(null);
