@@ -1,7 +1,7 @@
 diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
 --- a/ArchiSteamFarm/Steam/Bot.cs
 +++ b/ArchiSteamFarm/Steam/Bot.cs
-@@ -2540,6 +2540,14 @@
+@@ -2540,6 +2540,12 @@
  		} else {
  			RefreshToken = null;
  		}
@@ -14,7 +14,7 @@ diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
  
  		CardsFarmer.SetInitialState(BotConfig.FarmingPreferences.HasFlag(BotConfig.EFarmingPreferences.FarmingPausedByDefault));
  
-@@ -2788,7 +2796,14 @@
+@@ -2788,8 +2794,16 @@
  
  				return false;
  			}
@@ -33,7 +33,7 @@ diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
  
  			async Task PublishQrChallengeUrl() {
  				QrChallengeURL = Uri.TryCreate(authSession.ChallengeURL, UriKind.Absolute, out Uri? challengeUrl) ? challengeUrl : null;
-@@ -4319,12 +4334,33 @@
+@@ -4319,12 +4333,33 @@
  	private async Task<bool> WantsQrCodeLogin() {
 -		if (Program.Service || (ASF.GlobalConfig?.Headless ?? GlobalConfig.DefaultHeadless)) {
 -			// In headless/service mode, we always fallback to the other inputs instead, as we never want to wait in blocked call
