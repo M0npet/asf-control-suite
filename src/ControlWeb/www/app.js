@@ -724,12 +724,12 @@
       <div class="two-col section">
         <div class="card">
           <div class="card-head"><div><h3>Bot configuration</h3><p>Complete BotConfig editor. ASF preserves omitted security-controlled values.</p></div><span class="pill good">native</span></div>
-          ${botName ? `<textarea id="nativeBotConfig" class="code-editor" rows="22" spellcheck="false">${escapeHtml(prettyJson(botConfig))}</textarea><div class="actions section"><button id="saveNativeBotConfig">Save bot config</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Add an ASF account first.</div>'}
+          ${botName ? `<textarea id="nativeBotConfig" class="code-editor" rows="22" spellcheck="false" aria-label="Complete BotConfig JSON">${escapeHtml(prettyJson(botConfig))}</textarea><div class="actions section"><button id="saveNativeBotConfig">Save bot config</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Add an ASF account first.</div>'}
         </div>
 
         <div class="card">
           <div class="card-head"><div><h3>Global ASF configuration</h3><p>Complete GlobalConfig editor through ASF's native validated endpoint.</p></div><span class="pill warn">global</span></div>
-          <textarea id="nativeGlobalConfig" class="code-editor" rows="22" spellcheck="false">${escapeHtml(prettyJson(globalConfig))}</textarea>
+          <textarea id="nativeGlobalConfig" class="code-editor" rows="22" spellcheck="false" aria-label="Complete GlobalConfig JSON">${escapeHtml(prettyJson(globalConfig))}</textarea>
           <div class="actions section"><button id="saveNativeGlobalConfig">Save global config</button></div>
         </div>
       </div>
@@ -788,7 +788,7 @@
 
       <div class="card section">
         <div class="card-head"><div><h3>ASF log</h3><p>Authenticated read-only tail of the current ASF log.</p></div><span class="pill neutral">${logTail.length} lines</span></div>
-        <textarea id="nativeLogTail" class="code-editor" rows="18" readonly>${escapeHtml(logTail.join('\n'))}</textarea>
+        <textarea id="nativeLogTail" class="code-editor" rows="18" readonly aria-label="ASF log tail">${escapeHtml(logTail.join('\n'))}</textarea>
         <div class="actions section"><button id="refreshNativeLog" class="secondary" type="button">Refresh log</button></div>
       </div>
 
