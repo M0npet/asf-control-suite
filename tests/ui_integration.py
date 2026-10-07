@@ -42,8 +42,13 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,OnlineStatus:1,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
+  configs:{main:{Enabled:true,OnlineStatus:1,SteamTradeToken:'SECRET-TOKEN',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},
+  globalConfig:{Headless:true,IPC:true,UpdateChannel:0},
+  plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'ControlWeb',Version:'1.0.0.0'}],
+  bans:['203.0.113.5'],
+  bgr:{main:{UsedKeys:{},UnusedKeys:{}}},
+  commands:[],confirmations:{main:[{Type:2,s_CreatorID:'42',s_ID:'7'}]},authenticatorOps:[],bgrReads:0
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -52,14 +57,31 @@ mock=r'''(() => {
   path=String(path); const method=String(opt.method||'GET').toUpperCase(),auth=opt.headers?.get?.('Authentication');
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
   const body=opt.body?JSON.parse(opt.body):null;
-  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192}));
+  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192,GlobalConfig:window.__m.globalConfig}));
+  if(method==='POST'&&path==='/Api/ASF'){window.__m.globalConfig=body.GlobalConfig;return resp(env(null));}
   if(method==='GET'&&path==='/Api/AccountManager'){window.__m.accountReads++;return resp(env({Accounts:window.__m.accounts}));}
   if(method==='GET'&&path==='/Api/AccountManager/Defaults')return resp(env({Defaults:window.__m.defaults,ForbiddenKeys:['SteamPassword','SteamLogin'],MaxPayloadChars:65536}));
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
   if(method==='GET'&&path==='/Api/ControlCenter/Status')return resp(env({UptimeSeconds:3720,ControlSuiteVersion:'9.8.7',ControlModuleVersion:'9.8.7.6',TargetAsfVersion:'test-asf-version',TargetAsfCommit:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',TargetAsfUiCommit:'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',TargetPlaytimeGoalsVersion:'0.5.9.0',TargetPlaytimeGoalsCommit:'cccccccccccccccccccccccccccccccccccccccc',ManagedMemoryKiB:2048,ProcessWorkingSetKiB:4096,ProcessorCount:8,StorageAvailable:true,DiskFreeBytes:40*1024**3,DiskTotalBytes:64*1024**3,WaitingForInputBots:window.__m.accounts.filter(a=>a.RequiredInput).length,Framework:'.NET 10 mock',OS:'Mock Linux',ProcessArchitecture:'Arm64',Modules:[{Name:'PlaytimeGoals',Loaded:true,Version:'0.5.1.0',ExpectedVersion:'0.5.1.0'},{Name:'AccountManager',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'},{Name:'ControlCenter',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'},{Name:'ControlWeb',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'}]}));
   if(method==='POST'&&path==='/Api/ASF/Encrypt')return resp(env('AES-CIPHERTEXT'));
+  if(method==='POST'&&path==='/Api/ASF/Hash')return resp(env('HASHED-VALUE'));
   if(method==='POST'&&path==='/Api/ASF/Restart'){window.__m.restart++;return resp(env(null));}
   if(method==='POST'&&path==='/Api/ASF/Exit'){window.__m.exit++;return resp(env(null));}
+  if(method==='GET'&&path==='/Api/Plugins')return resp(env(window.__m.plugins));
+  if(method==='GET'&&path==='/Api/IPC/Bans')return resp(env(window.__m.bans));
+  if(method==='GET'&&path.startsWith('/Api/NLog/File'))return resp(env({Content:['mock log line 1','mock log line 2'],TotalLines:2}));
+  if(method==='DELETE'&&path==='/Api/IPC/Bans'){window.__m.bans=[];return resp(env(null));}
+  let ban=path.match(/^\/Api\/IPC\/Bans\/(.+)$/);
+  if(method==='DELETE'&&ban){const ip=decodeURIComponent(ban[1]);window.__m.bans=window.__m.bans.filter(x=>x!==ip);return resp(env(null));}
+  if(method==='POST'&&path==='/Api/Command'){window.__m.commands.push(body.Command);return resp(env('OK '+body.Command));}
+  let nativeBgr=path.match(/^\/Api\/Bot\/([^/]+)\/GamesToRedeemInBackground$/);
+  if(nativeBgr){const bot=decodeURIComponent(nativeBgr[1]);window.__m.bgr[bot]??={UsedKeys:{},UnusedKeys:{}};if(method==='GET'){window.__m.bgrReads++;return resp(env({[bot]:window.__m.bgr[bot]}));}if(method==='POST'){window.__m.bgr[bot].UnusedKeys={...window.__m.bgr[bot].UnusedKeys,...body.GamesToRedeemInBackground};return resp(env({[bot]:body.GamesToRedeemInBackground}));}}
+  let tokenPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication\/Token$/);
+  if(method==='GET'&&tokenPath){const bot=decodeURIComponent(tokenPath[1]);return resp(env({[bot]:env('12345')}));}
+  let confirmationsPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication\/Confirmations$/);
+  if(confirmationsPath){const bot=decodeURIComponent(confirmationsPath[1]);if(method==='GET')return resp(env({[bot]:env(window.__m.confirmations[bot]||[])}));if(method==='POST'){window.__m.confirmations[bot]=[];return resp(env({[bot]:env([])}));}}
+  let authenticatorPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication$/);
+  if(authenticatorPath){const bot=decodeURIComponent(authenticatorPath[1]);if(method==='POST'){window.__m.authenticatorOps.push(['import',bot,body]);return resp(env({[bot]:env(null)}));}if(method==='DELETE'){window.__m.authenticatorOps.push(['delete',bot]);return resp(env({[bot]:env(null)}));}}
   let m=path.match(/^\/Api\/PlaytimeGoals\/([^/]+)(?:\/(Library|Parental))?$/);
   if(method==='GET'&&m){let bot=decodeURIComponent(m[1]); if(!m[2])return resp(env(ptg(bot))); if(m[2]==='Library'){window.__m.libraryReads++;return resp(env({FamilyMemberCount:4,Games:lib}));} return resp(env({Available:true,Enabled:true,BaseListId:1,BaseEntryCount:2,CustomEntryCount:1,Apps:[{AppId:10,BaseAllowed:true,CustomAllowed:null,EffectiveAllowed:true},{AppId:30,BaseAllowed:false,CustomAllowed:true,EffectiveAllowed:true}]}));}
   m=path.match(/^\/Api\/Bot\/([^/]+)(?:\/(Start|Stop|Pause|Resume|Rename|Input))?$/);
@@ -145,11 +167,79 @@ with sync_playwright() as pw:
     assert page.locator('.full-account-row .account-meta').first.bounding_box()['width'] > 300
     # Native OnlineStatus is first-class and writes through the native BotConfig endpoint.
     assert page.locator('#onlineStatus').input_value() == '1'
-    assert page.locator('a[href="/bot/main/config?asfui=1"]').count() == 1
-    assert page.locator('a[href="/bot/main/2fa?asfui=1"]').count() == 1
+    assert page.locator('[data-native-focus="bot-config"]').count() == 1
+    assert page.locator('[data-native-focus="2fa"]').count() == 1
     page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
     assert page.locator('#onlineStatus').input_value() == '7'
+
+    # Native ASF workspace replaces common legacy administration surfaces.
+    page.click('#nav button[data-view="native"]'); page.wait_for_selector('#nativeBotConfig')
+    assert page.locator('#nativeGlobalConfig').count() == 1
+    assert page.locator('#nativeCommandForm').count() == 1
+    assert page.locator('#nativeBgrKeys').count() == 1
+    assert page.locator('#fetchNative2faToken').count() == 1
+    assert page.locator('[data-unban-ip="203.0.113.5"]').count() == 1
+    assert page.locator('text=PlaytimeGoals').count() >= 1
+    assert page.locator('#nativeLogTail').input_value() == 'mock log line 1\nmock log line 2'
+
+    bot_editor=page.locator('#nativeBotConfig').input_value()
+    assert 'SECRET-TOKEN' not in bot_editor
+    assert 'SteamTradeToken' not in bot_editor
+    assert page.evaluate('window.__m.bgrReads') == 0
+    bot_cfg=json.loads(bot_editor)
+    bot_cfg['OnlineFlags']=1
+    bot_cfg['GamesPlayedWhileIdle']=[123]
+    bot_cfg['CustomGamePlayedWhileIdle']='must-be-cleared'
+    page.fill('#nativeBotConfig',json.dumps(bot_cfg))
+    page.click('#saveNativeBotConfig')
+    page.wait_for_function("() => window.__m.configs.main.OnlineFlags === 1")
+    assert page.evaluate('window.__m.configs.main.SteamTradeToken') == 'SECRET-TOKEN'
+    assert page.evaluate('window.__m.configs.main.GamesPlayedWhileIdle') == []
+    assert page.evaluate('window.__m.configs.main.CustomGamePlayedWhileIdle') is None
+
+    global_cfg=json.loads(page.locator('#nativeGlobalConfig').input_value())
+    global_cfg['FarmingDelay']=17
+    page.fill('#nativeGlobalConfig',json.dumps(global_cfg))
+    page.click('#saveNativeGlobalConfig'); page.wait_for_timeout(320)
+    assert page.evaluate('window.__m.globalConfig.FarmingDelay') == 17
+
+    page.fill('#nativeCommand','status'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(120)
+    assert page.locator('#nativeCommandOutput').input_value() == 'OK status'
+    assert page.evaluate('window.__m.commands.at(-1)') == 'status'
+
+    page.fill('#nativeBgrKeys','AAAAA-BBBBB-CCCCC | Test key'); page.click('#queueNativeBgr'); page.wait_for_timeout(320)
+    assert page.evaluate('window.__m.bgr.main.UnusedKeys["AAAAA-BBBBB-CCCCC"]') == 'Test key'
+
+    page.click('#fetchNative2faToken'); page.wait_for_timeout(120)
+    assert page.locator('#native2faToken').input_value() == '12345'
+    page.click('#loadNative2faConfirmations'); page.wait_for_timeout(120)
+    assert 'creator 42' in page.locator('#native2faConfirmations').inner_text()
+    page.fill('#nativeAuthenticatorJson','{"shared_secret":"mock"}'); page.click('#importNativeAuthenticator'); page.wait_for_timeout(120)
+    assert page.evaluate('window.__m.authenticatorOps.at(-1)[0]') == 'import'
+
+    page.click('[data-unban-ip="203.0.113.5"]'); page.wait_for_timeout(220)
+    assert page.evaluate('window.__m.bans.length') == 0
+
+    page.fill('#nativeMassPatch','{"OnlineStatus":7,"TradingPreferences":3}')
+    page.check('[data-mass-bot][value="main"]'); page.click('#applyNativeMassPatch'); page.wait_for_timeout(420)
+    assert page.evaluate('window.__m.configs.main.TradingPreferences') == 3
+    assert page.evaluate('window.__m.configs.main.SteamTradeToken') == 'SECRET-TOKEN'
+    assert page.evaluate('window.__m.configs.main.GamesPlayedWhileIdle') == []
+
+    page.fill('#nativeCryptoInput','hello'); page.click('#runNativeHash'); page.wait_for_timeout(120)
+    assert page.locator('#nativeCryptoOutput').input_value() == 'HASHED-VALUE'
+
+    page.fill('#nativeCopyBotName','copy-no-secrets')
+    page.click('#copyNativeBotConfig')
+    page.wait_for_function("() => Boolean(window.__m.configs['copy-no-secrets'])")
+    assert 'SteamTradeToken' not in page.evaluate("window.__m.configs['copy-no-secrets']")
+    assert page.evaluate("window.__m.configs['copy-no-secrets'].Enabled") is False
+    assert page.evaluate("window.__m.configs['copy-no-secrets'].GamesPlayedWhileIdle") == []
+    assert_accessible_controls(page)
+    assert_no_horizontal_overflow(page)
+
+    page.click('#nav button[data-view="accounts"]'); page.wait_for_selector('#requiredInputForm')
     page.fill('#requiredInputValue','12345'); page.click('#requiredInputForm button[type="submit"]'); page.wait_for_timeout(380)
     assert page.evaluate('window.__m.inputs.at(-1)')==['main',{'Type':1,'Value':'12345'}]
     assert page.locator('.toast-title',has_text='Input sent').count() >= 1
