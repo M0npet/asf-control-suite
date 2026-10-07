@@ -727,6 +727,145 @@
     await render();
   }
 
+
+  const MANAGED_SUITE_PLUGINS = new Set(['PlaytimeGoals','AccountManager','ControlCenter','ControlWeb']);
+
+  function selectedBotPath(suffix='') {
+    if (!state.selectedBot) throw new Error('Select an ASF bot first.');
+    return `/Api/Bot/${encodeURIComponent(state.selectedBot)}${suffix}`;
+  }
+
+  function nativeResultForBot(result) {
+    if (!result || !state.selectedBot) return null;
+    return result[state.selectedBot] ?? Object.values(result)[0] ?? null;
+  }
+
+  async function refreshNative2FA() {
+    await render();
+  }
+
+  async function native2FAAction(accept) {
+    const result = await api(selectedBotPath('/TwoFactorAuthentication/Confirmations'), {
+      method:'POST',
+      body:JSON.stringify({ Accept:Boolean(accept), s_AcceptedCreatorIDs:[], WaitIfNeeded:false }),
+    });
+    const handled = nativeResultForBot(result);
+    toast(accept ? 'Confirmations accepted' : 'Confirmations declined', handled?.Message || '2FA action completed.');
+    await render();
+  }
+
+  async function importNativeAuthenticator() {
+    const text = String($('nativeAuthenticatorJson')?.value || '').trim();
+    if (!text) throw new Error('Paste a MobileAuthenticator JSON object first.');
+    let authenticator;
+    try { authenticator = JSON.parse(text); }
+    catch (_) { throw new Error('Authenticator JSON is invalid.'); }
+    await api(selectedBotPath('/TwoFactorAuthentication'), { method:'POST', body:JSON.stringify(authenticator) });
+    toast('Authenticator imported', state.selectedBot);
+    await loadAccounts();
+    await render();
+  }
+
+  async function deleteNativeAuthenticator() {
+    const values = await openModal({
+      title:'Remove mobile authenticator',
+      eyebrow:'2FA destructive action',
+      body:'<p>This removes the authenticator from ASF for the selected bot. Make sure you understand the Steam Guard impact before continuing.</p>',
+      confirmLabel:'Remove authenticator',
+      tone:'danger',
+      requireText:'REMOVE 2FA',
+    });
+    if (!values) return;
+    await api(selectedBotPath('/TwoFactorAuthentication'), { method:'DELETE' });
+    toast('Authenticator removed', state.selectedBot, 'warn');
+    await loadAccounts();
+    await render();
+  }
+
+  function parseBgrInput(text) {
+    const games = {};
+    for (const raw of String(text || '').split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line) continue;
+      const separator = line.indexOf('|');
+      const key = (separator >= 0 ? line.slice(0, separator) : line).trim();
+      const name = (separator >= 0 ? line.slice(separator + 1) : 'Control Suite').trim() || 'Control Suite';
+      if (!key) continue;
+      games[key] = name;
+    }
+    return games;
+  }
+
+  async function addNativeBgrKeys() {
+    const games = parseBgrInput($('nativeBgrInput')?.value || '');
+    if (!Object.keys(games).length) throw new Error('Enter at least one key. Format: KEY or KEY|Name.');
+    await api(selectedBotPath('/GamesToRedeemInBackground'), {
+      method:'POST',
+      body:JSON.stringify({ GamesToRedeemInBackground:games }),
+    });
+    $('nativeBgrInput').value = '';
+    toast('Keys queued for BGR', `${Object.keys(games).length} key(s)`);
+    await render();
+  }
+
+  async function clearNativeBgrOutput() {
+    const values = await openModal({
+      title:'Clear BGR output files',
+      eyebrow:'Background redeemer',
+      body:'<p>Used and unused BGR output files for this bot will be removed.</p>',
+      confirmLabel:'Clear output',
+      tone:'warning',
+      requireText:'CLEAR BGR',
+    });
+    if (!values) return;
+    await api(selectedBotPath('/GamesToRedeemInBackground'), { method:'DELETE' });
+    toast('BGR output cleared', state.selectedBot);
+    await render();
+  }
+
+  async function unbanNativeIp(ip) {
+    await api(`/Api/IPC/Bans/${encodeURIComponent(ip)}`, { method:'DELETE' });
+    toast('IPC address unbanned', ip);
+    await render();
+  }
+
+  async function clearNativeBans() {
+    const values = await openModal({
+      title:'Clear all IPC bans',
+      eyebrow:'IPC security',
+      body:'<p>All IP addresses currently blocked by ASF IPC will be unbanned.</p>',
+      confirmLabel:'Clear bans',
+      tone:'warning',
+      requireText:'CLEAR BANS',
+    });
+    if (!values) return;
+    await api('/Api/IPC/Bans', { method:'DELETE' });
+    toast('IPC bans cleared');
+    await render();
+  }
+
+  async function updateNativePlugins() {
+    const names = [...document.querySelectorAll('[data-plugin-update]:checked')].map((box) => box.value);
+    if (!names.length) throw new Error('Select at least one non-managed plugin.');
+    const managed = names.filter((name) => MANAGED_SUITE_PLUGINS.has(name));
+    if (managed.length) throw new Error(`Managed Control Suite plugins cannot be updated independently: ${managed.join(', ')}`);
+    const values = await openModal({
+      title:'Update selected ASF plugins',
+      eyebrow:'Native plugin updater',
+      body:`<p>ASF will update: <strong>${escapeHtml(names.join(', '))}</strong>.</p><p>Control Suite-managed plugins are intentionally excluded from this path.</p>`,
+      confirmLabel:'Update plugins',
+      tone:'warning',
+      requireText:'UPDATE PLUGINS',
+    });
+    if (!values) return;
+    const result = await api('/Api/Plugins/Update', {
+      method:'POST',
+      body:JSON.stringify({ Plugins:names, Forced:false }),
+    });
+    toast('Plugin update finished', String(result || 'ASF completed the update request.'));
+    await render();
+  }
+
   async function renderNative() {
     const tab = state.nativeTab || 'bot';
     const tabs = [
@@ -734,6 +873,11 @@
       ['asf','ASF config'],
       ['mass','Mass editor'],
       ['commands','Commands'],
+      ['log','Log'],
+      ['2fa','2FA'],
+      ['bgr','Background redeemer'],
+      ['bans','IPC bans'],
+      ['plugins','Plugins'],
     ].map(([id,label]) => `<button type="button" data-native-tab="${id}" class="${tab === id ? 'active' : 'secondary'}">${label}</button>`).join('');
 
     let body = '';
@@ -754,8 +898,41 @@
       const fields = await Native.schema(api, 'ArchiSteamFarm.Steam.Storage.BotConfig');
       const bots = state.accounts.map((account) => `<label class="mass-bot"><input type="checkbox" data-mass-bot value="${escapeHtml(account.BotName)}"><span>${escapeHtml(accountDisplayName(account))}</span><small>${escapeHtml(account.BotName)}</small></label>`).join('');
       body = `<div class="card"><div class="card-head"><div><h3>Mass BotConfig editor</h3><p>Apply one native property to multiple bots while preserving every other property.</p></div></div><div class="mass-bot-grid">${bots || '<div class="empty-state">No bots.</div>'}</div><div class="settings-grid section"><label for="massProperty">Property<select id="massProperty"><option value="">Choose property…</option>${fields.map((field) => `<option value="${escapeHtml(field.name)}">${escapeHtml(field.name)} · ${escapeHtml(field.fieldType)}</option>`).join('')}</select></label><label for="massValue">Value<input id="massValue" type="text" autocomplete="off" placeholder="JSON for collections/objects; number for enum/flags"></label></div><button id="applyMassEdit" type="button">Apply mass edit</button></div>`;
-    } else {
+    } else if (tab === 'commands') {
       body = `<div class="card command-card"><div class="card-head"><div><h3>ASF command terminal</h3><p>Native /Api/Command endpoint. Structured controls remain preferred when available.</p></div><button id="clearNativeCommands" type="button" class="secondary">Clear</button></div><div id="nativeCommandOutput" class="command-output" role="log" aria-live="polite"></div><form id="nativeCommandForm" class="inline-form section"><input id="nativeCommandInput" autocomplete="off" placeholder="status ASF" required><button type="submit">Run command</button></form></div>`;
+    } else if (tab === 'log') {
+      const log = await api('/Api/NLog/File?count=300');
+      const lines = Array.isArray(log?.Content) ? log.Content : [];
+      body = `<div class="card command-card"><div class="card-head"><div><h3>ASF log</h3><p>Latest ${lines.length} of ${Number(log?.TotalLines || lines.length)} line(s) through the authenticated native log API.</p></div><button id="refreshNativeLog" class="secondary" type="button">Refresh log</button></div><pre id="nativeLogOutput" class="command-output">${escapeHtml(lines.join('\n'))}</pre></div>`;
+    } else if (tab === '2fa') {
+      if (!state.selectedBot) return '<div class="card empty-state">Select an account first.</div>';
+      const [tokenMap, confirmationMap] = await Promise.all([
+        api(selectedBotPath('/TwoFactorAuthentication/Token')).catch(() => null),
+        api(selectedBotPath('/TwoFactorAuthentication/Confirmations')).catch(() => null),
+      ]);
+      const tokenResult = nativeResultForBot(tokenMap);
+      const confirmationResult = nativeResultForBot(confirmationMap);
+      const confirmations = confirmationResult?.Result || [];
+      const token = tokenResult?.Result || '';
+      body = `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Steam Guard · ${escapeHtml(state.selectedBot)}</h3><p>Native ASF 2FA module.</p></div><button id="refreshNative2FA" class="secondary" type="button">Refresh</button></div><div class="metric section"><span>Current token</span><strong class="mono-token">${escapeHtml(token || 'unavailable')}</strong></div><div class="actions section"><button id="acceptAll2FA" type="button">Accept all confirmations</button><button id="declineAll2FA" class="secondary" type="button">Decline all</button></div><div class="native-confirmations">${confirmations.length ? confirmations.map((item) => `<div class="row"><div class="row-main"><strong>${escapeHtml(item.Type ?? 'Confirmation')}</strong><small>Creator ${escapeHtml(item.s_CreatorID || item.CreatorID || '—')}</small></div></div>`).join('') : '<div class="empty-state">No pending confirmations.</div>'}</div></div><div class="card"><div class="card-head"><div><h3>Authenticator maintenance</h3><p>Import an ASF MobileAuthenticator JSON object or remove the currently loaded authenticator.</p></div></div><label for="nativeAuthenticatorJson">Authenticator JSON</label><textarea id="nativeAuthenticatorJson" rows="12" spellcheck="false" autocomplete="off"></textarea><div class="actions section"><button id="importNativeAuthenticator" type="button">Import authenticator</button><button id="deleteNativeAuthenticator" type="button" class="danger">Remove authenticator</button></div></div></div>`;
+    } else if (tab === 'bgr') {
+      if (!state.selectedBot) return '<div class="card empty-state">Select an account first.</div>';
+      const map = await api(selectedBotPath('/GamesToRedeemInBackground')).catch(() => null);
+      const result = nativeResultForBot(map) || {};
+      const used = result.UsedKeys || {};
+      const unused = result.UnusedKeys || {};
+      const rows = (title, items) => `<div class="section"><h4>${title}</h4>${Object.keys(items).length ? Object.entries(items).map(([key,name]) => `<div class="row"><div class="row-main"><strong>${escapeHtml(name)}</strong><small class="mono-token">${escapeHtml(key)}</small></div></div>`).join('') : '<div class="empty-state">None.</div>'}</div>`;
+      body = `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Background redeemer · ${escapeHtml(state.selectedBot)}</h3><p>Queue Steam keys using the native ASF BGR endpoint.</p></div></div><label for="nativeBgrInput">Keys</label><textarea id="nativeBgrInput" rows="10" spellcheck="false" autocomplete="off" placeholder="AAAAA-BBBBB-CCCCC|Optional game name"></textarea><div class="actions section"><button id="addNativeBgrKeys" type="button">Queue keys</button><button id="clearNativeBgrOutput" type="button" class="secondary">Clear output files</button></div></div><div class="card"><h3>BGR results</h3>${rows('Unused',unused)}${rows('Used',used)}</div></div>`;
+    } else if (tab === 'bans') {
+      const bans = await api('/Api/IPC/Bans');
+      const list = Array.isArray(bans) ? bans : Object.values(bans || {});
+      body = `<div class="card"><div class="card-head"><div><h3>IPC bans</h3><p>Addresses currently blocked by ASF IPC authentication protection.</p></div><button id="clearNativeBans" class="warning" type="button" ${list.length ? '' : 'disabled'}>Clear all</button></div>${list.length ? list.map((ip) => `<div class="row"><div class="row-main"><strong class="mono-token">${escapeHtml(ip)}</strong></div><button data-unban-ip="${escapeHtml(ip)}" class="secondary" type="button">Unban</button></div>`).join('') : '<div class="empty-state">No banned IP addresses.</div>'}</div>`;
+    } else if (tab === 'plugins') {
+      const plugins = await api('/Api/Plugins?official=true&custom=true');
+      const list = Array.isArray(plugins) ? plugins : [];
+      body = `<div class="card"><div class="card-head"><div><h3>ASF plugins</h3><p>Loaded native plugins. Control Suite-managed plugins stay pinned to the verified release graph.</p></div><button id="updateNativePlugins" type="button">Update selected</button></div><div class="notice section">PlaytimeGoals, AccountManager, ControlCenter and ControlWeb can only be updated through a verified Control Suite release.</div>${list.length ? list.map((plugin) => { const name=String(plugin.Name || plugin.GetType || 'unknown'); const managed=MANAGED_SUITE_PLUGINS.has(name); return `<label class="plugin-row"><input type="checkbox" data-plugin-update value="${escapeHtml(name)}" ${managed ? 'disabled' : ''}><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(plugin.Version || '')}${managed ? ' · managed/pinned' : ''}</small></span></label>`; }).join('') : '<div class="empty-state">No plugin data returned.</div>'}</div>`;
+    } else {
+      body = '<div class="card empty-state">Unknown native ASF section.</div>';
     }
 
     return `<div class="native-tabs section">${tabs}</div>${body}`;
@@ -930,6 +1107,17 @@
     $('applyMassEdit')?.addEventListener('click', async () => { const button = $('applyMassEdit'); button.disabled = true; try { await applyNativeMassEdit(); } catch (error) { toast('Mass edit failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
     $('nativeCommandForm')?.addEventListener('submit', async (event) => { event.preventDefault(); const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; try { await executeNativeCommand(); } catch (error) { toast('Command failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
     $('clearNativeCommands')?.addEventListener('click', () => { const node = $('nativeCommandOutput'); if (node) node.textContent = ''; });
+    $('refreshNativeLog')?.addEventListener('click', async () => render());
+    $('refreshNative2FA')?.addEventListener('click', async () => refreshNative2FA());
+    $('acceptAll2FA')?.addEventListener('click', async () => { try { await native2FAAction(true); } catch (error) { toast('2FA action failed', error.message, 'bad', 7000); } });
+    $('declineAll2FA')?.addEventListener('click', async () => { try { await native2FAAction(false); } catch (error) { toast('2FA action failed', error.message, 'bad', 7000); } });
+    $('importNativeAuthenticator')?.addEventListener('click', async () => { try { await importNativeAuthenticator(); } catch (error) { toast('Authenticator import failed', error.message, 'bad', 7000); } });
+    $('deleteNativeAuthenticator')?.addEventListener('click', async () => { try { await deleteNativeAuthenticator(); } catch (error) { toast('Authenticator removal failed', error.message, 'bad', 7000); } });
+    $('addNativeBgrKeys')?.addEventListener('click', async () => { try { await addNativeBgrKeys(); } catch (error) { toast('BGR queue failed', error.message, 'bad', 7000); } });
+    $('clearNativeBgrOutput')?.addEventListener('click', async () => { try { await clearNativeBgrOutput(); } catch (error) { toast('BGR cleanup failed', error.message, 'bad', 7000); } });
+    document.querySelectorAll('[data-unban-ip]').forEach((button) => button.addEventListener('click', async () => { button.disabled=true; try { await unbanNativeIp(button.dataset.unbanIp); } catch (error) { toast('Unban failed', error.message, 'bad', 7000); } finally { button.disabled=false; } }));
+    $('clearNativeBans')?.addEventListener('click', async () => { try { await clearNativeBans(); } catch (error) { toast('Could not clear bans', error.message, 'bad', 7000); } });
+    $('updateNativePlugins')?.addEventListener('click', async () => { try { await updateNativePlugins(); } catch (error) { toast('Plugin update failed', error.message, 'bad', 7000); } });
     document.querySelectorAll('[data-act]').forEach((button) => button.addEventListener('click', async () => {
       const bot = button.dataset.bot, action = button.dataset.act;
       button.disabled = true;
