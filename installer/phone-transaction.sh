@@ -16,12 +16,68 @@ PLUGINS=(PlaytimeGoals AccountManager ControlCenter ControlWeb)
 PROC_ROOT="${CONTROL_PROC_ROOT:-/proc}"
 MUTATION_STARTED=0
 ROLLING_BACK=0
+GLOBAL_CONFIG="$ASF_ROOT/config/ASF.json"
 
 say() { printf '\n=== %s ===\n' "$1"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 require_file() {
   [[ -s "$1" ]] || die "missing required file: $1"
+}
+
+assert_phone_headless_config() {
+  python3 - "$GLOBAL_CONFIG" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception as exc:
+    raise SystemExit(f"invalid ASF global config {path}: {exc}")
+
+if not isinstance(data, dict):
+    raise SystemExit(f"ASF global config must be a JSON object: {path}")
+
+if data.get("Headless") is not True:
+    raise SystemExit(f"phone ASF global config is not Headless=true: {path}")
+PY
+}
+
+stage_phone_headless_config() {
+  local source="$GLOBAL_CONFIG"
+  local target="$STAGE/ASF.json"
+  local mode=0600
+
+  if [[ -f "$source" ]]; then
+    mode="$(stat -c '%a' "$source")"
+  fi
+
+  python3 - "$source" "$target" <<'PY'
+import json
+import os
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1])
+target = pathlib.Path(sys.argv[2])
+
+if source.exists():
+    data = json.loads(source.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise SystemExit(f"ASF global config must be a JSON object: {source}")
+else:
+    data = {}
+
+data["Headless"] = True
+
+tmp = target.with_name(target.name + ".tmp")
+tmp.write_text(json.dumps(data, ensure_ascii=False, indent="\t") + "\n", encoding="utf-8")
+os.replace(tmp, target)
+PY
+
+  chmod "$mode" "$target"
 }
 
 asf_pids() {
@@ -143,6 +199,12 @@ restore_backup_files() {
     cp -a "$BACKUP/installed-metadata" "$META_ROOT/installed"
   fi
 
+  if [[ -f "$BACKUP/ASF.json" ]]; then
+    cp -a "$BACKUP/ASF.json" "$GLOBAL_CONFIG"
+  elif [[ -f "$BACKUP/ASF_CONFIG_ABSENT" ]]; then
+    rm -f "$GLOBAL_CONFIG"
+  fi
+
   if [[ -f "$BACKUP/AccountManager.defaults.json" ]]; then
     cp -a "$BACKUP/AccountManager.defaults.json" "$ASF_ROOT/config/AccountManager.defaults.json"
   elif [[ -f "$BACKUP/ACCOUNT_DEFAULTS_ABSENT" ]]; then
@@ -197,6 +259,10 @@ say "VALIDATE TARGET"
 [[ -x "$ASF_ROOT/ArchiSteamFarm" ]] || die "ASF executable missing: $ASF_ROOT/ArchiSteamFarm"
 [[ -d "$PLUGIN_ROOT" ]] || die "ASF plugins directory missing: $PLUGIN_ROOT"
 [[ -d "$ASF_ROOT/config" ]] || die "ASF config directory missing: $ASF_ROOT/config"
+command -v python3 >/dev/null 2>&1 || die "python3 is required to enforce the phone Headless=true invariant"
+if [[ -f "$GLOBAL_CONFIG" ]]; then
+  python3 -m json.tool "$GLOBAL_CONFIG" >/dev/null || die "ASF global config is not valid JSON: $GLOBAL_CONFIG"
+fi
 mkdir -p "$BACKUP_ROOT" "$META_ROOT"
 
 say "STAGE"
@@ -204,8 +270,9 @@ rm -rf "$STAGE" "$META_STAGE"
 mkdir -p "$STAGE/plugins" "$META_STAGE"
 cp "$DIST/ArchiSteamFarm" "$STAGE/ArchiSteamFarm"
 cp -a "$DIST/plugins/." "$STAGE/plugins/"
+stage_phone_headless_config
 find "$STAGE" -type d -exec chmod 0755 {} +
-find "$STAGE" -type f -exec chmod 0644 {} +
+find "$STAGE" -type f ! -name ASF.json -exec chmod 0644 {} +
 chmod 0755 "$STAGE/ArchiSteamFarm"
 cp "$DIST/SHA256SUMS" "$DIST/BUILD-METADATA.txt" "$DIST/INSTALL-LAYOUT.txt" "$META_STAGE/"
 printf 'BackupId: %s\nInstalledUtc: %s\n' "$STAMP" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$META_STAGE/INSTALL-RECORD.txt"
@@ -237,6 +304,11 @@ if [[ -d "$META_ROOT/installed" ]]; then
 else
   : > "$BACKUP/INSTALLED_METADATA_ABSENT"
 fi
+if [[ -f "$GLOBAL_CONFIG" ]]; then
+  cp -a "$GLOBAL_CONFIG" "$BACKUP/ASF.json"
+else
+  : > "$BACKUP/ASF_CONFIG_ABSENT"
+fi
 if [[ -f "$ASF_ROOT/config/AccountManager.defaults.json" ]]; then
   cp -a "$ASF_ROOT/config/AccountManager.defaults.json" "$BACKUP/AccountManager.defaults.json"
 else
@@ -254,6 +326,8 @@ stop_asf_child || die "could not stop ArchiSteamFarm child safely"
 say "COMMIT RUNTIME + PLUGIN SWAP"
 MUTATION_STARTED=1
 mv "$STAGE/ArchiSteamFarm" "$ASF_ROOT/ArchiSteamFarm"
+mv "$STAGE/ASF.json" "$GLOBAL_CONFIG"
+assert_phone_headless_config
 for plugin in "${PLUGINS[@]}"; do
   rm -rf "$PLUGIN_ROOT/$plugin"
   mv "$STAGE/plugins/$plugin" "$PLUGIN_ROOT/$plugin"
@@ -274,6 +348,9 @@ while IFS= read -r line; do
   actual="$(sha256sum "$ASF_ROOT/$rel" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || { rollback_now "installed checksum mismatch: $rel"; exit 20; }
 done < "$DIST/SHA256SUMS"
+
+say "VERIFY PHONE HEADLESS CONFIG"
+assert_phone_headless_config
 
 say "WAIT FOR ASF + CONTROL HEALTH"
 if ! wait_for_health; then
