@@ -105,7 +105,8 @@ if needle not in text:
 
 injected = """<head>
 <script data-asf-control-suite-root="1">
-if (window.location.pathname === '/') {
+const params = new URLSearchParams(window.location.search);
+if (params.get('asfui') !== '1') {
   window.location.replace('/Control/' + window.location.search + window.location.hash);
 }
 </script>"""
