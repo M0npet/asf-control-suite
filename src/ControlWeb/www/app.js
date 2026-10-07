@@ -25,6 +25,7 @@
     dashboard: ['Dashboard', 'Live overview of ASF, accounts and runtime health.'],
     accounts: ['Accounts', 'Create, inspect and control ASF bot accounts.'],
     playtime: ['Playtime Goals', 'Manage finite and unlimited playtime goals safely.'],
+    native: ['Native ASF', 'Use standard ASF configuration and tools without leaving Control Suite.'],
     security: ['Security', 'Session controls and the authentication boundary.'],
     system: ['System', 'Runtime health, modules and native ASF process actions.'],
     advanced: ['Advanced', 'Architecture, pinned targets and native API access.'],
@@ -81,6 +82,17 @@
   };
   const yesNo = (value) => value ? 'yes' : 'no';
   const legacyAsfHref = (path) => `${path}${path.includes('?') ? '&' : '?'}asfui=1`;
+  const prettyJson = (value) => JSON.stringify(value ?? {}, null, 2);
+  const mergePatch = (base, patch) => {
+    if (patch === null || Array.isArray(patch) || typeof patch !== 'object') return patch;
+    const next = { ...(base && typeof base === 'object' && !Array.isArray(base) ? base : {}) };
+    Object.entries(patch).forEach(([key, value]) => {
+      if (value === null) delete next[key];
+      else if (Array.isArray(value) || typeof value !== 'object') next[key] = value;
+      else next[key] = mergePatch(next[key], value);
+    });
+    return next;
+  };
 
   function accountDisplayName(account) {
     const nickname = String(account?.Nickname || '').trim();
@@ -661,6 +673,111 @@
     return `<div class="grid"><div class="card metric"><span>Managed memory</span><strong>${formatBytes(managedMemory * 1024)}</strong><small class="metric-detail">reported by native ASF</small></div><div class="card metric"><span>Disk free</span><strong>${diskFree}</strong><small class="metric-detail">${diskDetail}</small></div><div class="card metric"><span>ASF variant</span><strong>${escapeHtml(asf?.BuildVariant || 'unknown')}</strong><small class="metric-detail">native build target</small></div><div class="card metric"><span>Waiting input</span><strong>${Number(control?.WaitingForInputBots || 0)}</strong><small class="metric-detail">interactive bot requests</small></div></div><div class="two-col section"><div class="card"><div class="card-head"><div><h3>Modules</h3><p>Loaded assemblies and expected release versions.</p></div></div>${modules || '<div class="empty-state">No module data.</div>'}</div><div class="card"><div class="card-head"><div><h3>Runtime</h3><p>Trim-safe runtime details sourced from native ASF where available.</p></div></div><div class="row"><div class="row-main"><strong>ASF version</strong><small>${escapeHtml(asf?.Version || 'unknown')}</small></div></div><div class="row"><div class="row-main"><strong>Build variant</strong><small>${escapeHtml(asf?.BuildVariant || 'unknown')}</small></div></div><div class="row"><div class="row-main"><strong>Plugin target</strong><small>net10.0 · ASF ${escapeHtml(control?.TargetAsfVersion || 'unknown')}</small></div></div><div class="row"><div class="row-main"><strong>Control uptime</strong><small>${formatDuration(control?.UptimeSeconds)}</small></div></div></div></div><div class="card danger-zone section"><div class="card-head"><div><h3>ASF process actions</h3><p>Native authenticated ASF endpoints only. No host shell is exposed.</p></div><span class="pill warn">confirmation required</span></div><div class="actions"><button id="restartAsf" class="warning">Restart ASF</button><button id="exitAsf" class="danger">Exit ASF</button></div></div>`;
   }
 
+
+  async function renderNative() {
+    const botName = state.selectedBot || state.accounts[0]?.BotName || '';
+    const encodedBot = encodeURIComponent(botName);
+    let botRecord = null;
+    let asf = null;
+    let plugins = [];
+    let bans = [];
+    let bgr = null;
+
+    const tasks = [
+      api('/Api/ASF').then((value) => { asf = value; }),
+      api('/Api/Plugins').then((value) => { plugins = Array.isArray(value) ? value : []; }).catch(() => { plugins = []; }),
+      api('/Api/IPC/Bans').then((value) => { bans = Array.isArray(value) ? value : []; }).catch(() => { bans = []; }),
+    ];
+
+    if (botName) {
+      tasks.push(
+        getBotRecord(botName).then((value) => { botRecord = value; }),
+        api(`/Api/Bot/${encodedBot}/GamesToRedeemInBackground`).then((value) => { bgr = value?.[botName] || null; }).catch(() => { bgr = null; }),
+      );
+    }
+
+    await Promise.all(tasks);
+
+    const globalConfig = asf?.GlobalConfig || {};
+    const botConfig = botRecord?.BotConfig || {};
+    const botOptions = state.accounts.map((account) => `<option value="${escapeHtml(account.BotName)}" ${account.BotName === botName ? 'selected' : ''}>${escapeHtml(accountOptionLabel(account))}</option>`).join('');
+    const pluginRows = plugins.map((plugin) => `<div class="row"><div class="row-main"><strong>${escapeHtml(plugin.Name || plugin.GetType || 'Plugin')}</strong><small>${escapeHtml(plugin.Version || plugin.AssemblyName || 'loaded')}</small></div><span class="pill good">loaded</span></div>`).join('') || '<div class="empty-state"><strong>No plugins reported</strong>ASF returned an empty plugin list.</div>';
+    const banRows = bans.map((ip) => `<div class="row"><div class="row-main"><strong>${escapeHtml(ip)}</strong><small>Blocked by ASF IPC authentication</small></div><button class="secondary" data-unban-ip="${escapeHtml(ip)}">Unban</button></div>`).join('') || '<div class="empty-state"><strong>No banned IPs</strong>ASF IPC currently has no blocked clients.</div>';
+    const usedCount = Object.keys(bgr?.UsedKeys || {}).length;
+    const unusedCount = Object.keys(bgr?.UnusedKeys || {}).length;
+    const massBots = state.accounts.map((account) => `<label class="checkline"><input type="checkbox" data-mass-bot value="${escapeHtml(account.BotName)}"> ${escapeHtml(accountOptionLabel(account))}</label>`).join('');
+
+    return `
+      <div class="toolbar">
+        <select id="nativeBotSelect" aria-label="ASF account">${botOptions}</select>
+        <span class="pill neutral">native ASF APIs</span>
+      </div>
+
+      <div class="two-col section">
+        <div class="card">
+          <div class="card-head"><div><h3>Bot configuration</h3><p>Complete BotConfig editor. ASF preserves omitted security-controlled values.</p></div><span class="pill good">native</span></div>
+          ${botName ? `<textarea id="nativeBotConfig" class="code-editor" rows="22" spellcheck="false">${escapeHtml(prettyJson(botConfig))}</textarea><div class="actions section"><button id="saveNativeBotConfig">Save bot config</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Add an ASF account first.</div>'}
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h3>Global ASF configuration</h3><p>Complete GlobalConfig editor through ASF's native validated endpoint.</p></div><span class="pill warn">global</span></div>
+          <textarea id="nativeGlobalConfig" class="code-editor" rows="22" spellcheck="false">${escapeHtml(prettyJson(globalConfig))}</textarea>
+          <div class="actions section"><button id="saveNativeGlobalConfig">Save global config</button></div>
+        </div>
+      </div>
+
+      <div class="two-col section">
+        <div class="card">
+          <div class="card-head"><div><h3>Commands</h3><p>Run standard ASF commands through /Api/Command.</p></div></div>
+          <form id="nativeCommandForm">
+            <label for="nativeCommand">ASF command</label>
+            <div class="inline-form"><input id="nativeCommand" autocomplete="off" placeholder="status"><button type="submit">Run</button></div>
+          </form>
+          <label for="nativeCommandOutput">Output</label>
+          <textarea id="nativeCommandOutput" class="code-editor" rows="10" readonly placeholder="Command output appears here."></textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h3>Background redeemer</h3><p>Queue Steam keys without exposing existing key contents in the UI.</p></div><span class="pill neutral">${usedCount} used · ${unusedCount} unused</span></div>
+          ${botName ? `<label for="nativeBgrKeys">Keys to queue</label><textarea id="nativeBgrKeys" class="code-editor" rows="10" placeholder="AAAAA-BBBBB-CCCCC | Optional name"></textarea><span class="field-help">One key per line. Existing stored keys are counted but never rendered.</span><div class="actions section"><button id="queueNativeBgr">Queue keys</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+      </div>
+
+      <div class="two-col section">
+        <div class="card">
+          <div class="card-head"><div><h3>2FA</h3><p>Generate a current Steam Guard token for the selected account.</p></div></div>
+          ${botName ? `<div class="inline-form"><input id="native2faToken" readonly placeholder="Token hidden until requested"><button id="fetchNative2faToken" type="button">Generate token</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h3>IPC bans</h3><p>Clients currently blocked by ASF authentication throttling.</p></div><button id="clearNativeBans" class="secondary" type="button" ${bans.length ? '' : 'disabled'}>Clear all</button></div>
+          ${banRows}
+        </div>
+      </div>
+
+      <div class="two-col section">
+        <div class="card">
+          <div class="card-head"><div><h3>Mass editor</h3><p>Apply a JSON merge patch to multiple BotConfig objects through native ASF validation.</p></div></div>
+          <div class="mass-bot-grid">${massBots || '<span class="muted">No bots available.</span>'}</div>
+          <label for="nativeMassPatch">BotConfig patch</label>
+          <textarea id="nativeMassPatch" class="code-editor" rows="10" spellcheck="false" placeholder='{"OnlineStatus":7}'></textarea>
+          <div class="actions section"><button id="applyNativeMassPatch" type="button">Apply to selected</button></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><div><h3>Plugins & release policy</h3><p>Loaded plugins are visible here. Runtime updates stay pinned to the Control Suite release pipeline.</p></div><span class="pill good">${plugins.length} loaded</span></div>
+          ${pluginRows}
+          <div class="notice warn section">Native ASF self-update and plugin-update actions are intentionally not exposed because this installation uses a pinned compatibility patch and reproducible Control Suite releases.</div>
+        </div>
+      </div>
+
+      <div class="card section">
+        <div class="card-head"><div><h3>Legacy fallback</h3><p>Only for a native ASF function not yet migrated into Control Suite.</p></div><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Open stock ASF-ui</button></a></div>
+        <div class="notice">The fallback remains hidden behind an explicit bypass. Normal administration should stay in Control Suite.</div>
+      </div>
+    `;
+  }
+
   async function renderAdvanced() {
     const control = await api('/Api/ControlCenter/Status');
 
@@ -681,7 +798,7 @@
     return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Pinned compatibility</h3><p>Control Suite ${escapeHtml(suiteVersion)} is built against a fixed baseline.</p></div></div><div class="row"><div class="row-main"><strong>ASF</strong><small>${escapeHtml(asfVersion)} · ${escapeHtml(asfCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF compatibility patch</strong><small>SHA-256 · ${escapeHtml(asfPatch)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF-ui</strong><small>${escapeHtml(asfUiCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>PlaytimeGoals</strong><small>${escapeHtml(ptgVersion)} · ${escapeHtml(ptgCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>Control modules</strong><small>AccountManager · ControlCenter · ControlWeb</small></div><span class="pill good">${escapeHtml(moduleVersion)}</span></div></div><div class="card"><div class="card-head"><div><h3>Ownership boundaries</h3><p>Each module has one clear job.</p></div></div><div class="boundary"><span class="boundary-index">P</span><div><strong>PlaytimeGoals</strong><small>Managed GamesPlayed, Family availability and Family View journal.</small></div></div><div class="boundary"><span class="boundary-index">A</span><div><strong>AccountManager</strong><small>Credential-free defaults and account summary.</small></div></div><div class="boundary"><span class="boundary-index">C</span><div><strong>ControlCenter</strong><small>Read-only runtime and module health.</small></div></div><div class="boundary"><span class="boundary-index">W</span><div><strong>ControlWeb</strong><small>Presentation and orchestration through existing authenticated APIs.</small></div></div></div></div><div class="card section"><div class="card-head"><div><h3>Native API</h3><p>Use ASF Swagger when you need direct endpoint inspection.</p></div><div class="actions"><a href="/swagger" target="_blank" rel="noreferrer"><button class="secondary" type="button">Open API docs</button></a><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Open legacy Bots</button></a></div></div><div class="notice">The stock ASF-ui remains available for every native ASF function. Control Suite adds focused workflows without removing upstream functionality. Deployment, backups and rollback remain out-of-band through the ADB installer. The browser cannot execute arbitrary host commands.</div><div class="actions section"><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Bots</button></a><a href="${legacyAsfHref('/commands')}"><button class="secondary" type="button">Commands</button></a><a href="${legacyAsfHref('/log')}"><button class="secondary" type="button">Log</button></a><a href="${legacyAsfHref('/asf-config')}"><button class="secondary" type="button">ASF config</button></a><a href="${legacyAsfHref('/asf-bans')}"><button class="secondary" type="button">ASF bans</button></a><a href="${legacyAsfHref('/mass-editor')}"><button class="secondary" type="button">Mass editor</button></a><a href="${legacyAsfHref('/plugins')}"><button class="secondary" type="button">Plugins</button></a><a href="${legacyAsfHref('/releases')}"><button class="secondary" type="button">Releases</button></a><a href="${legacyAsfHref('/ui-config')}"><button class="secondary" type="button">ASF-ui settings</button></a></div></div>`;
   }
 
-  const renderers = { dashboard:renderDashboard, accounts:renderAccounts, playtime:renderPlaytime, security:renderSecurity, system:renderSystem, advanced:renderAdvanced };
+  const renderers = { dashboard:renderDashboard, accounts:renderAccounts, playtime:renderPlaytime, native:renderNative, security:renderSecurity, system:renderSystem, advanced:renderAdvanced };
 
   function renderQrCode() {
     const node = $('qrCode');
@@ -844,6 +961,140 @@
     $('goalSource')?.addEventListener('change', filterGoalRows);
     $('goalSort')?.addEventListener('change', sortGoalRowsInPlace);
     $('saveGoals')?.addEventListener('click', async () => { const button = $('saveGoals'); button.disabled = true; try { await savePlaytimeGoals(); } catch (error) { toast('PlaytimeGoals not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    const nativeBotSelect = $('nativeBotSelect');
+    if (nativeBotSelect) nativeBotSelect.addEventListener('change', async () => { state.selectedBot = nativeBotSelect.value; await render(); });
+
+    $('saveNativeBotConfig')?.addEventListener('click', async () => {
+      const button = $('saveNativeBotConfig');
+      button.disabled = true;
+      try {
+        const parsed = JSON.parse($('nativeBotConfig').value);
+        await writeBotConfig(state.selectedBot, parsed);
+        await loadAccounts();
+        toast('BotConfig saved', state.selectedBot);
+        await render();
+      } catch (error) {
+        toast('BotConfig not saved', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('saveNativeGlobalConfig')?.addEventListener('click', async () => {
+      const button = $('saveNativeGlobalConfig');
+      button.disabled = true;
+      try {
+        const parsed = JSON.parse($('nativeGlobalConfig').value);
+        await api('/Api/ASF', { method:'POST', body:JSON.stringify({ GlobalConfig:parsed }) });
+        toast('Global ASF config saved', 'ASF validated and wrote the configuration.');
+        await render();
+      } catch (error) {
+        toast('Global config not saved', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('nativeCommandForm')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const command = String($('nativeCommand').value || '').trim();
+      if (!command) return;
+      const submit = event.currentTarget.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      try {
+        const result = await api('/Api/Command', { method:'POST', body:JSON.stringify({ Command:command }) });
+        $('nativeCommandOutput').value = typeof result === 'string' ? result : prettyJson(result);
+      } catch (error) {
+        $('nativeCommandOutput').value = `ERROR: ${error.message}`;
+      } finally {
+        submit.disabled = false;
+      }
+    });
+
+    $('queueNativeBgr')?.addEventListener('click', async () => {
+      const button = $('queueNativeBgr');
+      button.disabled = true;
+      try {
+        const entries = {};
+        String($('nativeBgrKeys').value || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean).forEach((line) => {
+          const [rawKey, ...rawName] = line.split('|');
+          const key = String(rawKey || '').trim();
+          const name = rawName.join('|').trim() || 'Control Suite';
+          if (key) entries[key] = name;
+        });
+        if (!Object.keys(entries).length) throw new Error('Enter at least one key.');
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/GamesToRedeemInBackground`, { method:'POST', body:JSON.stringify({ GamesToRedeemInBackground:entries }) });
+        $('nativeBgrKeys').value = '';
+        toast('Keys queued', `${Object.keys(entries).length} key(s) sent to Background Redeemer.`);
+        await render();
+      } catch (error) {
+        toast('Keys not queued', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('fetchNative2faToken')?.addEventListener('click', async () => {
+      const button = $('fetchNative2faToken');
+      button.disabled = true;
+      try {
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication/Token`);
+        const token = typeof result === 'string' ? result : result?.[state.selectedBot] ?? result?.Token ?? '';
+        $('native2faToken').value = String(token || 'Unavailable');
+      } catch (error) {
+        toast('2FA token unavailable', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.querySelectorAll('[data-unban-ip]').forEach((button) => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        await api(`/Api/IPC/Bans/${encodeURIComponent(button.dataset.unbanIp)}`, { method:'DELETE' });
+        toast('IP unbanned', button.dataset.unbanIp);
+        await render();
+      } catch (error) {
+        toast('Could not unban IP', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    }));
+
+    $('clearNativeBans')?.addEventListener('click', async () => {
+      const values = await openModal({ title:'Clear all IPC bans', eyebrow:'Native ASF', body:'<p>Remove every IP currently blocked by ASF IPC authentication?</p>', confirmLabel:'Clear bans', tone:'warning', requireText:'CLEAR' });
+      if (!values) return;
+      try {
+        await api('/Api/IPC/Bans', { method:'DELETE' });
+        toast('IPC bans cleared');
+        await render();
+      } catch (error) {
+        toast('Could not clear bans', error.message, 'bad', 7000);
+      }
+    });
+
+    $('applyNativeMassPatch')?.addEventListener('click', async () => {
+      const button = $('applyNativeMassPatch');
+      button.disabled = true;
+      try {
+        const patch = JSON.parse($('nativeMassPatch').value);
+        const bots = [...document.querySelectorAll('[data-mass-bot]:checked')].map((box) => box.value);
+        if (!bots.length) throw new Error('Select at least one bot.');
+        for (const bot of bots) {
+          const record = await getBotRecord(bot);
+          const next = mergePatch(record.BotConfig, patch);
+          await writeBotConfig(bot, next);
+        }
+        await loadAccounts();
+        toast('Mass edit complete', `${bots.length} bot(s) updated.`);
+        await render();
+      } catch (error) {
+        toast('Mass edit failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
     const lockMinutes = $('lockMinutes');
     if (lockMinutes) lockMinutes.addEventListener('change', () => { state.lockMinutes = Core.normalizeLockMinutes(lockMinutes.value, DEFAULT_LOCK_MINUTES); sessionStorage.setItem(LOCK_KEY, String(state.lockMinutes)); markActivity(); startLockWatch(); toast('Auto-lock updated', state.lockMinutes ? `${state.lockMinutes} minute(s)` : 'disabled for this tab'); });
     $('lockNow')?.addEventListener('click', () => lockSession());
