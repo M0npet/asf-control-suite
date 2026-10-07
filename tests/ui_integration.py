@@ -83,7 +83,7 @@ mock=r'''(() => {
   if(method==='POST'&&redeem){const bot=decodeURIComponent(redeem[1]);window.__m.redeemOps.push([bot,body]);return resp(env({[bot]:env({Results:Object.fromEntries((body.KeysToRedeem||[]).map(key=>[key,'OK']))})}));}
   let inventory=path.match(/^\/Api\/Bot\/([^/]+)\/Inventory$/);
   if(method==='GET'&&inventory){const bot=decodeURIComponent(inventory[1]);window.__m.inventoryReads++;return resp(env({[bot]:env({730:[2,6],753:[6]})}));}
-  let redeemPoints=path.match(/^\/Api\/Bot\/([^/]+)\/RedeemPoints\/(\d+)$/);
+  let redeemPoints=path.match(/^\/Api\/Bot\/([^/]+)\/RedeemPoints\/(\d+)(?:\?.*)?$/);
   if(method==='POST'&&redeemPoints){const bot=decodeURIComponent(redeemPoints[1]);const definition=Number(redeemPoints[2]);window.__m.pointsOps.push([bot,definition,path.includes('forced=true')]);return resp(env({[bot]:env(true)}));}
   let nativeBgr=path.match(/^\/Api\/Bot\/([^/]+)\/GamesToRedeemInBackground$/);
   if(nativeBgr){const bot=decodeURIComponent(nativeBgr[1]);window.__m.bgr[bot]??={UsedKeys:{},UnusedKeys:{}};if(method==='GET'){window.__m.bgrReads++;return resp(env({[bot]:window.__m.bgr[bot]}));}if(method==='POST'){window.__m.bgr[bot].UnusedKeys={...window.__m.bgr[bot].UnusedKeys,...body.GamesToRedeemInBackground};return resp(env({[bot]:body.GamesToRedeemInBackground}));}}
