@@ -30,6 +30,16 @@ require(
     "setup-dotnet must be pinned to the resolved v4 commit SHA",
 )
 require(
+    "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in workflow,
+    "upload-artifact must be pinned to the resolved v4 commit SHA",
+)
+require(
+    "scripts/build/package-release.sh" in workflow
+    and "asf-control-suite-artifacts" in workflow
+    and "CONTROL-SUITE-COMMIT.txt" in workflow,
+    "exact build must package and retain a traceable release candidate",
+)
+require(
     "steps.pins.outputs.asf_commit" in workflow
     and "steps.pins.outputs.playtimegoals_commit" in workflow
     and "steps.pins.outputs.dotnet_sdk_version" in workflow,

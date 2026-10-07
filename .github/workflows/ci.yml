@@ -102,3 +102,22 @@ jobs:
 
       - name: Compile exact pinned release graph
         run: bash scripts/build/build-release.sh "$RUNNER_TEMP/asf-control-suite-build"
+
+      - name: Package and verify canonical release candidate
+        run: |
+          bash scripts/build/package-release.sh \
+            "$RUNNER_TEMP/asf-control-suite-build" \
+            "$RUNNER_TEMP/asf-control-suite-artifacts"
+
+      - name: Record Control Suite source revision
+        run: printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/asf-control-suite-artifacts/CONTROL-SUITE-COMMIT.txt"
+
+      - name: Upload verified release candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: asf-control-suite-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/asf-control-suite-artifacts/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
