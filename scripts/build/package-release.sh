@@ -266,7 +266,8 @@ payload = {
     },
     "install": {
         "extractInto": "<ASF>/",
-        "webPath": "/Control/",
+        "webPath": "/",
+        "canonicalControlPath": "/Control/",
     },
     # Public Control Suite release assets only.
     #
