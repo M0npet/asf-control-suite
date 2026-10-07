@@ -967,6 +967,9 @@
     });
     if (!confirmed) return;
     const next = readNativeConfigEditor(state.nativeGlobalConfig, GLOBAL_PROTECTED_FIELDS, 'global');
+    if (Object.prototype.hasOwnProperty.call(state.nativeGlobalConfig, 'IPCPasswordFormat')) {
+      next.IPCPasswordFormat = state.nativeGlobalConfig.IPCPasswordFormat;
+    }
     await api('/Api/ASF', {
       method:'POST',
       body:JSON.stringify({ GlobalConfig:next }),
