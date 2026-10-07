@@ -216,7 +216,10 @@ with sync_playwright() as pw:
     assert page.evaluate('window.__m.globalConfig.WebProxyPassword') == 'PROXY-SECRET'
 
     page.fill('#nativeCommand','status'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(120)
-    assert page.locator('#nativeCommandOutput').input_value() == 'OK status'
+    native_command_output=page.locator('#nativeCommandOutput').input_value()
+    if native_command_output != 'OK status':
+        print('NATIVE COMMAND DIAGNOSTIC', native_command_output, page.evaluate('window.__m.commands'))
+    assert native_command_output == 'OK status'
     assert page.evaluate('window.__m.commands.at(-1)') == 'status'
 
     page.fill('#nativeBgrKeys','AAAAA-BBBBB-CCCCC | Test key'); page.click('#queueNativeBgr'); page.wait_for_timeout(320)
