@@ -297,6 +297,8 @@ with sync_playwright() as pw:
     assert native_cfg['SteamPassword'] == 'private-password'
     assert native_cfg['PasswordFormat'] == 1
     assert native_cfg['SteamLogin'] == 'private-login'
+    assert 'SteamMasterClanID' not in native_cfg
+    assert native_cfg['s_SteamMasterClanID'] == '103582791429521412'
     assert native_cfg['GamesPlayedWhileIdle'] == [] and native_cfg['CustomGamePlayedWhileIdle'] is None
 
     page.click('[data-native-section="global-config"]'); page.wait_for_selector('#saveNativeGlobalConfig')
