@@ -76,6 +76,26 @@ mock=r'''(() => {
   if(method==='POST'&&path==='/Api/ASF/Encrypt')return resp(env('AES-CIPHERTEXT'));
   if(method==='POST'&&path==='/Api/ASF/Restart'){window.__m.restart++;return resp(env(null));}
   if(method==='POST'&&path==='/Api/ASF/Exit'){window.__m.exit++;return resp(env(null));}
+  if(method==='GET'&&path==='/Api/NLog/File?count=300')return resp(env({TotalLines:2,Content:['line one','line two']}));
+  if(path==='/Api/IPC/Bans'){
+    if(method==='GET')return resp(env(window.__m.bans));
+    if(method==='DELETE'){window.__m.bans=[];return resp(env(null));}
+  }
+  if(path.startsWith('/Api/IPC/Bans/')&&method==='DELETE'){const ip=decodeURIComponent(path.slice('/Api/IPC/Bans/'.length));window.__m.bans=window.__m.bans.filter(x=>x!==ip);return resp(env(null));}
+  if(method==='GET'&&path==='/Api/Plugins?official=true&custom=true')return resp(env(window.__m.plugins));
+  if(method==='POST'&&path==='/Api/Plugins/Update'){window.__m.pluginUpdates.push(body.Plugins||[]);return resp(env('plugins updated'));}
+  let nativeBot=path.match(/^\/Api\/Bot\/([^/]+)\/(TwoFactorAuthentication(?:\/(Token|Confirmations))?|GamesToRedeemInBackground)$/);
+  if(nativeBot){
+    const bot=decodeURIComponent(nativeBot[1]), route=nativeBot[2];
+    if(route==='TwoFactorAuthentication/Token'&&method==='GET')return resp(env({[bot]:{Success:true,Result:window.__m.twofa.token}}));
+    if(route==='TwoFactorAuthentication/Confirmations'&&method==='GET')return resp(env({[bot]:{Success:true,Result:window.__m.twofa.confirmations}}));
+    if(route==='TwoFactorAuthentication/Confirmations'&&method==='POST'){window.__m.twofa.confirmations=[];return resp(env({[bot]:{Success:true,Result:[]}}));}
+    if(route==='TwoFactorAuthentication'&&method==='POST')return resp(env({[bot]:{Success:true}}));
+    if(route==='TwoFactorAuthentication'&&method==='DELETE')return resp(env({[bot]:{Success:true}}));
+    if(route==='GamesToRedeemInBackground'&&method==='GET')return resp(env({[bot]:window.__m.bgr[bot]||{UsedKeys:{},UnusedKeys:{}}}));
+    if(route==='GamesToRedeemInBackground'&&method==='POST'){window.__m.bgr[bot]=window.__m.bgr[bot]||{UsedKeys:{},UnusedKeys:{}};Object.assign(window.__m.bgr[bot].UnusedKeys,body.GamesToRedeemInBackground||{});return resp(env({[bot]:body.GamesToRedeemInBackground||{}}));}
+    if(route==='GamesToRedeemInBackground'&&method==='DELETE'){window.__m.bgr[bot]={UsedKeys:{},UnusedKeys:{}};return resp(env(null));}
+  }
   let m=path.match(/^\/Api\/PlaytimeGoals\/([^/]+)(?:\/(Library|Parental))?$/);
   if(method==='GET'&&m){let bot=decodeURIComponent(m[1]); if(!m[2])return resp(env(ptg(bot))); if(m[2]==='Library'){window.__m.libraryReads++;return resp(env({FamilyMemberCount:4,Games:lib}));} return resp(env({Available:true,Enabled:true,BaseListId:1,BaseEntryCount:2,CustomEntryCount:1,Apps:[{AppId:10,BaseAllowed:true,CustomAllowed:null,EffectiveAllowed:true},{AppId:30,BaseAllowed:false,CustomAllowed:true,EffectiveAllowed:true}]}));}
   m=path.match(/^\/Api\/Bot\/([^/]+)(?:\/(Start|Stop|Pause|Resume|Rename|Input))?$/);
