@@ -43,7 +43,7 @@ mock=r'''(() => {
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
   configs:{main:{Enabled:true,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,qrInputCounts:{}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -66,7 +66,7 @@ mock=r'''(() => {
   if(m){
    let bot=decodeURIComponent(m[1]),act=m[2]||null;
    if(method==='GET'&&!act)return resp(env({[bot]:{BotConfig:window.__m.configs[bot]}}));
-   if(method==='POST'&&act==='Input'){window.__m.inputs.push([bot,body]);const a=window.__m.accounts.find(a=>a.BotName===bot);if(body.Type===8&&body.Value==='Y'){a.RequiredInput=8;a.QrChallengeUrl='https://s.team/q/TEST-ONE';}else a.RequiredInput=0;return resp(env(null));}
+   if(method==='POST'&&act==='Input'){window.__m.inputs.push([bot,body]);const a=window.__m.accounts.find(a=>a.BotName===bot);if(body.Type===8&&body.Value==='Y'){window.__m.qrInputCounts[bot]=(window.__m.qrInputCounts[bot]||0)+1;a.RequiredInput=8;a.QrChallengeUrl=window.__m.qrInputCounts[bot]===1?'https://s.team/q/TEST-ONE':'https://s.team/q/TEST-RETRY';}else a.RequiredInput=0;return resp(env(null));}
    if(method==='POST'&&act==='Rename'){const next=body.NewName; const a=window.__m.accounts.find(x=>x.BotName===bot); if(a)a.BotName=next; window.__m.configs[next]=window.__m.configs[bot]; delete window.__m.configs[bot]; return resp(env(null));}
    if(method==='POST'&&act){window.__m.actions.push([bot,act]);const a=window.__m.accounts.find(x=>x.BotName===bot); if(a){if(act==='Start')a.KeepRunning=true;if(act==='Stop')a.KeepRunning=false;if(act==='Pause')a.FarmerPaused=true;if(act==='Resume')a.FarmerPaused=false;}return resp(env(null));}
    if(method==='POST'&&!act){let cfg=body.BotConfig;window.__m.configs[bot]=cfg;let a=window.__m.accounts.find(x=>x.BotName===bot); if(!a){window.__m.accounts.push({BotName:bot,Nickname:'',SteamId:'0',AvatarHash:null,QrChallengeUrl:null,Enabled:!!cfg.Enabled,KeepRunning:true,Connected:false,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:false,RequiredInput:(!cfg.SteamLogin&&!cfg.SteamPassword)?8:0});} else a.Enabled=!!cfg.Enabled;return resp(env({[bot]:true}));}
@@ -153,13 +153,44 @@ with sync_playwright() as pw:
     created=page.evaluate('window.__m.configs.newbot')
     assert created['SteamPassword']=='AES-CIPHERTEXT' and created['PasswordFormat']==1 and 'PLAINTEXT' not in json.dumps(created)
 
-    # QR onboarding uses a credential-free config, answers native QrCodeLogin with Y and renders locally.
-    page.click('#createModeQr'); page.fill('input[name="botName"]','qrbot'); page.click('#createBotForm button[type="submit"]'); page.wait_for_timeout(900)
+    # QR onboarding stays inside Add account, rotates in place without a full Accounts rerender,
+    # and automatically restarts after a failed Steam QR session/reconnect.
+    page.click('#createModeQr')
+    page.wait_for_selector('#addAccountCard #qrOnboardingPanel')
+    assert 'QR will appear here after account creation.' in page.locator('#qrOnboardingPanel').inner_text()
+    page.fill('input[name="botName"]','qrbot')
+    page.click('#createBotForm button[type="submit"]')
+    page.wait_for_timeout(900)
     qr_cfg=page.evaluate('window.__m.configs.qrbot')
     assert 'SteamLogin' not in qr_cfg and 'SteamPassword' not in qr_cfg
     assert page.evaluate('window.__m.inputs.some(x=>x[0]==="qrbot"&&x[1].Type===8&&x[1].Value==="Y")')
-    page.wait_for_selector('#qrCode canvas, #qrCode img, #qrCode table, #qrCode svg')
-    assert page.locator('.qr-panel').count()==1
+    page.wait_for_selector('#addAccountCard #qrCode canvas, #addAccountCard #qrCode img, #addAccountCard #qrCode table, #addAccountCard #qrCode svg')
+    assert page.locator('#addAccountCard .qr-panel').count()==1
+    assert page.locator('.account-workspace #qrCode').count()==0
+
+    page.evaluate('window.__qrAddCardIdentity=document.querySelector("#addAccountCard")')
+    page.evaluate('window.__m.accounts.find(a=>a.BotName==="qrbot").QrChallengeUrl="https://s.team/q/TEST-TWO"')
+    page.wait_for_timeout(1500)
+    assert page.evaluate('window.__qrAddCardIdentity===document.querySelector("#addAccountCard")')
+    assert page.locator('#addAccountCard #qrCode').get_attribute('data-qr-url') == 'https://s.team/q/TEST-TWO'
+
+    qr_inputs_before=page.evaluate('window.__m.inputs.filter(x=>x[0]==="qrbot"&&x[1].Type===8&&x[1].Value==="Y").length')
+    page.evaluate('''() => {
+      const a=window.__m.accounts.find(a=>a.BotName==="qrbot");
+      a.QrChallengeUrl=null;
+      a.RequiredInput=0;
+      a.Connected=false;
+    }''')
+    page.wait_for_timeout(1400)
+    assert 'Reconnecting to Steam' in page.locator('#qrOnboardingStatus').inner_text()
+    assert page.evaluate('window.__qrAddCardIdentity===document.querySelector("#addAccountCard")')
+
+    page.evaluate('window.__m.accounts.find(a=>a.BotName==="qrbot").RequiredInput=8')
+    page.wait_for_timeout(2700)
+    qr_inputs_after=page.evaluate('window.__m.inputs.filter(x=>x[0]==="qrbot"&&x[1].Type===8&&x[1].Value==="Y").length')
+    assert qr_inputs_after == qr_inputs_before + 1
+    page.wait_for_selector('#addAccountCard #qrCode[data-qr-url="https://s.team/q/TEST-RETRY"]')
+    assert page.evaluate('window.__qrAddCardIdentity===document.querySelector("#addAccountCard")')
 
     # Multi-account switcher keeps human identity separate from BotName and scopes actions by BotName.
     page.locator('[data-switch-bot="main"]').click(); page.wait_for_timeout(120)
@@ -248,6 +279,7 @@ with sync_playwright() as pw:
     ua.click('#nav button[data-view="accounts"]'); ua.wait_for_selector('#createBotForm'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Зареєстровані облікові записи').count() == 1
     assert ua.locator('button',has_text='Створити обліковий запис').count() == 1
+    assert ua.locator('#qrOnboardingPanel',has_text='QR-код з’явиться тут після створення облікового запису.').count() == 1
     ua.click('#nav button[data-view="playtime"]'); ua.wait_for_selector('#goalRows'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Налаштування').count() == 1
     assert ua.locator('button',has_text='Зберегти цілі').count() == 1

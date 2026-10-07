@@ -34,12 +34,13 @@
     rendering: false,
     createMode: 'qr',
     goalSort: 'managed-first',
+    qrOnboardingBot: '',
   };
 
   let lockTimer = null;
   let modalResolver = null;
   let qrPollTimer = null;
-  const qrAcceptedBots = new Set();
+  const qrPromptReady = new Map();
   const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const escapeHtml = (value) => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -246,6 +247,11 @@
     state.accounts = result?.Accounts || [];
     if (state.selectedBot && !state.accounts.some((a) => a.BotName === state.selectedBot)) state.selectedBot = '';
     if (!state.selectedBot && state.accounts.length) state.selectedBot = state.accounts[0].BotName;
+    if (state.qrOnboardingBot && !state.accounts.some((a) => a.BotName === state.qrOnboardingBot)) state.qrOnboardingBot = '';
+    if (!state.qrOnboardingBot) {
+      const qrAccount = state.accounts.find((a) => !a.Connected && Number(a.RequiredInput || 0) === QR_INPUT_TYPE);
+      if (qrAccount) state.qrOnboardingBot = qrAccount.BotName;
+    }
     updateSidebarSummary();
   }
   async function loadDefaults() {
@@ -301,25 +307,44 @@
 
   async function acceptQrPrompt(botName) {
     await api(`/Api/Bot/${encodeURIComponent(botName)}/Input`, { method:'POST', body:JSON.stringify({ Type:QR_INPUT_TYPE, Value:'Y' }) });
-    qrAcceptedBots.add(botName);
+    qrPromptReady.set(botName, false);
+  }
+
+  function qrAccount(botName = state.qrOnboardingBot) {
+    return state.accounts.find((item) => item.BotName === botName) || null;
+  }
+
+  async function maybeAcceptQrPrompt(account) {
+    if (!account || account.Connected || account.QrChallengeUrl) return false;
+    const required = Number(account.RequiredInput || 0);
+    if (required !== QR_INPUT_TYPE) {
+      qrPromptReady.set(account.BotName, true);
+      return false;
+    }
+    if (qrPromptReady.get(account.BotName) === false) return false;
+    qrPromptReady.set(account.BotName, false);
+    try {
+      await acceptQrPrompt(account.BotName);
+      return true;
+    } catch (error) {
+      qrPromptReady.set(account.BotName, true);
+      throw error;
+    }
   }
 
   async function waitForQrChallenge(botName, timeoutMs = 30000) {
     const deadline = Date.now() + timeoutMs;
-    let accepted = qrAcceptedBots.has(botName);
+    qrPromptReady.set(botName, true);
     while (Date.now() < deadline) {
       await loadAccounts();
-      const account = state.accounts.find((item) => item.BotName === botName);
+      const account = qrAccount(botName);
       if (!account) { await sleep(250); continue; }
-      if (account.Connected) return account;
-      if (account.QrChallengeUrl) return account;
+      if (account.Connected || account.QrChallengeUrl) return account;
       const required = Number(account.RequiredInput || 0);
-      if (required === QR_INPUT_TYPE && !accepted) {
-        await acceptQrPrompt(botName);
-        accepted = true;
-      } else if (required > 0 && required !== QR_INPUT_TYPE) {
+      if (required > 0 && required !== QR_INPUT_TYPE) {
         throw new Error(`ASF requested input type ${required} instead of QR login. Open this account to continue.`);
       }
+      await maybeAcceptQrPrompt(account);
       await sleep(350);
     }
     throw new Error('ASF did not provide a QR challenge. QR login is disabled in ASF Headless/Service mode or the login session did not start.');
@@ -342,18 +367,24 @@
     }
     await writeBotConfig(botName, botConfig);
     state.selectedBot = botName;
+    if (mode === 'qr') {
+      state.qrOnboardingBot = botName;
+      qrPromptReady.set(botName, true);
+    }
     await sleep(300);
     await loadAccounts();
     if (mode === 'qr') {
       toast('Account created', `${botName} is waiting for Steam Mobile QR login.`);
+      updateQrOnboardingPanel();
+      scheduleQrRefresh();
       try { await waitForQrChallenge(botName); } catch (error) {
-        await render();
+        updateQrOnboardingPanel();
         throw error;
       }
     } else {
       toast('Account created', `${botName} was written with an ASF-encrypted Steam password.`);
     }
-    form.reset();
+    if (mode !== 'qr') form.reset();
     await loadAccounts();
     await render();
   }
@@ -395,12 +426,35 @@
     }).join('')}</div>`;
   }
 
-  function qrPanel(summary) {
-    if (Number(summary.RequiredInput || 0) !== QR_INPUT_TYPE) return '';
-    if (summary.QrChallengeUrl) {
-      return `<div class="qr-panel section"><div><h4>Scan with Steam Mobile</h4><p>Open the Steam app, scan this QR code and confirm the sign-in. The challenge is rendered locally in this browser and automatically refreshes when ASF rotates it.</p></div><div id="qrCode" data-qr-url="${escapeHtml(summary.QrChallengeUrl)}"></div></div>`;
+  function qrOnboardingMarkup() {
+    const account = qrAccount();
+    if (!account) {
+      return `<div id="qrOnboardingPanel" class="qr-panel qr-placeholder" data-qr-signature="idle"><div><h4>QR login</h4><p id="qrOnboardingStatus">QR will appear here after account creation.</p></div><div class="qr-placeholder-box" aria-hidden="true">QR</div></div>`;
     }
-    return `<div class="qr-panel section"><div><h4>QR login</h4><p>ASF is waiting for permission to begin its native QR session.</p><button id="beginQrLogin" class="secondary" type="button">Start QR login</button></div></div>`;
+    if (account.Connected) {
+      return `<div id="qrOnboardingPanel" class="qr-panel qr-success" data-qr-signature="connected:${escapeHtml(account.BotName)}"><div><h4>Steam account connected</h4><p id="qrOnboardingStatus">${escapeHtml(accountDisplayName(account))} is connected. You can add another account when ready.</p></div><div class="qr-status-mark" aria-hidden="true">✓</div></div>`;
+    }
+    if (account.QrChallengeUrl) {
+      return `<div id="qrOnboardingPanel" class="qr-panel" data-qr-signature="challenge:${escapeHtml(account.QrChallengeUrl)}"><div><h4>Scan with Steam Mobile</h4><p id="qrOnboardingStatus">Open the Steam app, scan this QR code and confirm the sign-in. The challenge is rendered locally in this browser and automatically refreshes when ASF rotates it.</p></div><div id="qrCode" data-qr-url="${escapeHtml(account.QrChallengeUrl)}"></div></div>`;
+    }
+    const required = Number(account.RequiredInput || 0);
+    const status = required === QR_INPUT_TYPE
+      ? 'Starting Steam QR session…'
+      : 'Reconnecting to Steam…';
+    return `<div id="qrOnboardingPanel" class="qr-panel qr-placeholder" data-qr-signature="waiting:${required}"><div><h4>QR login</h4><p id="qrOnboardingStatus">${status}</p></div><div class="qr-placeholder-box" aria-hidden="true">QR</div></div>`;
+  }
+
+  function updateQrOnboardingPanel() {
+    const panel = $('qrOnboardingPanel');
+    if (!panel) return;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = qrOnboardingMarkup();
+    const next = wrapper.firstElementChild;
+    if (!next) return;
+    if (panel.dataset.qrSignature === next.dataset.qrSignature) return;
+    panel.replaceWith(next);
+    window.ControlI18n?.apply?.(next);
+    renderQrCode();
   }
 
   async function renderAccountWorkspace() {
@@ -410,7 +464,7 @@
     const requiredInput = Number(summary.RequiredInput || 0);
     const inputForm = requiredInput > 0 && requiredInput !== QR_INPUT_TYPE
       ? `<div class="notice warn section"><strong>Action required.</strong> ASF is waiting for interactive input type ${requiredInput}.</div><form id="requiredInputForm" class="section" data-input-type="${requiredInput}"><label for="requiredInputValue">Steam / ASF input</label><div class="inline-form"><input id="requiredInputValue" autocomplete="one-time-code" placeholder="Enter requested value" required><button type="submit">Send securely</button></div></form>`
-      : requiredInput === QR_INPUT_TYPE ? qrPanel(summary) : '<div class="notice good section">No interactive input is required from this account.</div>';
+      : requiredInput === QR_INPUT_TYPE ? '<div class="notice section">QR sign-in is active in the Add account card above.</div>' : '<div class="notice good section">No interactive input is required from this account.</div>';
     const [statusLabel, statusTone] = accountStatus(summary);
     return `<div class="card account-workspace section"><div class="card-head"><div>${accountIdentityMarkup(summary, { large:true })}<div class="workspace-title"><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span><span class="workspace-steamid">Steam ${escapeHtml(summary.SteamId || 'unknown')}</span></div></div><div class="actions"><button data-act="goals" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">Open goals</button><button data-act="${summary.KeepRunning ? 'stop' : 'start'}" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">${summary.KeepRunning ? 'Stop' : 'Start'}</button><button data-act="${summary.FarmerPaused ? 'resume' : 'pause'}" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">${summary.FarmerPaused ? 'Resume' : 'Pause'}</button><button data-act="rename" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">Rename ASF ID</button><button id="toggleConfigEnabled" class="secondary">${summary.Enabled ? 'Disable config' : 'Enable config'}</button></div></div><div class="grid compact-grid"><div class="metric"><span>Keep running</span><strong>${yesNo(summary.KeepRunning)}</strong></div><div class="metric"><span>Playing</span><strong>${summary.IsPlayingPossible ? 'possible' : 'blocked'}</strong></div><div class="metric"><span>CardsFarmer</span><strong>${summary.Farming ? 'active' : summary.FarmerPaused ? 'paused' : 'idle'}</strong></div><div class="metric"><span>Authenticator</span><strong>${yesNo(summary.HasMobileAuthenticator)}</strong></div></div>${inputForm}</div>`;
   }
@@ -433,7 +487,7 @@
     const switcher = state.accounts.length
       ? `<div class="account-switcher section" aria-label="Steam accounts">${state.accounts.map((account) => `<button type="button" data-switch-bot="${escapeHtml(account.BotName)}" class="account-chip ${account.BotName === state.selectedBot ? 'active' : ''}">${accountIdentityMarkup(account)}</button>`).join('')}<button type="button" id="focusAddAccount" class="account-chip add-account">+ Add account</button></div>`
       : '';
-    return `${switcher}<div class="two-col"><div class="card"><div class="card-head"><div><h3>Registered accounts</h3><p>${state.accounts.length} Steam account${state.accounts.length === 1 ? '' : 's'} managed by ASF.</p></div></div>${accountRows()}</div><div class="card" id="addAccountCard"><div class="card-head"><div><h3>Add account</h3><p>Use Steam Mobile QR login or encrypted Steam credentials through native ASF APIs.</p></div></div><div class="auth-mode-switch" role="group" aria-label="Sign-in method"><button id="createModeQr" type="button" class="secondary ${state.createMode === 'qr' ? 'active' : ''}">QR code</button><button id="createModePassword" type="button" class="secondary ${state.createMode === 'password' ? 'active' : ''}">Login / password</button></div><form id="createBotForm" data-mode="${escapeHtml(state.createMode)}"><label for="createBotName">Internal ASF bot ID <span class="muted">(optional)</span></label><input id="createBotName" name="botName" autocomplete="off" placeholder="${escapeHtml(suggestedBotName)}"><span class="field-help">Technical identifier only. The UI shows the Steam persona name as the primary account name.</span><div id="createQrFields" class="auth-mode-panel ${state.createMode === 'qr' ? '' : 'hidden'}"><div class="notice good">No Steam password is sent or stored for QR login. ASF creates the native Steam QR challenge and this browser renders it locally.</div></div><div id="createPasswordFields" class="auth-mode-panel ${state.createMode === 'password' ? '' : 'hidden'}"><label for="createSteamLogin">Steam login</label><input id="createSteamLogin" name="steamLogin" autocomplete="username" ${state.createMode === 'password' ? 'required' : ''}><label for="createSteamPassword">Steam password</label><input id="createSteamPassword" name="steamPassword" type="password" autocomplete="new-password" ${state.createMode === 'password' ? 'required' : ''}><span class="field-help">The password is AES-encrypted by ASF before BotConfig is written.</span></div><div class="toolbar section"><button type="submit">Create account</button></div></form><div class="notice section">AccountManager never receives or persists the Steam password. QR onboarding does not require one.</div></div></div>${workspace}<details class="card section"><summary><strong>Defaults for new accounts</strong> <span class="pill neutral">advanced</span></summary><p><small>Credential-like keys are recursively stripped server-side. Maximum payload: ${Math.round(Number(defaults?.MaxPayloadChars || 65536) / 1024)} KiB.</small></p><textarea id="defaultsEditor" rows="12" aria-label="Defaults JSON">${escapeHtml(JSON.stringify(state.defaults, null, 2))}</textarea><div class="toolbar section"><button id="saveDefaults">Validate & save defaults</button></div><div class="defaults-note">Blocked keys: ${escapeHtml((defaults?.ForbiddenKeys || []).join(', ') || 'credentials and security fields')}</div></details>`;
+    return `${switcher}<div class="two-col"><div class="card"><div class="card-head"><div><h3>Registered accounts</h3><p>${state.accounts.length} Steam account${state.accounts.length === 1 ? '' : 's'} managed by ASF.</p></div></div>${accountRows()}</div><div class="card" id="addAccountCard"><div class="card-head"><div><h3>Add account</h3><p>Use Steam Mobile QR login or encrypted Steam credentials through native ASF APIs.</p></div></div><div class="auth-mode-switch" role="group" aria-label="Sign-in method"><button id="createModeQr" type="button" class="secondary ${state.createMode === 'qr' ? 'active' : ''}">QR code</button><button id="createModePassword" type="button" class="secondary ${state.createMode === 'password' ? 'active' : ''}">Login / password</button></div><form id="createBotForm" data-mode="${escapeHtml(state.createMode)}"><label for="createBotName">Internal ASF bot ID <span class="muted">(optional)</span></label><input id="createBotName" name="botName" autocomplete="off" placeholder="${escapeHtml(suggestedBotName)}"><span class="field-help">Technical identifier only. The UI shows the Steam persona name as the primary account name.</span><div id="createQrFields" class="auth-mode-panel ${state.createMode === 'qr' ? '' : 'hidden'}"><div class="notice good">No Steam password is sent or stored for QR login. ASF creates the native Steam QR challenge and this browser renders it locally.</div><div class="section">${qrOnboardingMarkup()}</div></div><div id="createPasswordFields" class="auth-mode-panel ${state.createMode === 'password' ? '' : 'hidden'}"><label for="createSteamLogin">Steam login</label><input id="createSteamLogin" name="steamLogin" autocomplete="username" ${state.createMode === 'password' ? 'required' : ''}><label for="createSteamPassword">Steam password</label><input id="createSteamPassword" name="steamPassword" type="password" autocomplete="new-password" ${state.createMode === 'password' ? 'required' : ''}><span class="field-help">The password is AES-encrypted by ASF before BotConfig is written.</span></div><div class="toolbar section"><button type="submit">Create account</button></div></form><div class="notice section">AccountManager never receives or persists the Steam password. QR onboarding does not require one.</div></div></div>${workspace}<details class="card section"><summary><strong>Defaults for new accounts</strong> <span class="pill neutral">advanced</span></summary><p><small>Credential-like keys are recursively stripped server-side. Maximum payload: ${Math.round(Number(defaults?.MaxPayloadChars || 65536) / 1024)} KiB.</small></p><textarea id="defaultsEditor" rows="12" aria-label="Defaults JSON">${escapeHtml(JSON.stringify(state.defaults, null, 2))}</textarea><div class="toolbar section"><button id="saveDefaults">Validate & save defaults</button></div><div class="defaults-note">Blocked keys: ${escapeHtml((defaults?.ForbiddenKeys || []).join(', ') || 'credentials and security fields')}</div></details>`;
   }
 
   function setCreateMode(mode) {
@@ -593,12 +647,24 @@
 
   function scheduleQrRefresh() {
     if (qrPollTimer) { clearTimeout(qrPollTimer); qrPollTimer = null; }
-    if (state.view !== 'accounts' || !state.selectedBot) return;
-    const account = state.accounts.find((item) => item.BotName === state.selectedBot);
-    if (!account || account.Connected || Number(account.RequiredInput || 0) !== QR_INPUT_TYPE) return;
+    if (state.view !== 'accounts' || !state.qrOnboardingBot) return;
+    const account = qrAccount();
+    if (!account || account.Connected) {
+      updateQrOnboardingPanel();
+      return;
+    }
     qrPollTimer = setTimeout(async () => {
       qrPollTimer = null;
-      try { await loadAccounts(); await render(); } catch (_) { /* regular refresh/error UI will surface failures */ }
+      try {
+        await loadAccounts();
+        const latest = qrAccount();
+        if (latest && !latest.Connected) await maybeAcceptQrPrompt(latest);
+        updateQrOnboardingPanel();
+        scheduleQrRefresh();
+      } catch (_) {
+        updateQrOnboardingPanel();
+        scheduleQrRefresh();
+      }
     }, QR_POLL_MS);
   }
 
@@ -709,7 +775,6 @@
     $('createModePassword')?.addEventListener('click', () => setCreateMode('password'));
     document.querySelectorAll('[data-switch-bot]').forEach((button) => button.addEventListener('click', async () => { state.selectedBot = button.dataset.switchBot; await render(); }));
     $('focusAddAccount')?.addEventListener('click', () => { $('addAccountCard')?.scrollIntoView({ behavior:'smooth', block:'start' }); $('createBotName')?.focus(); });
-    $('beginQrLogin')?.addEventListener('click', async () => { const button = $('beginQrLogin'); button.disabled = true; try { await acceptQrPrompt(state.selectedBot); await sleep(250); await loadAccounts(); await render(); } catch (error) { toast('QR login failed', error.message, 'bad', 7000); } finally { if (button?.isConnected) button.disabled = false; } });
     const requiredInputForm = $('requiredInputForm');
     if (requiredInputForm) requiredInputForm.addEventListener('submit', async (event) => { event.preventDefault(); const button = requiredInputForm.querySelector('button[type="submit"]'); button.disabled = true; try { await sendRequiredInput(state.selectedBot, Number(requiredInputForm.dataset.inputType), $('requiredInputValue').value); } catch (error) { toast('Input failed', error.message, 'bad'); } finally { button.disabled = false; } });
     const toggleEnabled = $('toggleConfigEnabled');

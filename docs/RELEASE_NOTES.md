@@ -58,3 +58,6 @@ RC7 field fix: removed filesystem probing from ControlCenter entirely after the 
 
 
 RC8 field fix: phone deployments now enforce ASF `Headless=true` transactionally before the restarted runtime becomes healthy. The live QR regression showed that an interactive tmux launch lets the first bot block inside console `GetUserInput()`, so later bots can accept `/Api/Bot/.../Input` yet never advance to `LoginWithQrCode()` or publish `QrChallengeURL`. The installer now backs up the complete pre-install `config/ASF.json`, preserves all existing global settings while setting only `Headless`, restores the original file byte-for-byte on automatic or manual rollback, handles an initially absent global config, and the phone verification gate requires the headless invariant.
+
+
+RC9 field fix: QR onboarding now stays inside the Add account card and updates in place instead of rerendering the entire Accounts view every poll. The browser keeps the retry lifecycle alive across failed Steam QR sessions and reconnects, re-accepts a fresh native QrCodeLogin prompt when ASF asks again, and replaces only the QR/status region when the Steam challenge actually changes. Ukrainian copy covers the idle, starting, reconnecting and connected states.
