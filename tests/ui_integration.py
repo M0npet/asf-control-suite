@@ -44,7 +44,7 @@ mock=r'''(() => {
   defaults:{OnlineStatus:1},
   configs:{main:{Enabled:true,OnlineStatus:1,SteamTradeToken:'SECRET-TOKEN',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
   inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},
-  globalConfig:{Headless:true,IPC:true,UpdateChannel:0},
+  globalConfig:{Headless:true,IPC:true,UpdateChannel:0,IPCPassword:'GLOBAL-SECRET',LicenseID:'11111111-2222-3333-4444-555555555555',WebProxyPassword:'PROXY-SECRET'},
   plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'ControlWeb',Version:'1.0.0.0'}],
   bans:['203.0.113.5'],
   bgr:{main:{UsedKeys:{},UnusedKeys:{}}},
@@ -58,7 +58,7 @@ mock=r'''(() => {
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
   const body=opt.body?JSON.parse(opt.body):null;
   if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192,GlobalConfig:window.__m.globalConfig}));
-  if(method==='POST'&&path==='/Api/ASF'){window.__m.globalConfig=body.GlobalConfig;return resp(env(null));}
+  if(method==='POST'&&path==='/Api/ASF'){const old=window.__m.globalConfig;window.__m.globalConfig={...body.GlobalConfig,IPCPassword:old.IPCPassword,LicenseID:old.LicenseID,WebProxyPassword:old.WebProxyPassword};return resp(env(null));}
   if(method==='GET'&&path==='/Api/AccountManager'){window.__m.accountReads++;return resp(env({Accounts:window.__m.accounts}));}
   if(method==='GET'&&path==='/Api/AccountManager/Defaults')return resp(env({Defaults:window.__m.defaults,ForbiddenKeys:['SteamPassword','SteamLogin'],MaxPayloadChars:65536}));
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
@@ -200,11 +200,20 @@ with sync_playwright() as pw:
     assert page.evaluate('window.__m.configs.main.GamesPlayedWhileIdle') == []
     assert page.evaluate('window.__m.configs.main.CustomGamePlayedWhileIdle') is None
 
-    global_cfg=json.loads(page.locator('#nativeGlobalConfig').input_value())
+    global_editor=page.locator('#nativeGlobalConfig').input_value()
+    assert 'GLOBAL-SECRET' not in global_editor
+    assert 'PROXY-SECRET' not in global_editor
+    assert 'IPCPassword' not in global_editor
+    assert 'LicenseID' not in global_editor
+    assert 'WebProxyPassword' not in global_editor
+    global_cfg=json.loads(global_editor)
     global_cfg['FarmingDelay']=17
     page.fill('#nativeGlobalConfig',json.dumps(global_cfg))
     page.click('#saveNativeGlobalConfig'); page.wait_for_timeout(320)
     assert page.evaluate('window.__m.globalConfig.FarmingDelay') == 17
+    assert page.evaluate('window.__m.globalConfig.IPCPassword') == 'GLOBAL-SECRET'
+    assert page.evaluate('window.__m.globalConfig.LicenseID') == '11111111-2222-3333-4444-555555555555'
+    assert page.evaluate('window.__m.globalConfig.WebProxyPassword') == 'PROXY-SECRET'
 
     page.fill('#nativeCommand','status'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(120)
     assert page.locator('#nativeCommandOutput').input_value() == 'OK status'
