@@ -63,7 +63,7 @@
     const initial = JSON.stringify(value === undefined ? field.defaultValue : value);
     const common = `data-native-field="${escapeHtml(field.name)}" data-native-kind="${escapeHtml(field.kind)}" data-native-initial="${escapeHtml(initial)}"`;
     const label = `<label for="${escapeHtml(id)}">${escapeHtml(field.name)}</label>`;
-    const help = `<small class="field-help">${escapeHtml(field.fieldType)}${SECRET.has(field.name) ? ' Â· blank keeps the existing secret' : ''}</small>`;
+    const help = `<small class="field-help">${escapeHtml(field.fieldType)}${SECRET.has(field.name) ? ' · blank keeps the existing secret' : ''}</small>`;
     let control = '';
     if (field.kind === 'boolean') {
       control = `<label class="switch-row"><input id="${escapeHtml(id)}" type="checkbox" ${value ?? field.defaultValue ? 'checked' : ''} ${common}><span>Enabled</span></label>`;
@@ -72,7 +72,7 @@
       control = `<select id="${escapeHtml(id)}" ${common}>${field.values.map(([name,v]) => `<option value="${v}" ${v === selected ? 'selected' : ''}>${escapeHtml(name)} (${v})</option>`).join('')}</select>`;
     } else if (field.kind === 'flags') {
       const selected = Number(value ?? field.defaultValue ?? 0);
-      control = `<div id="${escapeHtml(id)}" class="native-flags" ${common} data-native-flags="1">${field.values.filter(([,v]) => v !== 0).map(([name,v]) => `<label><input type="checkbox" data-native-flag-value="${v}" ${(selected & v) === v ? 'checked' : ''}><span>${escapeHtml(name)}</span></label>`).join('')}<small>numeric value: <span data-native-flag-total>${selected}</spall></div>`;
+      control = `<div id="${escapeHtml(id)}" class="native-flags" ${common} data-native-flags="1">${field.values.filter(([,v]) => v !== 0).map(([name,v]) => `<label><input type="checkbox" data-native-flag-value="${v}" ${(selected & v) === v ? 'checked' : ''}><span>${escapeHtml(name)}</span></label>`).join('')}<small>numeric value: <span data-native-flag-total>${selected}</span></div>`;
     } else if (field.kind === 'number') {
       control = `<input id="${escapeHtml(id)}" type="number" step="1" value="${escapeHtml(displayValue(field,value))}" ${common}>`;
     } else if (field.kind === 'json') {
