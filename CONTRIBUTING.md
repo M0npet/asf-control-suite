@@ -101,17 +101,18 @@ Changes affecting compilation, dependencies, generated metadata, packaging or re
 
 Do not manually assemble public ZIP files from arbitrary DLLs.
 
-The canonical packaging pipeline must remain the source of:
+The canonical packaging pipeline must remain the source of the versioned artifacts derived from `release/pins.env`:
 
-    ASF-Control-Suite-v1.0.0.zip
-    AccountManager-v1.0.0.zip
-    ControlCenter-v1.0.0.zip
-    ControlWeb-v1.0.0.zip
-    PlaytimeGoals-v0.5.1.zip
+    ASF-Control-Suite-v<CONTROL_SUITE_VERSION>.zip
+    AccountManager-v<CONTROL_SUITE_VERSION>.zip
+    ControlCenter-v<CONTROL_SUITE_VERSION>.zip
+    ControlWeb-v<CONTROL_SUITE_VERSION>.zip
+    PlaytimeGoals-v<PLAYTIMEGOALS_VERSION without trailing .0>.zip
     CONTROL-SUITE-METADATA.json
     SHA256SUMS
+    asf-control-suite-v<CONTROL_SUITE_VERSION>-dist.tar.gz
 
-Bundle and individual plugin archives must continue to originate from the same canonical staging tree.
+Bundle, individual plugin archives and the phone candidate must continue to originate from the same exact CI build. Stable publication uses `.github/workflows/publish-release.yml` and must reference the exact retained CI artifact plus the SHA-256 of the phone candidate that passed live acceptance.
 
 ---
 

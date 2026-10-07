@@ -81,11 +81,11 @@ No second daemon. No arbitrary shell API. No separate credential database.
 
 ## Installation
 
-ASF Control Suite **v1.0.0** is published as the first stable release.
+ASF Control Suite **v1.0.0** is the current stable release.
 
-Download the verified release from [GitHub Releases](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
-For installation, checksum verification, pinned-source builds and rollback,
-see the [installation guide](docs/installation/manual.md).
+Download the verified stable release from [GitHub Releases](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
+The `main` branch now targets the **v1.1.0 candidate** with expanded native ASF administration; it is not a stable release until its exact phone candidate passes field acceptance.
+For installation, checksum verification, pinned-source builds and rollback, see the [installation guide](docs/installation/manual.md).
 
 ## Highlights
 
@@ -103,8 +103,8 @@ The canonical source of truth is [`release/pins.env`](release/pins.env).
 
 | Component | Version |
 | --- | --- |
-| ASF Control Suite | **1.0.0** |
-| Control modules | **1.0.0.0** |
+| ASF Control Suite | **1.1.0 candidate** |
+| Control modules | **1.1.0.0** |
 | ArchiSteamFarm | **6.3.10.3** |
 | PlaytimeGoals | **0.5.2.0** |
 | .NET SDK | **10.0.400** |
@@ -121,10 +121,11 @@ Pinned revisions:
 Stable releases are published only from provenance-verified artifacts tied
 to an exact Control Suite commit and the canonical dependency pins.
 
-Release **v1.0.0** is pinned to commit
+Stable release **v1.0.0** is pinned to commit
 `15314163bfccd26207fe9c1e3a8504727fea2910`. The release pipeline verifies
-checksums and byte identity before publication. Standalone PlaytimeGoals
-release ownership remains separate.
+checksums and byte identity before publication.
+
+The current `main` branch is versioned separately as the **v1.1.0 candidate** so development builds can never collide with the published v1.0.0 provenance. Standalone PlaytimeGoals release ownership remains separate.
 
 ## Security
 
@@ -176,6 +177,7 @@ The suite covers:
 - [Function matrix](docs/FUNCTION_MATRIX.md)
 - [Release notes](docs/RELEASE_NOTES.md)
 - [Test report](docs/TEST_REPORT.md)
+- [v1.1 live acceptance](docs/V1_1_LIVE_ACCEPTANCE.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 - [License](LICENSE)

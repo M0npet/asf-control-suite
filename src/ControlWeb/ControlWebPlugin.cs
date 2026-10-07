@@ -14,7 +14,7 @@ internal sealed class ControlWebPlugin : IPlugin, IWebInterface {
 
     public Version Version =>
         typeof(ControlWebPlugin).Assembly.GetName().Version
-        ?? new Version(1, 0, 0, 0);
+        ?? new Version(1, 1, 0, 0);
 
     public string PhysicalPath => "www";
 

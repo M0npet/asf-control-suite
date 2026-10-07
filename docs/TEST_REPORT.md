@@ -1,6 +1,6 @@
-# ASF Control Suite 1.0 — sandbox test report
+# ASF Control Suite verification report — v1.0 stable / v1.1 candidate
 
-Date: 2026-10-05
+Updated: 2026-10-07
 
 ## Passed
 
@@ -44,11 +44,23 @@ Date: 2026-10-05
 
 Screenshots produced by the Chromium suite are in `docs/screenshots/`.
 
-## Not claimable inside this sandbox
+## Exact build and release verification
 
-The exact C# compile against ASF 6.3.10.3 has now passed with .NET SDK 10.0.400. The release pipeline requires the exact SDK, builds all plugin projects with warnings as errors, creates deterministic native ASF ZIP artifacts and runs release provenance verification before declaring the release ready.
+The exact C# compile against ASF 6.3.10.3 passes with .NET SDK 10.0.400. The release pipeline requires the exact SDK, builds all plugin projects with warnings as errors, creates deterministic native ASF ZIP artifacts and runs release provenance verification.
 
-Real Steam/Family/Family View behavior is intentionally reserved for the live post-install test in `FIELD_TEST.md`.
+The v1.0.0 candidate was additionally verified on the Mi Max 2 and published from the same deterministic CI artifact. Published provenance is pinned to Control Suite commit `15314163bfccd26207fe9c1e3a8504727fea2910`.
+
+Final live acceptance confirmed:
+
+- 72-second finite PlaytimeGoals scheduler target: PASS.
+- PlaytimeGoals cleanup after completion: PASS.
+- Steam Invisible persona configuration: PASS.
+- Cold restart persistence/autologin: PASS.
+- Control Suite as the default root UI: PASS.
+- QR onboarding lifecycle: PASS.
+- Transactional install, backup, verification and rollback path: PASS.
+
+The native-ASF parity work added after v1.0.0 is regression-tested in CI but must not be described as part of the already-published v1.0.0 binary until a new candidate is field-tested and released.
 
 
 ## RC2 field regression
@@ -64,6 +76,9 @@ RC4 regression: a real-phone RC3 deployment correctly rolled back when IPC start
 - ControlCenter contains no direct `System.IO`, `Path`, `Directory`, or `DriveInfo` dependency.
 - Storage fields remain in the API contract but report unavailable/null, so the existing UI unavailable-storage path is exercised without risking JIT-time missing-method failures.
 
-## Accounts v2 live gates
+## Post-v1.0.0 live gate
 
-Not claimable until the next exact phone build/install: real Steam Mobile QR approval, live challenge rotation, Steam persona/avatar population, and two-real-account action/Playtime scoping. RC7 remains the known-good live baseline until that candidate passes the transactional health gate.
+The exact v1.1 field procedure is defined in [`V1_1_LIVE_ACCEPTANCE.md`](V1_1_LIVE_ACCEPTANCE.md). A green CI run is necessary but not sufficient for a stable v1.1 release.
+
+
+The v1.0.0 Accounts/QR path has completed live acceptance. New native-administration surfaces introduced after v1.0.0 remain gated from the next stable release until their exact phone candidate passes the same transactional install and live smoke process.

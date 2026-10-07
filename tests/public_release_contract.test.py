@@ -36,12 +36,12 @@ def require(
 
 
 # ------------------------------------------------------------
-# Phase 10 scope:
-# public source/documentation readiness only.
+# Public source/documentation release contract.
 #
-# CI, tags, GitHub Releases and publication automation belong
-# to the later GitHub publication phase after security + live
-# field verification.
+# v1.0.0 has passed final live verification and is published.
+# main may target a newer candidate, but public docs must keep
+# stable provenance explicit while current build artifact names
+# are derived from release/pins.env.
 # ------------------------------------------------------------
 
 for relative in (
@@ -51,19 +51,48 @@ for relative in (
     "docs/installation/manual.md",
     "docs/architecture/README.md",
     "docs/development/README.md",
+    ".github/workflows/publish-release.yml",
 ):
     read(relative)
 
+for token, reason in (
+    ("workflow_dispatch:", "manual publication gate"),
+    ("accepted_phone_sha256:", "live-accepted candidate checksum input"),
+    ("CONTROL-SUITE-COMMIT.txt", "exact source provenance check"),
+    ("sha256sum -c SHA256SUMS", "artifact checksum verification"),
+    ("asf-control-suite-$TARGET_SHA", "artifact name bound to exact source commit"),
+    ("jq -r .expired", "expired artifact rejection"),
+    ("git/ref/tags/$RELEASE_TAG", "pre-existing tag reuse guard"),
+    ("cancel-in-progress: false", "release publication serialization"),
+    ("Live-accepted phone SHA-256", "release-note provenance record"),
+    ("refusing to mutate it", "existing-release mutation guard"),
+):
+    require(
+        ".github/workflows/publish-release.yml",
+        token,
+        reason,
+    )
 
-# README must describe the current unpublished development state.
+require(
+    ".github/workflows/ci.yml",
+    "retention-days: 30",
+    "live-acceptance artifact retention",
+)
+
+
+# README must describe both the published stable state and the current main candidate.
 for token, reason in (
     (
-        "A public release is intentionally withheld",
-        "deferred public release notice",
+        "releases/tag/v1.0.0",
+        "published v1.0.0 release link",
     ),
     (
         "| PlaytimeGoals | **0.5.2.0** |",
         "current PlaytimeGoals compatibility version",
+    ),
+    (
+        "v1.1.0 candidate",
+        "current unreleased candidate identity",
     ),
     (
         "release/pins.env",
@@ -76,6 +105,10 @@ for token, reason in (
     (
         "page memory",
         "RAM-only IPC password model",
+    ),
+    (
+        "15314163bfccd26207fe9c1e3a8504727fea2910",
+        "published v1.0.0 provenance commit",
     ),
 ):
     require(
@@ -128,29 +161,32 @@ for key, label in (
 # release pipeline and native ZIP layout.
 manual = "docs/installation/manual.md"
 
+suite_version = pins.get("CONTROL_SUITE_VERSION", "")
+playtime_version = pins.get("PLAYTIMEGOALS_VERSION", "").removesuffix(".0")
+
 for token, reason in (
     (
         "scripts/build/make-release.sh",
         "current release builder",
     ),
     (
-        "ASF-Control-Suite-v1.0.0.zip",
+        f"ASF-Control-Suite-v{suite_version}.zip",
         "bundle ZIP",
     ),
     (
-        "AccountManager-v1.0.0.zip",
+        f"AccountManager-v{suite_version}.zip",
         "AccountManager ZIP",
     ),
     (
-        "ControlCenter-v1.0.0.zip",
+        f"ControlCenter-v{suite_version}.zip",
         "ControlCenter ZIP",
     ),
     (
-        "ControlWeb-v1.0.0.zip",
+        f"ControlWeb-v{suite_version}.zip",
         "ControlWeb ZIP",
     ),
     (
-        "PlaytimeGoals-v0.5.2.zip",
+        f"PlaytimeGoals-v{playtime_version}.zip",
         "PlaytimeGoals ZIP",
     ),
     (

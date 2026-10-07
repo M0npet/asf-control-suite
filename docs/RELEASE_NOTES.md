@@ -1,3 +1,26 @@
+# ASF Control Suite 1.1.0 — candidate notes
+
+The `main` branch now targets **v1.1.0**. This candidate is not a stable release until the exact generated phone artifact passes the same live acceptance process used for v1.0.0.
+
+## Native ASF parity
+
+- Added a first-class Native ASF workspace for BotConfig/GlobalConfig administration, commands, 2FA, IPC bans, plugin inventory, hashing/encryption utilities and safe bot-config copying.
+- Background Redeemer is intentionally write-only in Control Suite so stored/redeemed Steam key contents are not fetched into the browser.
+- ASF log history uses the native authenticated `/Api/NLog/File` endpoint; ControlWeb adds no filesystem-reading proxy/controller.
+- Security-controlled BotConfig fields are hidden from the raw editor. `SteamTradeToken` is explicitly redacted from the browser editor, preserved on normal saves and stripped from copied bot configs.
+- Raw BotConfig and mass-edit writes keep `GamesPlayedWhileIdle` empty while PlaytimeGoals is enabled, preserving a single GamesPlayed owner.
+- Mass BotConfig edits snapshot originals and roll back already-applied bots if a later write fails.
+- Fixed a delayed Steam-persona save rerender that could overwrite a freshly edited Native ASF textarea.
+- Toast notifications no longer intercept pointer input for underlying controls; only the toast close button is interactive.
+- Pinned deployment policy is enforced inside the native workspace: GlobalConfig saves keep ASF auto-update disabled, while generic `UPDATE`, `RESTART` and `EXIT` commands are blocked so process/update actions cannot bypass dedicated safety controls.
+- CI locks these boundaries with browser integration, static contracts, exact pinned compilation and CodeQL.
+
+## Release boundary
+
+Stable **v1.0.0** remains pinned to Control Suite commit `15314163bfccd26207fe9c1e3a8504727fea2910`. v1.1.0 uses distinct package/version identifiers so development artifacts cannot collide with that published provenance.
+
+---
+
 # ASF Control Suite 1.0 — release notes
 
 Control Suite 1.0 is the first polished release of the modular ASF control plane.

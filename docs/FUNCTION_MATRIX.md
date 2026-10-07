@@ -1,4 +1,4 @@
-# Final function matrix — v1.0
+# Function matrix — v1.1.0 candidate
 
 ## PlaytimeGoals 0.5.2.0
 
@@ -15,7 +15,7 @@
 - Optional Family View temporary allow policy with exact ABSENT/ALLOW/DENY restore and crash recovery journal.
 - Status, Library and Parental APIs.
 
-## AccountManager 1.0.0.0
+## AccountManager 1.1.0.0
 
 - Cross-account summary.
 - Global defaults for newly-created ASF bots.
@@ -24,15 +24,21 @@
 - Recursive removal of credentials, passwords, tokens, secrets and security-controlled fields.
 - Does not own bot lifecycle or Steam credentials; lifecycle remains native ASF.
 
-## ControlWeb 1.0.0.0
+## ControlWeb 1.1.0.0
 
 - Steam persona/avatar primary identity with ASF BotName retained as the technical ID.
 - First-class multi-account switcher; lifecycle/config/Playtime actions remain explicitly scoped by BotName.
 - Native Steam Mobile QR onboarding through ASF `QrCodeLogin` and `QrChallengeURL`; QR is rendered locally with no third-party QR service.
 - Login/password onboarding remains available through native ASF encryption.
 - PlaytimeGoals sorting: managed, numeric-aware name, Steam hours, target, AppID, own/family priority; sorting is client-side and preserves unsaved edits.
-- Stock ASF-ui remains directly reachable for the complete native ASF surface; ControlWeb links per-account config/2FA/BGR plus Bots, Commands, Log, ASF config, Mass editor, Plugins, Releases and ASF-ui settings.
+- Standard ASF administration is first-class inside ControlWeb: BotConfig and GlobalConfig editors, command console, write-only Background Redeemer queue, 2FA token generation, IPC bans, mass BotConfig editor, plugin inventory and authenticated native NLog history.
+- Security-controlled BotConfig values are not rendered by the editor; SteamTradeToken is explicitly redacted and preserved on normal saves but stripped from copied bot configs.
+- Native BotConfig and mass edits keep ASF idle-game fields empty whenever PlaytimeGoals is enabled, preserving a single GamesPlayed owner.
+- Native log history uses ASF's own /Api/NLog/File endpoint; ControlWeb adds no filesystem-reading controller.
 - Per-account native Steam persona status is editable directly from ControlWeb, including Invisible.
+- Stock ASF-ui remains only as an explicit compatibility fallback for native surfaces not yet migrated.
+- Native ASF/plugin self-update actions remain intentionally disabled because the phone runtime uses pinned compatibility patches and reproducible Control Suite releases.
+- GlobalConfig saves force `UpdateChannel=None` and `UpdatePeriod=0`; the generic command console blocks `UPDATE`, `RESTART` and `EXIT`. Restart/exit remain available only through the dedicated typed-confirmation controls.
 
 - Control Suite is the default UI at `/`; `/Control/` remains its canonical mount. The phone installer transactionally patches only `/opt/asf/www/index.html` as the default entrypoint and backs it up for exact rollback.
 - Reuses the stock ASF-ui locale preference key `asf-ui:locale`; changing English/Ukrainian from ControlWeb updates the same preference.
@@ -56,7 +62,7 @@
 - Native ASF restart and exit with typed confirmation.
 - No arbitrary host/shell command surface.
 
-## ControlCenter 1.0.0.0
+## ControlCenter 1.1.0.0
 
 - Runtime health and target compatibility metadata.
 - Bot/connection/farming/input summary.

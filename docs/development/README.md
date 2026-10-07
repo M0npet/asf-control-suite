@@ -158,19 +158,22 @@ The pipeline:
 
 ## Release output
 
-The canonical build creates:
+Artifact names are derived from `release/pins.env`. For the current v1.1.0 candidate the exact build creates:
 
-    artifacts/ASF-Control-Suite-v1.0.0.zip
-    artifacts/AccountManager-v1.0.0.zip
-    artifacts/ControlCenter-v1.0.0.zip
-    artifacts/ControlWeb-v1.0.0.zip
-    artifacts/PlaytimeGoals-v0.5.1.zip
+    artifacts/ASF-Control-Suite-v1.1.0.zip
+    artifacts/AccountManager-v1.1.0.zip
+    artifacts/ControlCenter-v1.1.0.zip
+    artifacts/ControlWeb-v1.1.0.zip
+    artifacts/PlaytimeGoals-v0.5.2.zip
     artifacts/CONTROL-SUITE-METADATA.json
     artifacts/SHA256SUMS
+    artifacts/asf-control-suite-v1.1.0-dist.tar.gz
 
 Do not manually assemble public ZIP files from arbitrary DLLs.
 
-Bundle and individual archives must come from the same canonical staging tree.
+Bundle, individual archives and the phone candidate must come from the same exact build. CI retains the verified candidate for 30 days so live acceptance can test those exact bytes.
+
+Stable publication is a separate gate: after field acceptance, invoke `.github/workflows/publish-release.yml` with the exact candidate commit, retained artifact ID and accepted phone SHA-256. The publish workflow re-verifies provenance and refuses to mutate an existing release.
 
 ---
 

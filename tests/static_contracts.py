@@ -17,20 +17,6 @@ def project_files(extensions=None):
         yield p
 
 
-IGNORED_DIR_NAMES = {'.git', '.venv', '__pycache__', 'artifacts', 'bin', 'obj', 'node_modules'}
-
-def project_files(extensions=None):
-    for p in ROOT.rglob('*'):
-        if not p.is_file():
-            continue
-        rel = p.relative_to(ROOT)
-        if any(part in IGNORED_DIR_NAMES for part in rel.parts[:-1]):
-            continue
-        if extensions is not None and p.suffix.lower() not in extensions:
-            continue
-        yield p
-
-
 def text(path):
     return (ROOT/path).read_text(encoding='utf-8')
 
@@ -53,12 +39,26 @@ def forbid_tree(needle,label=None,extensions={'.cs','.js','.html'}):
         except UnicodeDecodeError:continue
         if needle in t:errors.append(f'forbidden {label or needle!r} in {p.relative_to(ROOT)}')
 
-for project in ('AccountManager','ControlWeb'):
-   require(f'src/{project}/{project}.csproj','<Version>1.0.0.0</Version>',f'{project} v1.0')
-   require(f'src/{project}/{project}Plugin.cs','[Export(typeof(IPlugin))]',f'{project} export')
-   require(f'src/{project}/{project}Plugin.cs','new Version(1, 0, 0, 0)',f'{project} fallback version')
+pins = {}
+for raw in (ROOT / 'release' / 'pins.env').read_text(encoding='utf-8').splitlines():
+    line = raw.strip()
+    if not line or line.startswith('#') or '=' not in line:
+        continue
+    key, value = line.split('=', 1)
+    pins[key] = value
 
-require('src/ControlCenter/ControlCenter.csproj','<Version>1.0.0.0</Version>','ControlCenter v1.0')
+module_version = pins.get('CONTROL_MODULE_VERSION', '')
+module_parts = [int(part) for part in module_version.split('.')] if module_version else []
+if len(module_parts) != 4:
+    errors.append('release/pins.env: invalid CONTROL_MODULE_VERSION')
+fallback_version = ', '.join(str(part) for part in module_parts) if len(module_parts) == 4 else ''
+
+for project in ('AccountManager','ControlWeb'):
+   require(f'src/{project}/{project}.csproj',f'<Version>{module_version}</Version>',f'{project} canonical module version')
+   require(f'src/{project}/{project}Plugin.cs','[Export(typeof(IPlugin))]',f'{project} export')
+   require(f'src/{project}/{project}Plugin.cs',f'new Version({fallback_version})',f'{project} fallback version')
+
+require('src/ControlCenter/ControlCenter.csproj',f'<Version>{module_version}</Version>','ControlCenter canonical module version')
 require('src/ControlCenter/ControlCenterPlugin.cs','[Export(typeof(IPlugin))]','ControlCenter export')
 require('src/ControlCenter/ControlCenterPlugin.cs','new Version(ControlModuleVersion)','ControlCenter canonical fallback version')
 
@@ -105,7 +105,7 @@ require('src/ControlWeb/www/index.html','https://avatars.akamai.steamstatic.com'
 require('src/ControlWeb/www/index.html','no-referrer','referrer policy')
 require('src/ControlWeb/www/index.html','aria-live="polite"','live region')
 require('src/ControlWeb/www/index.html','<dialog id="modal"','native modal')
-require('src/ControlWeb/www/index.html','Control Suite 1.0','release branding')
+require('src/ControlWeb/www/index.html','Control Suite 1.1 candidate','candidate branding')
 require_re('src/ControlWeb/www/app.js',r"cache\s*:\s*'no-store'",'API no-store')
 require('src/ControlWeb/www/app.js','function toast(','toast system')
 require('src/ControlWeb/www/app.js','function openModal(','modal system')
@@ -185,6 +185,51 @@ require('src/ControlWeb/www/app.js','id="onlineStatus"','per-account Steam perso
 require('src/ControlWeb/www/app.js','formatGoalDuration','second-precision goal display')
 require('src/ControlWeb/www/app.js','EffectiveSeconds','second-precision effective credit')
 require('src/ControlWeb/www/app.js','RemainingSeconds','second-precision remaining time')
+require('src/ControlWeb/www/index.html','data-view="native"','Native ASF navigation')
+require('src/ControlWeb/www/app.js','async function renderNative()','Native ASF workspace')
+require('src/ControlWeb/www/app.js','id="nativeBotConfig"','complete BotConfig editor')
+require('src/ControlWeb/www/app.js','id="nativeGlobalConfig"','complete GlobalConfig editor')
+require('src/ControlWeb/www/app.js',"api('/Api/Command'",'native command console')
+require('src/ControlWeb/www/app.js','GamesToRedeemInBackground','native background redeemer')
+require('src/ControlWeb/www/app.js','TwoFactorAuthentication/Token','native 2FA token')
+require('src/ControlWeb/www/app.js','TwoFactorAuthentication/Confirmations','native 2FA confirmations')
+require('src/ControlWeb/www/app.js','id="nativeAuthenticatorJson"','native authenticator import')
+require('src/ControlWeb/www/app.js','DELETE 2FA','destructive authenticator confirmation')
+require('src/ControlWeb/www/app.js','/Api/IPC/Bans','native IPC bans')
+require('src/ControlWeb/www/app.js','applyNativeMassPatch','native mass editor')
+require('src/ControlWeb/www/app.js','mergePatch','mass editor merge-patch helper')
+require('src/ControlWeb/www/app.js','copyNativeBotConfig','native non-secret bot config copy')
+require('src/ControlWeb/www/app.js',"api('/Api/ASF/Hash'",'native hashing tool')
+require('src/ControlWeb/www/app.js','runNativeEncrypt','native encryption tool')
+require('src/ControlWeb/www/app.js','/Api/Plugins','native plugin inventory')
+require('src/ControlWeb/www/app.js','/Api/NLog/File?count=250','native ASF log history endpoint')
+forbid('src/ControlWeb/www/app.js','/Api/ControlWeb/LogTail','custom log filesystem proxy is forbidden')
+require('src/ControlWeb/www/app.js','SENSITIVE_BOT_CONFIG_KEYS','sensitive BotConfig allowlist boundary')
+require('src/ControlWeb/www/app.js','SENSITIVE_GLOBAL_CONFIG_KEYS','sensitive GlobalConfig boundary')
+require('src/ControlWeb/www/app.js','redactGlobalConfigForEditor','GlobalConfig sensitive-field redaction')
+require('src/ControlWeb/www/app.js','Global editor cannot modify security-controlled field','GlobalConfig sensitive-field write guard')
+require('src/ControlWeb/www/app.js','next.UpdateChannel = 0;','pinned ASF update channel disabled')
+require('src/ControlWeb/www/app.js','next.UpdatePeriod = 0;','pinned ASF auto-update period disabled')
+require('src/ControlWeb/www/app.js',"BLOCKED_NATIVE_COMMANDS = new Set(['UPDATE','UPDATEPLUGINS','RESTART','EXIT'])",'generic command console process/update guard')
+require('src/ControlWeb/www/app.js','data-command-prefix=','rendered native command prefix snapshot')
+require('src/ControlWeb/www/app.js',"assertAllowedNativeCommand(command, event.currentTarget.dataset.commandPrefix || '');",'generic command policy enforcement')
+require('src/ControlWeb/www/app.js','SteamTradeToken','Steam trade token protection')
+require('src/ControlWeb/www/app.js','redactBotConfigForEditor','BotConfig sensitive-field redaction')
+require('src/ControlWeb/www/app.js','restoreSensitiveBotConfig','BotConfig sensitive-field preservation')
+require('src/ControlWeb/www/app.js','if (next.PlaytimeGoalsEnabled === true)','native editor preserves single GamesPlayed owner')
+require('src/ControlWeb/www/app.js','assertNoSensitiveBotPatch','mass editor blocks security-controlled fields')
+require('src/ControlWeb/www/app.js','Earlier writes were rolled back.','mass editor rollback')
+require('src/ControlWeb/www/app.css','.toast { pointer-events:none;','toast body cannot block controls')
+require('src/ControlWeb/www/app.css','.toast-close { pointer-events:auto;','toast close remains clickable')
+for controlweb_cs in (ROOT / 'src' / 'ControlWeb').glob('*.cs'):
+    if 'System.IO' in controlweb_cs.read_text(encoding='utf-8'):
+        errors.append(f'trim-unsafe System.IO dependency in {controlweb_cs.relative_to(ROOT)}')
+
+require('src/ControlWeb/www/app.js','Native ASF self-update and plugin-update actions are intentionally not exposed','pinned update policy')
+forbid('src/ControlWeb/www/app.js',"api('/Api/Plugins/Update'",'native plugin self-update bypasses pinned release pipeline')
+forbid('src/ControlWeb/www/app.js',"api('/Api/ASF/Update'",'native ASF self-update bypasses compatibility patch')
+require('src/ControlWeb/www/app.js',"'UPDATEPLUGINS'",'generic command console blocks plugin self-update command')
+
 require('src/ControlWeb/www/app.css','.steam-avatar','Steam avatar styles')
 require('src/ControlWeb/www/app.css','.qr-panel','QR onboarding styles')
 require('src/ControlWeb/www/i18n.js',"ASF_LOCALE_KEY = 'asf-ui:locale'",'shared ASF-ui locale key')
