@@ -227,6 +227,7 @@ for controlweb_cs in (ROOT / 'src' / 'ControlWeb').glob('*.cs'):
 require('src/ControlWeb/www/app.js','Native ASF self-update and plugin-update actions are intentionally not exposed','pinned update policy')
 forbid('src/ControlWeb/www/app.js',"api('/Api/Plugins/Update'",'native plugin self-update bypasses pinned release pipeline')
 forbid('src/ControlWeb/www/app.js',"api('/Api/ASF/Update'",'native ASF self-update bypasses compatibility patch')
+require('src/ControlWeb/www/app.js',"'UPDATEPLUGINS'",'generic command console blocks plugin self-update command')
 
 require('src/ControlWeb/www/app.css','.steam-avatar','Steam avatar styles')
 require('src/ControlWeb/www/app.css','.qr-panel','QR onboarding styles')
