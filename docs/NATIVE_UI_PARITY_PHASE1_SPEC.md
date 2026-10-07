@@ -29,16 +29,18 @@ BotConfig values omitted from the generic editor:
 
 - SteamLogin
 - SteamPassword
+- PasswordFormat
 - SteamParentalCode
 - WebProxyPassword
 
 GlobalConfig values omitted:
 
 - IPCPassword
+- IPCPasswordFormat
 - LicenseID
 - WebProxyPassword
 
-ASF's native POST handlers preserve existing protected values when those properties are omitted.
+ASF's native POST handlers preserve existing protected secret values when those properties are omitted. Coupled hashing/encryption format fields are hidden with their secret to prevent a stored secret from being reinterpreted under a different format.
 
 ## UX
 
