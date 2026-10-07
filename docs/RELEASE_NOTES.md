@@ -61,3 +61,6 @@ RC8 field fix: phone deployments now enforce ASF `Headless=true` transactionally
 
 
 RC9 field fix: QR onboarding now stays inside the Add account card and updates in place instead of rerendering the entire Accounts view every poll. The browser keeps the retry lifecycle alive across failed Steam QR sessions and reconnects, re-accepts a fresh native QrCodeLogin prompt when ASF asks again, and replaces only the QR/status region when the Steam challenge actually changes. Ukrainian copy covers the idle, starting, reconnecting and connected states.
+
+
+RC10 field fix: successful QR onboarding now persists only the Steam account name learned from the native QR auth result when UseLoginKeys is enabled. ASF still keeps the password absent and stores the persistent refresh/access tokens in the native bot database. This prevents later BotConfig reloads (for example PlaytimeGoals changes) from falling into RequiredInput=Login and stopping the bot. ControlWeb also exits the QR reconnect state when the bot stops or ASF requests a non-QR input, instead of polling forever behind a misleading reconnect message.
