@@ -12,6 +12,7 @@ The `main` branch now targets **v1.1.0**. This candidate is not a stable release
 - Mass BotConfig edits snapshot originals and roll back already-applied bots if a later write fails.
 - Fixed a delayed Steam-persona save rerender that could overwrite a freshly edited Native ASF textarea.
 - Toast notifications no longer intercept pointer input for underlying controls; only the toast close button is interactive.
+- Pinned deployment policy is enforced inside the native workspace: GlobalConfig saves keep ASF auto-update disabled, while generic `UPDATE`, `RESTART` and `EXIT` commands are blocked so process/update actions cannot bypass dedicated safety controls.
 - CI locks these boundaries with browser integration, static contracts, exact pinned compilation and CodeQL.
 
 ## Release boundary
