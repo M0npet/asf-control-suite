@@ -22,10 +22,10 @@ diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
 +			try {
 +				while (KeepRunning && SteamClient.IsConnected) {
 +					if (!string.IsNullOrEmpty(QrCodeLoginInput)) {
-+						string input = QrCodeLoginInput;
++						string qrDecision = QrCodeLoginInput;
 +						QrCodeLoginInput = null;
 +
-+						return input.Equals("Y", StringComparison.OrdinalIgnoreCase);
++						return qrDecision.Equals("Y", StringComparison.OrdinalIgnoreCase);
 +					}
 +
 +					await Task.Delay(100).ConfigureAwait(false);

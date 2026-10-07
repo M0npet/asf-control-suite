@@ -25,6 +25,14 @@ if patch.is_file():
     require("RequiredInput = ASF.EUserInputType.QrCodeLogin" in text, "patch does not expose QR input state")
     require("QrCodeLoginInput" in text, "patch does not consume IPC QR confirmation")
     require("Task.Delay(100)" in text, "patch does not wait asynchronously for IPC confirmation")
+    require(
+        "string qrDecision = QrCodeLoginInput;" in text,
+        "patch does not use a non-conflicting QR decision variable",
+    )
+    require(
+        "string input = QrCodeLoginInput;" not in text,
+        "patch shadows upstream WantsQrCodeLogin input variable",
+    )
 
 require(apply_script.is_file(), "ASF patch application script is missing")
 if apply_script.is_file():
