@@ -145,8 +145,8 @@ with sync_playwright() as pw:
     assert page.locator('.full-account-row .account-meta').first.bounding_box()['width'] > 300
     # Native OnlineStatus is first-class and writes through the native BotConfig endpoint.
     assert page.locator('#onlineStatus').input_value() == '1'
-    assert page.locator('a[href="/bot/main/config"]').count() == 1
-    assert page.locator('a[href="/bot/main/2fa"]').count() == 1
+    assert page.locator('a[href="/bot/main/config?asfui=1"]').count() == 1
+    assert page.locator('a[href="/bot/main/2fa?asfui=1"]').count() == 1
     page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
     assert page.locator('#onlineStatus').input_value() == '7'
@@ -321,7 +321,7 @@ with sync_playwright() as pw:
     ua.click('#nav button[data-view="system"]'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Дії з процесом ASF').count() == 1
     ua.click('#nav button[data-view="advanced"]'); ua.wait_for_timeout(80)
-    assert ua.locator('a[href="/bots"]').count() >= 1
+    assert ua.locator('a[href="/bots?asfui=1"]').count() >= 1
     assert ua.locator('h3',has_text='Зафіксована сумісність').count() == 1
     assert ua.locator('h3',has_text='Межі відповідальності').count() == 1
     assert ua.locator('#localeSelect').input_value() == 'uk-UA'
