@@ -479,8 +479,12 @@ with sync_playwright() as pw:
     assert ua.locator('h3',has_text='Глобальна конфігурація ASF').count() == 1
     assert ua.locator('h3',has_text='Масовий редактор').count() == 1
     assert ua.locator('h3',has_text='Криптографічні інструменти').count() == 1
+    assert ua.locator('h3',has_text='Ліцензії Steam').count() == 1
+    assert ua.locator('h3',has_text='Пряма активація ключів').count() == 1
+    assert ua.locator('h3',has_text='Інвентар').count() == 1
+    assert ua.locator('h3',has_text='Бали Steam').count() == 1
     native_body=ua.locator('#content').inner_text()
-    for phrase in ['Bot configuration','Global ASF configuration','Mass editor','Crypto tools','Background redeemer','Copy bot configuration']:
+    for phrase in ['Bot configuration','Global ASF configuration','Mass editor','Crypto tools','Background redeemer','Copy bot configuration','Steam licenses','Direct key redeem','Inventory','Steam Points']:
         assert phrase not in native_body, phrase
     ua.click('#nav button[data-view="security"]'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Межа автентифікації').count() == 1
