@@ -35,6 +35,7 @@ node tests/control_core.test.js
 bash tests/phone_transaction.test.sh
 bash tests/phone_candidate.test.sh
 bash tests/phone_install_wrapper.test.sh
+bash tests/phone_rollback_wrapper.test.sh
 node --check src/ControlWeb/www/i18n.js
 node --check src/ControlWeb/www/core.js
 node --check src/ControlWeb/www/app.js
