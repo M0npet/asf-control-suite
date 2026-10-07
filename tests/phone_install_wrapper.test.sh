@@ -28,8 +28,7 @@ mkdir -p "$FAKEBIN"
 cat > "$FAKEBIN/adb" <<'ADB'
 #!/usr/bin/env bash
 set -Eeuo pipefail
-printf '%q ' "$@" >> "$FAKE_ADB_LOG"
-printf '\n' >> "$FAKE_ADB_LOG"
+printf '%s\n' "$*" >> "$FAKE_ADB_LOG"
 
 args=("$@")
 if [[ "${args[*]}" == *" get-state"* ]]; then
