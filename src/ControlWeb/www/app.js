@@ -83,6 +83,12 @@
   const yesNo = (value) => value ? 'yes' : 'no';
   const legacyAsfHref = (path) => `${path}${path.includes('?') ? '&' : '?'}asfui=1`;
   const prettyJson = (value) => JSON.stringify(value ?? {}, null, 2);
+  const confirmationSummary = (item) => {
+    const type = item?.Type ?? item?.ConfirmationType ?? 'unknown';
+    const creator = item?.CreatorID ?? item?.s_CreatorID ?? item?.CreatorId ?? '';
+    const id = item?.ID ?? item?.s_ID ?? item?.Id ?? '';
+    return `type ${type}${creator ? ` · creator ${creator}` : ''}${id ? ` · id ${id}` : ''}`;
+  };
   const mergePatch = (base, patch) => {
     if (patch === null || Array.isArray(patch) || typeof patch !== 'object') return patch;
     const next = { ...(base && typeof base === 'object' && !Array.isArray(base) ? base : {}) };
@@ -747,8 +753,15 @@
 
       <div class="two-col section">
         <div class="card">
-          <div class="card-head"><div><h3>2FA</h3><p>Generate a current Steam Guard token for the selected account.</p></div></div>
-          ${botName ? `<div class="inline-form"><input id="native2faToken" readonly placeholder="Token hidden until requested"><button id="fetchNative2faToken" type="button">Generate token</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+          <div class="card-head"><div><h3>2FA</h3><p>Steam Guard token, confirmations and authenticator management through native ASF.</p></div></div>
+          ${botName ? `
+            <div class="inline-form"><input id="native2faToken" readonly placeholder="Token hidden until requested"><button id="fetchNative2faToken" type="button">Generate token</button></div>
+            <div class="actions section"><button id="loadNative2faConfirmations" class="secondary" type="button">Load confirmations</button><button id="acceptNative2faConfirmations" class="secondary" type="button">Accept all</button><button id="declineNative2faConfirmations" class="secondary" type="button">Decline all</button></div>
+            <div id="native2faConfirmations" class="notice section">Confirmations are not loaded yet.</div>
+            <label for="nativeAuthenticatorJson">Import authenticator JSON</label>
+            <textarea id="nativeAuthenticatorJson" class="code-editor" rows="8" spellcheck="false" placeholder='{"shared_secret":"..."}'></textarea>
+            <div class="actions section"><button id="importNativeAuthenticator" type="button">Import authenticator</button><button id="deleteNativeAuthenticator" class="danger" type="button">Delete authenticator</button></div>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
         </div>
 
         <div class="card">
@@ -1055,6 +1068,63 @@
         toast('2FA token unavailable', error.message, 'bad', 7000);
       } finally {
         button.disabled = false;
+      }
+    });
+
+    $('loadNative2faConfirmations')?.addEventListener('click', async () => {
+      const button = $('loadNative2faConfirmations');
+      button.disabled = true;
+      try {
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication/Confirmations`);
+        const botResult = result?.[state.selectedBot];
+        const confirmations = Array.isArray(botResult?.Result) ? botResult.Result : [];
+        $('native2faConfirmations').innerHTML = confirmations.length
+          ? confirmations.map((item) => `<div class="row"><div class="row-main"><strong>${escapeHtml(confirmationSummary(item))}</strong><small>Steam mobile confirmation</small></div></div>`).join('')
+          : '<strong>No pending confirmations</strong>';
+      } catch (error) {
+        toast('Could not load confirmations', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    const handleAll2fa = async (accept) => {
+      const word = accept ? 'ACCEPT' : 'DECLINE';
+      const values = await openModal({ title:`${accept ? 'Accept' : 'Decline'} all confirmations`, eyebrow:'Steam Guard 2FA', body:'<p>This applies to every currently pending confirmation for the selected account.</p>', confirmLabel:accept ? 'Accept all' : 'Decline all', tone:accept ? 'warning' : 'danger', requireText:word });
+      if (!values) return;
+      await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication/Confirmations`, { method:'POST', body:JSON.stringify({ Accept:accept, AcceptedCreatorIDs:[], WaitIfNeeded:false }) });
+      toast('2FA confirmations handled', accept ? 'Accepted all pending confirmations.' : 'Declined all pending confirmations.');
+      $('loadNative2faConfirmations')?.click();
+    };
+    $('acceptNative2faConfirmations')?.addEventListener('click', async () => { try { await handleAll2fa(true); } catch (error) { toast('2FA action failed', error.message, 'bad', 7000); } });
+    $('declineNative2faConfirmations')?.addEventListener('click', async () => { try { await handleAll2fa(false); } catch (error) { toast('2FA action failed', error.message, 'bad', 7000); } });
+
+    $('importNativeAuthenticator')?.addEventListener('click', async () => {
+      const button = $('importNativeAuthenticator');
+      button.disabled = true;
+      try {
+        const authenticator = JSON.parse($('nativeAuthenticatorJson').value);
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication`, { method:'POST', body:JSON.stringify(authenticator) });
+        $('nativeAuthenticatorJson').value = '';
+        toast('Authenticator imported', state.selectedBot);
+        await loadAccounts();
+      } catch (error) {
+        toast('Authenticator import failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('deleteNativeAuthenticator')?.addEventListener('click', async () => {
+      const values = await openModal({ title:'Delete mobile authenticator', eyebrow:'Steam Guard 2FA', body:'<p>Remove the authenticator data from ASF for this account?</p>', confirmLabel:'Delete authenticator', tone:'danger', requireText:'DELETE 2FA' });
+      if (!values) return;
+      try {
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication`, { method:'DELETE' });
+        toast('Authenticator deleted', state.selectedBot, 'warn');
+        await loadAccounts();
+        await render();
+      } catch (error) {
+        toast('Authenticator delete failed', error.message, 'bad', 7000);
       }
     });
 
