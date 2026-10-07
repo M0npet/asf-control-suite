@@ -174,29 +174,29 @@ suite_health() {
   [[ "$TEST_FORCE_FAIL" == "1" ]] && return 1
 
   local root control health swagger code
-  root="$(curl -sS -o /tmp/control-suite-root.$.html -w '%{http_code}' --connect-timeout 2 http://127.0.0.1:1242/ 2>/dev/null || true)"
+  root="$(curl -sS -o /tmp/control-suite-root.$$.html -w '%{http_code}' --connect-timeout 2 http://127.0.0.1:1242/ 2>/dev/null || true)"
   control="$(curl -sSL -o /dev/null -w '%{http_code}' --connect-timeout 2 http://127.0.0.1:1242/Control/ 2>/dev/null || true)"
-  health="$(curl -sS -o /tmp/control-suite-health.$.txt -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Control/healthz 2>/dev/null || true)"
-  code="$(curl -sS -o /tmp/control-suite-swagger.$.json -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/swagger/ASF/swagger.json 2>/dev/null || true)"
+  health="$(curl -sS -o /tmp/control-suite-health.$$.txt -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Control/healthz 2>/dev/null || true)"
+  code="$(curl -sS -o /tmp/control-suite-swagger.$$.json -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/swagger/ASF/swagger.json 2>/dev/null || true)"
   if [[ "$root" != "200" || "$control" != "200" || "$health" != "200" || "$code" != "200" ]]; then
     echo "Control Suite health gate: root=$root control=$control health=$health swagger=$code" >&2
-    rm -f /tmp/control-suite-root.$.html /tmp/control-suite-health.$.txt /tmp/control-suite-swagger.$.json
+    rm -f /tmp/control-suite-root.$$.html /tmp/control-suite-health.$$.txt /tmp/control-suite-swagger.$$.json
     return 1
   fi
-  grep -Fq 'data-asf-control-suite-root="1"' /tmp/control-suite-root.$.html || {
+  grep -Fq 'data-asf-control-suite-root="1"' /tmp/control-suite-root.$$.html || {
     echo 'Control Suite health gate: default root entrypoint marker missing' >&2
-    rm -f /tmp/control-suite-root.$.html /tmp/control-suite-health.$.txt /tmp/control-suite-swagger.$.json
+    rm -f /tmp/control-suite-root.$$.html /tmp/control-suite-health.$$.txt /tmp/control-suite-swagger.$$.json
     return 1
   }
-  grep -Fq 'control-suite-health' /tmp/control-suite-health.$.txt || {
+  grep -Fq 'control-suite-health' /tmp/control-suite-health.$$.txt || {
     echo 'Control Suite health gate: sentinel missing from /Control/healthz' >&2
-    rm -f /tmp/control-suite-root.$.html /tmp/control-suite-health.$.txt /tmp/control-suite-swagger.$.json
+    rm -f /tmp/control-suite-root.$$.html /tmp/control-suite-health.$$.txt /tmp/control-suite-swagger.$$.json
     return 1
   }
-  grep -Fq 'Api/AccountManager' /tmp/control-suite-swagger.$.json || { rm -f /tmp/control-suite-root.$.html /tmp/control-suite-health.$.txt /tmp/control-suite-swagger.$.json; return 1; }
-  grep -Fq 'Api/ControlCenter/Status' /tmp/control-suite-swagger.$.json || { rm -f /tmp/control-suite-root.$.html /tmp/control-suite-health.$.txt /tmp/control-suite-swagger.$.json; return 1; }
-  grep -Fq 'Api/PlaytimeGoals' /tmp/control-suite-swagger.$.json || { rm -f /tmp/control-suite-root.$.html /tmp/control-suite-health.$.txt /tmp/control-suite-swagger.$.json; return 1; }
-  rm -f /tmp/control-suite-root.$.html /tmp/control-suite-health.$.txt /tmp/control-suite-swagger.$.json
+  grep -Fq 'Api/AccountManager' /tmp/control-suite-swagger.$$.json || { rm -f /tmp/control-suite-root.$$.html /tmp/control-suite-health.$$.txt /tmp/control-suite-swagger.$$.json; return 1; }
+  grep -Fq 'Api/ControlCenter/Status' /tmp/control-suite-swagger.$$.json || { rm -f /tmp/control-suite-root.$$.html /tmp/control-suite-health.$$.txt /tmp/control-suite-swagger.$$.json; return 1; }
+  grep -Fq 'Api/PlaytimeGoals' /tmp/control-suite-swagger.$$.json || { rm -f /tmp/control-suite-root.$$.html /tmp/control-suite-health.$$.txt /tmp/control-suite-swagger.$$.json; return 1; }
+  rm -f /tmp/control-suite-root.$$.html /tmp/control-suite-health.$$.txt /tmp/control-suite-swagger.$$.json
   return 0
 }
 
