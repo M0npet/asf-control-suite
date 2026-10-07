@@ -139,6 +139,7 @@
 
 
   const NATIVE_SECRET_FIELDS = new Set([
+    'SteamLogin',
     'SteamPassword',
     'SteamParentalCode',
     'WebProxyPassword',
