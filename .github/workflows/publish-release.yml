@@ -1,0 +1,132 @@
+name: Publish verified release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag matching release/pins.env, for example v1.1.0"
+        required: true
+        type: string
+      target_sha:
+        description: "Exact Control Suite commit that produced the accepted CI artifact"
+        required: true
+        type: string
+      artifact_id:
+        description: "GitHub Actions artifact ID from the exact-build job"
+        required: true
+        type: string
+      accepted_phone_sha256:
+        description: "SHA-256 of the exact phone candidate that passed live acceptance"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Verify accepted artifact and publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      TARGET_SHA: ${{ inputs.target_sha }}
+      ARTIFACT_ID: ${{ inputs.artifact_id }}
+      ACCEPTED_PHONE_SHA256: ${{ inputs.accepted_phone_sha256 }}
+
+    steps:
+      - name: Validate release inputs and canonical version
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          [[ "$ACCEPTED_PHONE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+
+          gh api \
+            -H 'Accept: application/vnd.github.raw+json' \
+            "repos/$GITHUB_REPOSITORY/contents/release/pins.env?ref=$TARGET_SHA" \
+            > "$RUNNER_TEMP/pins.env"
+
+          suite_version="$(sed -n 's/^CONTROL_SUITE_VERSION=//p' "$RUNNER_TEMP/pins.env")"
+          test -n "$suite_version"
+          test "$RELEASE_TAG" = "v$suite_version"
+
+          resolved_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TARGET_SHA" --jq .sha)"
+          test "$resolved_sha" = "$TARGET_SHA"
+
+      - name: Download exact retained CI artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RUNNER_TEMP/release"
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
+            > "$RUNNER_TEMP/release-artifact.zip"
+          unzip -q "$RUNNER_TEMP/release-artifact.zip" -d "$RUNNER_TEMP/release"
+
+      - name: Verify provenance, checksums and live-accepted phone candidate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd "$RUNNER_TEMP/release"
+
+          test "$(tr -d '\r\n' < CONTROL-SUITE-COMMIT.txt)" = "$TARGET_SHA"
+          sha256sum -c SHA256SUMS
+
+          suite_version="${RELEASE_TAG#v}"
+          phone_archive="asf-control-suite-v${suite_version}-dist.tar.gz"
+          bundle_archive="ASF-Control-Suite-v${suite_version}.zip"
+
+          test -f "$phone_archive"
+          test -f "$bundle_archive"
+          printf '%s  %s\n' "$ACCEPTED_PHONE_SHA256" "$phone_archive" | sha256sum -c -
+
+          bundle_sha="$(awk -v file="$bundle_archive" '$2 == file { print $1 }' SHA256SUMS)"
+          test "$bundle_sha" = "$(sha256sum "$bundle_archive" | awk '{print $1}')"
+
+      - name: Prepare version-specific release notes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh api \
+            -H 'Accept: application/vnd.github.raw+json' \
+            "repos/$GITHUB_REPOSITORY/contents/docs/RELEASE_NOTES.md?ref=$TARGET_SHA" \
+            > "$RUNNER_TEMP/all-release-notes.md"
+
+          awk '
+            NR == 1 { print; next }
+            /^---$/ { exit }
+            { print }
+          ' "$RUNNER_TEMP/all-release-notes.md" > "$RUNNER_TEMP/release-notes.md"
+
+          grep -F "ASF Control Suite ${RELEASE_TAG#v}" "$RUNNER_TEMP/release-notes.md" >/dev/null
+
+      - name: Publish release without mutating an existing tag/release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to mutate it." >&2
+            exit 1
+          fi
+
+          cd "$RUNNER_TEMP/release"
+          suite_version="${RELEASE_TAG#v}"
+
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$TARGET_SHA" \
+            --title "ASF Control Suite $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
+            "ASF-Control-Suite-v${suite_version}.zip" \
+            "AccountManager-v${suite_version}.zip" \
+            "ControlCenter-v${suite_version}.zip" \
+            "ControlWeb-v${suite_version}.zip" \
+            CONTROL-SUITE-METADATA.json \
+            SHA256SUMS \
+            "asf-control-suite-v${suite_version}-dist.tar.gz"
