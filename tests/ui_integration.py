@@ -21,6 +21,7 @@ SHOT.mkdir(parents=True, exist_ok=True)
 index=(WWW/'index.html').read_text(encoding='utf-8')
 css=(WWW/'app.css').read_text(encoding='utf-8')
 core=(WWW/'core.js').read_text(encoding='utf-8')
+native=(WWW/'native.js').read_text(encoding='utf-8')
 i18n=(WWW/'i18n.js').read_text(encoding='utf-8')
 qrcode=(WWW/'qrcode.min.js').read_text(encoding='utf-8') if (WWW/'qrcode.min.js').exists() else ''
 app=(WWW/'app.js').read_text(encoding='utf-8')
@@ -42,8 +43,8 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,OnlineStatus:1,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
+  configs:{main:{Enabled:true,OnlineStatus:1,s_SteamMasterClanID:'76561198000000000',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},commands:[],globalConfig:{Headless:true,IPC:true,s_SteamOwnerID:'76561198000000001'}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -52,7 +53,22 @@ mock=r'''(() => {
   path=String(path); const method=String(opt.method||'GET').toUpperCase(),auth=opt.headers?.get?.('Authentication');
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
   const body=opt.body?JSON.parse(opt.body):null;
-  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192}));
+  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192,GlobalConfig:window.__m.globalConfig}));
+  if(method==='POST'&&path==='/Api/ASF'){window.__m.globalConfig=body.GlobalConfig;return resp(env(null));}
+  if(method==='POST'&&path==='/Api/Command'){window.__m.commands.push(body.Command);return resp(env('MOCK COMMAND: '+body.Command));}
+  if(method==='GET'&&path.startsWith('/Api/Type/')){
+    const type=decodeURIComponent(path.slice('/Api/Type/'.length));
+    if(type==='ArchiSteamFarm.Steam.Storage.BotConfig')return resp(env({Body:{Enabled:'System.Boolean',OnlineStatus:'SteamKit2.EPersonaState',SteamMasterClanID:'System.UInt64',SteamPassword:'System.String'},Properties:{BaseType:'System.Object'}}));
+    if(type==='ArchiSteamFarm.Storage.GlobalConfig')return resp(env({Body:{Headless:'System.Boolean',IPC:'System.Boolean',SteamOwnerID:'System.UInt64',IPCPassword:'System.String'},Properties:{BaseType:'System.Object'}}));
+    if(type==='SteamKit2.EPersonaState')return resp(env({Body:{Offline:'0',Online:'1',Invisible:'7'},Properties:{BaseType:'System.Enum',CustomAttributes:[]}}));
+    return resp(env({Body:{},Properties:{BaseType:'System.Object'}}));
+  }
+  if(method==='GET'&&path.startsWith('/Api/Structure/')){
+    const type=decodeURIComponent(path.slice('/Api/Structure/'.length));
+    if(type==='ArchiSteamFarm.Steam.Storage.BotConfig')return resp(env({Enabled:false,OnlineStatus:1,SteamMasterClanID:0,SteamPassword:null}));
+    if(type==='ArchiSteamFarm.Storage.GlobalConfig')return resp(env({Headless:false,IPC:true,SteamOwnerID:0,IPCPassword:null}));
+    return resp(env({}));
+  }
   if(method==='GET'&&path==='/Api/AccountManager'){window.__m.accountReads++;return resp(env({Accounts:window.__m.accounts}));}
   if(method==='GET'&&path==='/Api/AccountManager/Defaults')return resp(env({Defaults:window.__m.defaults,ForbiddenKeys:['SteamPassword','SteamLogin'],MaxPayloadChars:65536}));
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
@@ -76,7 +92,7 @@ mock=r'''(() => {
  };
 })();'''
 
-html=index.replace('<link rel="stylesheet" href="/Control/app.css">',f'<style>{css}</style>').replace('<script src="/Control/i18n.js"></script>',f'<script>{mock}</script><script>{i18n}</script>').replace('<script src="/Control/core.js"></script>',f'<script>{core}</script>').replace('<script src="/Control/qrcode.min.js"></script>',f'<script>{qrcode}</script>').replace('<script src="/Control/app.js" defer></script>',f'<script>{app}</script>')
+html=index.replace('<link rel="stylesheet" href="/Control/app.css">',f'<style>{css}</style>').replace('<script src="/Control/i18n.js"></script>',f'<script>{mock}</script><script>{i18n}</script>').replace('<script src="/Control/core.js"></script>',f'<script>{core}</script>').replace('<script src="/Control/native.js"></script>',f'<script>{native}</script>').replace('<script src="/Control/qrcode.min.js"></script>',f'<script>{qrcode}</script>').replace('<script src="/Control/app.js" defer></script>',f'<script>{app}</script>')
 html_uk=html.replace("[['asf-ui:locale','\\\"en-US\\\"']]", "[['asf-ui:locale','\\\"uk-UA\\\"']]")
 html_uk_alias=html.replace("[['asf-ui:locale','\\\"en-US\\\"']]", "[['asf-ui:locale','\\\"uk\\\"']]")
 html_legacy_auth=html.replace(
@@ -150,6 +166,26 @@ with sync_playwright() as pw:
     page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
     assert page.locator('#onlineStatus').input_value() == '7'
+
+    # Schema-driven native workspace covers full BotConfig, lossless UInt64, ASF config and commands.
+    page.click('#nav button[data-view="native"]'); page.wait_for_selector('#nativeBotEditor')
+    assert page.locator('[data-native-source-field="SteamMasterClanID"]').input_value() == '76561198000000000'
+    assert page.locator('[data-native-source-field="SteamPassword"]').input_value() == ''
+    page.select_option('[data-native-source-field="OnlineStatus"]','1')
+    page.click('#saveNativeBot'); page.wait_for_timeout(620)
+    assert page.evaluate('window.__m.configs.main.OnlineStatus') == 1
+    assert page.evaluate('window.__m.configs.main.s_SteamMasterClanID') == '76561198000000000'
+
+    page.click('[data-native-tab="asf"]'); page.wait_for_selector('#nativeAsfEditor')
+    assert page.locator('[data-native-source-field="SteamOwnerID"]').input_value() == '76561198000000001'
+    assert page.locator('[data-native-source-field="IPCPassword"]').input_value() == ''
+
+    page.click('[data-native-tab="commands"]'); page.wait_for_selector('#nativeCommandForm')
+    page.fill('#nativeCommandInput','status ASF'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(120)
+    assert page.evaluate('window.__m.commands.at(-1)') == 'status ASF'
+    assert 'MOCK COMMAND: status ASF' in page.locator('#nativeCommandOutput').inner_text()
+
+    page.click('#nav button[data-view="accounts"]'); page.wait_for_selector('#requiredInputForm')
     page.fill('#requiredInputValue','12345'); page.click('#requiredInputForm button[type="submit"]'); page.wait_for_timeout(380)
     assert page.evaluate('window.__m.inputs.at(-1)')==['main',{'Type':1,'Value':'12345'}]
     assert page.locator('.toast-title',has_text='Input sent').count() >= 1
