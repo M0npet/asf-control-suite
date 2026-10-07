@@ -1039,8 +1039,10 @@
       button.disabled = true;
       try {
         const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication/Token`);
-        const token = typeof result === 'string' ? result : result?.[state.selectedBot] ?? result?.Token ?? '';
-        $('native2faToken').value = String(token || 'Unavailable');
+        const botResult = result?.[state.selectedBot];
+        const token = typeof botResult === 'string' ? botResult : botResult?.Result ?? result?.Token ?? '';
+        if (!token) throw new Error(botResult?.Message || 'No 2FA token returned.');
+        $('native2faToken').value = String(token);
       } catch (error) {
         toast('2FA token unavailable', error.message, 'bad', 7000);
       } finally {
