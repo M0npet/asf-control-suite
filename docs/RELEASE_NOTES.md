@@ -4,7 +4,7 @@ The `main` branch now targets **v1.1.0**. This candidate is not a stable release
 
 ## Native ASF parity
 
-- Added a first-class Native ASF workspace for BotConfig/GlobalConfig administration, commands, 2FA, IPC bans, plugin inventory, hashing/encryption utilities and safe bot-config copying.
+- Added a first-class Native ASF workspace for BotConfig/GlobalConfig administration, commands, Steam license add/remove, direct key redeem, inventory summary, Steam Points redemption, 2FA, IPC bans, plugin inventory, hashing/encryption utilities and safe bot-config copying.
 - Background Redeemer is intentionally write-only in Control Suite so stored/redeemed Steam key contents are not fetched into the browser.
 - ASF log history uses the native authenticated `/Api/NLog/File` endpoint; ControlWeb adds no filesystem-reading proxy/controller.
 - Security-controlled BotConfig fields are hidden from the raw editor. `SteamTradeToken` is explicitly redacted from the browser editor, preserved on normal saves and stripped from copied bot configs.

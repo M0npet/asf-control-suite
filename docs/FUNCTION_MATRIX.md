@@ -31,7 +31,7 @@
 - Native Steam Mobile QR onboarding through ASF `QrCodeLogin` and `QrChallengeURL`; QR is rendered locally with no third-party QR service.
 - Login/password onboarding remains available through native ASF encryption.
 - PlaytimeGoals sorting: managed, numeric-aware name, Steam hours, target, AppID, own/family priority; sorting is client-side and preserves unsaved edits.
-- Standard ASF administration is first-class inside ControlWeb: BotConfig and GlobalConfig editors, command console, write-only Background Redeemer queue, 2FA token generation, IPC bans, mass BotConfig editor, plugin inventory and authenticated native NLog history.
+- Standard ASF administration is first-class inside ControlWeb: BotConfig and GlobalConfig editors, command console, write-only Background Redeemer queue, Steam license add/remove, direct key redeem, inventory summary and AppID/ContextID item browsing, Steam Points redemption, 2FA token generation, IPC bans, mass BotConfig editor, plugin inventory and authenticated native NLog history.
 - Security-controlled BotConfig values are not rendered by the editor; SteamTradeToken is explicitly redacted and preserved on normal saves but stripped from copied bot configs.
 - Native BotConfig and mass edits keep ASF idle-game fields empty whenever PlaytimeGoals is enabled, preserving a single GamesPlayed owner.
 - Native log history uses ASF's own /Api/NLog/File endpoint; ControlWeb adds no filesystem-reading controller.

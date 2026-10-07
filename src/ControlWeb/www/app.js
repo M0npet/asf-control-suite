@@ -139,6 +139,14 @@
     return next;
   };
 
+  const parseUintList = (value, label) => {
+    const raw = String(value || '').split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+    const parsed = raw.map((item) => Number(item));
+    if (parsed.some((item) => !Number.isSafeInteger(item) || item <= 0 || item > 4294967295)) throw new Error(`${label} must contain positive 32-bit IDs separated by spaces or commas.`);
+    return [...new Set(parsed)];
+  };
+  const parseKeyList = (value) => [...new Set(String(value || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean))];
+
   function accountDisplayName(account) {
     const nickname = String(account?.Nickname || '').trim();
     return nickname || String(account?.BotName || 'unknown');
@@ -788,6 +796,65 @@
       </div>
 
       <div class="two-col section">
+        <div class="card" id="native-steam-licenses">
+          <div class="card-head"><div><h3>Steam licenses</h3><p>Add app/package licenses or explicitly remove existing licenses through native ASF.</p></div></div>
+          ${botName ? `
+            <div class="settings-grid">
+              <label for="nativeAddLicenseApps">Add app IDs<input id="nativeAddLicenseApps" autocomplete="off" placeholder="570, 730"></label>
+              <label for="nativeAddLicensePackages">Add package IDs<input id="nativeAddLicensePackages" autocomplete="off" placeholder="12345"></label>
+            </div>
+            <div class="actions section"><button id="addNativeLicenses" type="button">Add licenses</button></div>
+            <div class="settings-grid section">
+              <label for="nativeRemoveLicenseApps">Remove app IDs<input id="nativeRemoveLicenseApps" autocomplete="off" placeholder="570"></label>
+              <label for="nativeRemoveLicensePackages">Remove package IDs<input id="nativeRemoveLicensePackages" autocomplete="off" placeholder="12345"></label>
+            </div>
+            <div class="notice warn section">Removing licenses can revoke access to games or packages. Typed confirmation is required.</div>
+            <div class="actions section"><button id="removeNativeLicenses" class="danger" type="button">Remove licenses</button></div>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+
+        <div class="card" id="native-steam-redeem">
+          <div class="card-head"><div><h3>Direct key redeem</h3><p>Redeem keys immediately through ASF instead of queueing them for Background Redeemer.</p></div></div>
+          ${botName ? `
+            <label for="nativeRedeemKeys">Steam keys</label>
+            <textarea id="nativeRedeemKeys" class="code-editor" rows="7" placeholder="AAAAA-BBBBB-CCCCC&#10;DDDDD-EEEEE-FFFFF"></textarea>
+            <div class="actions section"><button id="redeemNativeKeys" type="button">Redeem now</button></div>
+            <label for="nativeRedeemOutput">Result</label>
+            <textarea id="nativeRedeemOutput" class="code-editor" rows="7" readonly placeholder="ASF redeem result appears here."></textarea>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+      </div>
+
+      <div class="two-col section">
+        <div class="card" id="native-inventory">
+          <div class="card-head"><div><h3>Inventory</h3><p>Read the native ASF inventory summary for the selected account.</p></div></div>
+          ${botName ? `
+            <div class="actions"><button id="loadNativeInventoryInfo" class="secondary" type="button">Load inventory info</button></div>
+            <label for="nativeInventoryInfo">Inventory info</label>
+            <textarea id="nativeInventoryInfo" class="code-editor" rows="7" readonly placeholder="Inventory app/context summary appears here."></textarea>
+            <div class="settings-grid section">
+              <label for="nativeInventoryAppId">AppID<input id="nativeInventoryAppId" inputmode="numeric" autocomplete="off" placeholder="730"></label>
+              <label for="nativeInventoryContextId">ContextID<input id="nativeInventoryContextId" inputmode="numeric" autocomplete="off" placeholder="2"></label>
+              <label for="nativeInventoryLanguage">Language (optional)<input id="nativeInventoryLanguage" autocomplete="off" placeholder="english"></label>
+            </div>
+            <div class="actions section"><button id="loadNativeInventoryItems" class="secondary" type="button">Load inventory items</button></div>
+            <label for="nativeInventoryItems">Inventory items</label>
+            <textarea id="nativeInventoryItems" class="code-editor" rows="10" readonly placeholder="Native ASF inventory response appears here."></textarea>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+
+        <div class="card" id="native-points">
+          <div class="card-head"><div><h3>Steam Points</h3><p>Redeem a Steam Points definition through ASF. Typed confirmation is required.</p></div></div>
+          ${botName ? `
+            <label for="nativeRedeemPointsDefinition">Definition ID</label>
+            <input id="nativeRedeemPointsDefinition" inputmode="numeric" autocomplete="off" placeholder="123456">
+            <label class="checkline section"><input id="nativeRedeemPointsForced" type="checkbox"> Force redemption</label>
+            <div class="actions section"><button id="redeemNativePoints" class="danger" type="button">Redeem points item</button></div>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+      </div>
+
+      <div class="two-col section">
         <div class="card" id="native-2fa">
           <div class="card-head"><div><h3>2FA</h3><p>Steam Guard token, confirmations and authenticator management through native ASF.</p></div></div>
           ${botName ? `
@@ -1122,6 +1189,118 @@
         await render();
       } catch (error) {
         toast('Keys not queued', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('addNativeLicenses')?.addEventListener('click', async () => {
+      const button = $('addNativeLicenses');
+      button.disabled = true;
+      try {
+        const apps = parseUintList($('nativeAddLicenseApps').value, 'App IDs');
+        const packages = parseUintList($('nativeAddLicensePackages').value, 'Package IDs');
+        if (!apps.length && !packages.length) throw new Error('Enter at least one app ID or package ID.');
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/AddLicense`, { method:'POST', body:JSON.stringify({ Apps:apps, Packages:packages }) });
+        $('nativeAddLicenseApps').value = '';
+        $('nativeAddLicensePackages').value = '';
+        toast('License request sent', `${apps.length} app(s) · ${packages.length} package(s)`);
+      } catch (error) {
+        toast('Licenses not added', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('removeNativeLicenses')?.addEventListener('click', async () => {
+      const apps = parseUintList($('nativeRemoveLicenseApps').value, 'App IDs');
+      const packages = parseUintList($('nativeRemoveLicensePackages').value, 'Package IDs');
+      if (!apps.length && !packages.length) { toast('Nothing to remove', 'Enter at least one app ID or package ID.', 'bad', 7000); return; }
+      const values = await openModal({ title:'Remove Steam licenses', eyebrow:'Destructive Steam action', body:`<p>Remove ${apps.length} app license(s) and ${packages.length} package license(s) from <strong>${escapeHtml(state.selectedBot)}</strong>?</p><div class="notice bad">This can revoke access to games or packages.</div>`, confirmLabel:'Remove licenses', tone:'danger', requireText:'REMOVE LICENSES' });
+      if (!values) return;
+      const button = $('removeNativeLicenses');
+      button.disabled = true;
+      try {
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/RemoveLicense`, { method:'POST', body:JSON.stringify({ Apps:apps, Packages:packages }) });
+        $('nativeRemoveLicenseApps').value = '';
+        $('nativeRemoveLicensePackages').value = '';
+        toast('License removal requested', `${apps.length} app(s) · ${packages.length} package(s)`, 'warn');
+      } catch (error) {
+        toast('Licenses not removed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('redeemNativeKeys')?.addEventListener('click', async () => {
+      const button = $('redeemNativeKeys');
+      button.disabled = true;
+      try {
+        const keys = parseKeyList($('nativeRedeemKeys').value);
+        if (!keys.length) throw new Error('Enter at least one Steam key.');
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/Redeem`, { method:'POST', body:JSON.stringify({ KeysToRedeem:keys }) });
+        $('nativeRedeemOutput').value = prettyJson(result);
+        $('nativeRedeemKeys').value = '';
+        toast('Redeem completed', `${keys.length} key(s) sent to ASF.`);
+      } catch (error) {
+        $('nativeRedeemOutput').value = `ERROR: ${error.message}`;
+        toast('Redeem failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('loadNativeInventoryInfo')?.addEventListener('click', async () => {
+      const button = $('loadNativeInventoryInfo');
+      button.disabled = true;
+      try {
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/Inventory`);
+        $('nativeInventoryInfo').value = prettyJson(result);
+        toast('Inventory loaded');
+      } catch (error) {
+        $('nativeInventoryInfo').value = `ERROR: ${error.message}`;
+        toast('Inventory unavailable', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('loadNativeInventoryItems')?.addEventListener('click', async () => {
+      const button = $('loadNativeInventoryItems');
+      const appId = Number(String($('nativeInventoryAppId').value || '').trim());
+      const contextId = Number(String($('nativeInventoryContextId').value || '').trim());
+      if (!Number.isSafeInteger(appId) || appId <= 0 || appId > 4294967295) { toast('Invalid AppID', 'Enter a positive 32-bit Steam AppID.', 'bad', 7000); return; }
+      if (!Number.isSafeInteger(contextId) || contextId <= 0) { toast('Invalid ContextID', 'Enter a positive Steam inventory ContextID.', 'bad', 7000); return; }
+      button.disabled = true;
+      try {
+        const language = String($('nativeInventoryLanguage').value || '').trim();
+        const query = language ? `?language=${encodeURIComponent(language)}` : '';
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/Inventory/${appId}/${contextId}${query}`);
+        $('nativeInventoryItems').value = prettyJson(result);
+        toast('Inventory items loaded', `AppID ${appId} · ContextID ${contextId}`);
+      } catch (error) {
+        $('nativeInventoryItems').value = `ERROR: ${error.message}`;
+        toast('Inventory items unavailable', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('redeemNativePoints')?.addEventListener('click', async () => {
+      const definition = Number(String($('nativeRedeemPointsDefinition').value || '').trim());
+      if (!Number.isSafeInteger(definition) || definition <= 0 || definition > 4294967295) { toast('Invalid definition ID', 'Enter a positive 32-bit Steam Points definition ID.', 'bad', 7000); return; }
+      const forced = Boolean($('nativeRedeemPointsForced').checked);
+      const values = await openModal({ title:'Redeem Steam Points item', eyebrow:'Steam Points', body:`<p>Redeem definition <strong>${definition}</strong> for <strong>${escapeHtml(state.selectedBot)}</strong>${forced ? ' with forced=true' : ''}?</p>`, confirmLabel:'Redeem points item', tone:'warning', requireText:'REDEEM POINTS' });
+      if (!values) return;
+      const button = $('redeemNativePoints');
+      button.disabled = true;
+      try {
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/RedeemPoints/${definition}?forced=${forced ? 'true' : 'false'}`, { method:'POST' });
+        $('nativeRedeemPointsDefinition').value = '';
+        $('nativeRedeemPointsForced').checked = false;
+        toast('Steam Points redemption requested', `Definition ${definition}`);
+      } catch (error) {
+        toast('Steam Points redemption failed', error.message, 'bad', 7000);
       } finally {
         button.disabled = false;
       }
