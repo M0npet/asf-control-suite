@@ -48,7 +48,7 @@ mock=r'''(() => {
   plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'ControlWeb',Version:'1.0.0.0'}],
   bans:['203.0.113.5'],
   bgr:{main:{UsedKeys:{},UnusedKeys:{}}},
-  commands:[]
+  commands:[],confirmations:{main:[{Type:2,s_CreatorID:'42',s_ID:'7'}]},authenticatorOps:[]
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -77,6 +77,10 @@ mock=r'''(() => {
   if(nativeBgr){const bot=decodeURIComponent(nativeBgr[1]);window.__m.bgr[bot]??={UsedKeys:{},UnusedKeys:{}};if(method==='GET')return resp(env({[bot]:window.__m.bgr[bot]}));if(method==='POST'){window.__m.bgr[bot].UnusedKeys={...window.__m.bgr[bot].UnusedKeys,...body.GamesToRedeemInBackground};return resp(env({[bot]:body.GamesToRedeemInBackground}));}}
   let tokenPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication\/Token$/);
   if(method==='GET'&&tokenPath){const bot=decodeURIComponent(tokenPath[1]);return resp(env({[bot]:env('12345')}));}
+  let confirmationsPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication\/Confirmations$/);
+  if(confirmationsPath){const bot=decodeURIComponent(confirmationsPath[1]);if(method==='GET')return resp(env({[bot]:env(window.__m.confirmations[bot]||[])}));if(method==='POST'){window.__m.confirmations[bot]=[];return resp(env({[bot]:env([])}));}}
+  let authenticatorPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication$/);
+  if(authenticatorPath){const bot=decodeURIComponent(authenticatorPath[1]);if(method==='POST'){window.__m.authenticatorOps.push(['import',bot,body]);return resp(env({[bot]:env(null)}));}if(method==='DELETE'){window.__m.authenticatorOps.push(['delete',bot]);return resp(env({[bot]:env(null)}));}}
   let m=path.match(/^\/Api\/PlaytimeGoals\/([^/]+)(?:\/(Library|Parental))?$/);
   if(method==='GET'&&m){let bot=decodeURIComponent(m[1]); if(!m[2])return resp(env(ptg(bot))); if(m[2]==='Library'){window.__m.libraryReads++;return resp(env({FamilyMemberCount:4,Games:lib}));} return resp(env({Available:true,Enabled:true,BaseListId:1,BaseEntryCount:2,CustomEntryCount:1,Apps:[{AppId:10,BaseAllowed:true,CustomAllowed:null,EffectiveAllowed:true},{AppId:30,BaseAllowed:false,CustomAllowed:true,EffectiveAllowed:true}]}));}
   m=path.match(/^\/Api\/Bot\/([^/]+)(?:\/(Start|Stop|Pause|Resume|Rename|Input))?$/);
@@ -199,6 +203,10 @@ with sync_playwright() as pw:
 
     page.click('#fetchNative2faToken'); page.wait_for_timeout(120)
     assert page.locator('#native2faToken').input_value() == '12345'
+    page.click('#loadNative2faConfirmations'); page.wait_for_timeout(120)
+    assert 'creator 42' in page.locator('#native2faConfirmations').inner_text()
+    page.fill('#nativeAuthenticatorJson','{"shared_secret":"mock"}'); page.click('#importNativeAuthenticator'); page.wait_for_timeout(120)
+    assert page.evaluate('window.__m.authenticatorOps.at(-1)[0]') == 'import'
 
     page.click('[data-unban-ip="203.0.113.5"]'); page.wait_for_timeout(220)
     assert page.evaluate('window.__m.bans.length') == 0
