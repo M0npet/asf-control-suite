@@ -83,6 +83,8 @@ mock=r'''(() => {
   if(method==='POST'&&redeem){const bot=decodeURIComponent(redeem[1]);window.__m.redeemOps.push([bot,body]);return resp(env({[bot]:env({Results:Object.fromEntries((body.KeysToRedeem||[]).map(key=>[key,'OK']))})}));}
   let inventory=path.match(/^\/Api\/Bot\/([^/]+)\/Inventory$/);
   if(method==='GET'&&inventory){const bot=decodeURIComponent(inventory[1]);window.__m.inventoryReads++;return resp(env({[bot]:env({730:[2,6],753:[6]})}));}
+  let inventoryItems=path.match(/^\/Api\/Bot\/([^/]+)\/Inventory\/(\d+)\/(\d+)(?:\?language=([^&]+))?$/);
+  if(method==='GET'&&inventoryItems){const bot=decodeURIComponent(inventoryItems[1]),app=Number(inventoryItems[2]),context=Number(inventoryItems[3]),language=inventoryItems[4]?decodeURIComponent(inventoryItems[4]):null;window.__m.inventoryReads++;return resp(env({[bot]:env({AppID:app,ContextID:context,Language:language,Items:[{AssetID:'1'}]})}));}
   let redeemPoints=path.match(/^\/Api\/Bot\/([^/]+)\/RedeemPoints\/(\d+)(?:\?.*)?$/);
   if(method==='POST'&&redeemPoints){const bot=decodeURIComponent(redeemPoints[1]);const definition=Number(redeemPoints[2]);window.__m.pointsOps.push([bot,definition,path.includes('forced=true')]);return resp(env({[bot]:env(true)}));}
   let nativeBgr=path.match(/^\/Api\/Bot\/([^/]+)\/GamesToRedeemInBackground$/);
@@ -194,6 +196,9 @@ with sync_playwright() as pw:
     assert page.locator('#nativeRemoveLicenseApps').count() == 1
     assert page.locator('#nativeRedeemKeys').count() == 1
     assert page.locator('#nativeInventoryInfo').count() == 1
+    assert page.locator('#nativeInventoryAppId').count() == 1
+    assert page.locator('#nativeInventoryContextId').count() == 1
+    assert page.locator('#nativeInventoryItems').count() == 1
     assert page.locator('#nativeRedeemPointsDefinition').count() == 1
     assert page.locator('#fetchNative2faToken').count() == 1
     assert page.locator('[data-unban-ip="203.0.113.5"]').count() == 1
@@ -268,6 +273,13 @@ with sync_playwright() as pw:
     page.click('#loadNativeInventoryInfo'); page.wait_for_timeout(160)
     assert page.evaluate('window.__m.inventoryReads') == 1
     assert '730' in page.locator('#nativeInventoryInfo').input_value()
+    page.fill('#nativeInventoryAppId','730')
+    page.fill('#nativeInventoryContextId','2')
+    page.fill('#nativeInventoryLanguage','english')
+    page.click('#loadNativeInventoryItems'); page.wait_for_timeout(160)
+    assert page.evaluate('window.__m.inventoryReads') == 2
+    inventory_items=page.locator('#nativeInventoryItems').input_value()
+    assert '"AppID": 730' in inventory_items and '"ContextID": 2' in inventory_items and '"Language": "english"' in inventory_items
 
     page.fill('#nativeRedeemPointsDefinition','42')
     page.click('#redeemNativePoints'); page.wait_for_selector('#modal[open]')
