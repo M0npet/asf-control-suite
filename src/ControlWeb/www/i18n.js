@@ -307,6 +307,11 @@
     'ASF is waiting for permission to begin its native QR session.': 'ASF очікує дозволу на запуск штатної QR-сесії.',
     'Start QR login': 'Почати вхід через QR',
     'QR login failed': 'Не вдалося виконати вхід через QR',
+    'QR will appear here after account creation.': 'QR-код з’явиться тут після створення облікового запису.',
+    'Starting Steam QR session…': 'Запуск QR-сесії Steam…',
+    'Reconnecting to Steam…': 'Повторне підключення до Steam…',
+    'Steam account connected': 'Обліковий запис Steam підключено',
+    'QR sign-in is active in the Add account card above.': 'Вхід через QR активний у блоці «Додати обліковий запис» вище.',
     'Steam accounts': 'Облікові записи Steam',
     'Rename ASF ID': 'Перейменувати ASF ID',
     'ASF ID:': 'ASF ID:',
@@ -414,6 +419,7 @@
     if ((m = source.match(/^(\d+)d (\d+)h$/))) return `${m[1]} д ${m[2]} год`;
     if ((m = source.match(/^managed (.+)$/))) return `керована пам’ять ${m[1]}`;
     if ((m = source.match(/^(.+) was written with AES-encrypted credentials\.$/))) return `${m[1]} записано з обліковими даними, зашифрованими AES.`;
+    if ((m = source.match(/^(.+) is connected\. You can add another account when ready\.$/))) return `${m[1]} підключено. За потреби можна додати ще один обліковий запис.`;
     if ((m = source.match(/^(.+) · type (\d+)$/))) return `${m[1]} · тип ${m[2]}`;
     if ((m = source.match(/^(.+) reloaded and verified\.$/))) return `${m[1]} перезавантажено та перевірено.`;
     if ((m = source.match(/^Target hours for (.+)$/))) return `Цільові години для ${m[1]}`;
