@@ -139,6 +139,14 @@
     return next;
   };
 
+  const parseUintList = (value, label) => {
+    const raw = String(value || '').split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+    const parsed = raw.map((item) => Number(item));
+    if (parsed.some((item) => !Number.isSafeInteger(item) || item <= 0 || item > 4294967295)) throw new Error(`${label} must contain positive 32-bit IDs separated by spaces or commas.`);
+    return [...new Set(parsed)];
+  };
+  const parseKeyList = (value) => [...new Set(String(value || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean))];
+
   function accountDisplayName(account) {
     const nickname = String(account?.Nickname || '').trim();
     return nickname || String(account?.BotName || 'unknown');
