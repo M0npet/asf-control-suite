@@ -33,6 +33,11 @@ if patch.is_file():
         "string input = QrCodeLoginInput;" not in text,
         "patch shadows upstream WantsQrCodeLogin input variable",
     )
+    require("ControlSuiteQrSteamLogin" in text, "patch does not persist QR-derived login identity in bot database")
+    require("BotDatabase.QrSteamLogin = pollResult.AccountName" in text, "patch does not save the authenticated QR account name")
+    require("BotDatabase.QrSteamLogin" in text and "SetUserInput(ASF.EUserInputType.Login, BotDatabase.QrSteamLogin)" in text, "patch does not restore the QR login identity after bot reload")
+    require("BotConfig.Saving = true" not in text, "patch must not rewrite BotConfig from the QR login callback")
+    require("ArchiSteamFarm.Steam.Storage.BotConfig.Write" not in text, "patch must not trigger a BotConfig write/reload from QR login")
 
 require(apply_script.is_file(), "ASF patch application script is missing")
 if apply_script.is_file():

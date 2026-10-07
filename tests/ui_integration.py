@@ -43,7 +43,7 @@ mock=r'''(() => {
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
   configs:{main:{Enabled:true,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,qrInputCounts:{}
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -53,7 +53,7 @@ mock=r'''(() => {
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
   const body=opt.body?JSON.parse(opt.body):null;
   if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192}));
-  if(method==='GET'&&path==='/Api/AccountManager')return resp(env({Accounts:window.__m.accounts}));
+  if(method==='GET'&&path==='/Api/AccountManager'){window.__m.accountReads++;return resp(env({Accounts:window.__m.accounts}));}
   if(method==='GET'&&path==='/Api/AccountManager/Defaults')return resp(env({Defaults:window.__m.defaults,ForbiddenKeys:['SteamPassword','SteamLogin'],MaxPayloadChars:65536}));
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
   if(method==='GET'&&path==='/Api/ControlCenter/Status')return resp(env({UptimeSeconds:3720,ControlSuiteVersion:'9.8.7',ControlModuleVersion:'9.8.7.6',TargetAsfVersion:'test-asf-version',TargetAsfCommit:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',TargetAsfUiCommit:'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',TargetPlaytimeGoalsVersion:'0.5.9.0',TargetPlaytimeGoalsCommit:'cccccccccccccccccccccccccccccccccccccccc',ManagedMemoryKiB:2048,ProcessWorkingSetKiB:4096,ProcessorCount:8,StorageAvailable:true,DiskFreeBytes:40*1024**3,DiskTotalBytes:64*1024**3,WaitingForInputBots:window.__m.accounts.filter(a=>a.RequiredInput).length,Framework:'.NET 10 mock',OS:'Mock Linux',ProcessArchitecture:'Arm64',Modules:[{Name:'PlaytimeGoals',Loaded:true,Version:'0.5.1.0',ExpectedVersion:'0.5.1.0'},{Name:'AccountManager',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'},{Name:'ControlCenter',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'},{Name:'ControlWeb',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'}]}));
@@ -191,6 +191,29 @@ with sync_playwright() as pw:
     assert qr_inputs_after == qr_inputs_before + 1
     page.wait_for_selector('#addAccountCard #qrCode[data-qr-url="https://s.team/q/TEST-RETRY"]')
     assert page.evaluate('window.__qrAddCardIdentity===document.querySelector("#addAccountCard")')
+
+    # A terminal non-QR input/stopped bot must exit reconnect mode and stop polling.
+    page.evaluate('''() => {
+      const a=window.__m.accounts.find(a=>a.BotName==="qrbot");
+      a.QrChallengeUrl=null;
+      a.RequiredInput=1;
+      a.KeepRunning=false;
+      a.Connected=false;
+    }''')
+    page.wait_for_timeout(1500)
+    assert 'QR login could not continue' in page.locator('#qrOnboardingStatus').inner_text()
+    terminal_reads=page.evaluate('window.__m.accountReads')
+    page.wait_for_timeout(1800)
+    assert page.evaluate('window.__m.accountReads') == terminal_reads
+    assert page.evaluate('window.__qrAddCardIdentity===document.querySelector("#addAccountCard")')
+
+    # Restore mock runtime for the remaining account action tests.
+    page.evaluate('''() => {
+      const a=window.__m.accounts.find(a=>a.BotName==="qrbot");
+      a.RequiredInput=0;
+      a.KeepRunning=true;
+      a.Connected=true;
+    }''')
 
     # Multi-account switcher keeps human identity separate from BotName and scopes actions by BotName.
     page.locator('[data-switch-bot="main"]').click(); page.wait_for_timeout(120)
