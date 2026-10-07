@@ -370,6 +370,7 @@ with sync_playwright() as pw:
     # Lock clears browser session
     page.click('#nav button[data-view="security"]'); page.click('#lockNow'); page.wait_for_selector('#authGate:not(.hidden)')
     assert page.evaluate("sessionStorage.getItem('asf.control.ipcPassword')") is None
+    assert page.locator('#content').inner_text().strip() == ''
     assert not errors,errors
     page.close()
 
