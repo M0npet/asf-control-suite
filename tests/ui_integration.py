@@ -232,12 +232,6 @@ with sync_playwright() as pw:
     page.fill('#nativeCryptoInput','hello'); page.click('#runNativeHash'); page.wait_for_timeout(120)
     assert page.locator('#nativeCryptoOutput').input_value() == 'HASHED-VALUE'
 
-    page.fill('#nativeCopyBotName','copy-no-secrets')
-    page.click('#copyNativeBotConfig')
-    page.wait_for_function("() => Boolean(window.__m.configs['copy-no-secrets'])")
-    assert 'SteamTradeToken' not in page.evaluate("window.__m.configs['copy-no-secrets']")
-    assert page.evaluate("window.__m.configs['copy-no-secrets'].Enabled") is False
-    assert page.evaluate("window.__m.configs['copy-no-secrets'].GamesPlayedWhileIdle") == []
     assert_accessible_controls(page)
     assert_no_horizontal_overflow(page)
 
@@ -368,6 +362,17 @@ with sync_playwright() as pw:
     page.evaluate("window.__storageBackup=window.fetch; const orig=window.fetch; window.fetch=async(path,opt={})=>{ if(String(path)==='/Api/ControlCenter/Status'){ const r=await orig(path,opt); const p=await r.json(); p.Result.StorageAvailable=false; p.Result.DiskFreeBytes=null; p.Result.DiskTotalBytes=null; return {ok:true,status:200,statusText:'OK',json:async()=>p}; } return orig(path,opt); };")
     page.click('#refreshView'); page.wait_for_timeout(180)
     assert page.locator('text=unavailable').count() >= 1
+
+    # Native BotConfig copy must be credential-free and must not leak SteamTradeToken.
+    # Run this after the dedicated QR flow because a copied credential-free bot correctly
+    # enters ASF's QR-required state and should not contaminate the earlier onboarding fixture.
+    page.click('#nav button[data-view="native"]'); page.wait_for_selector('#nativeCopyBotName')
+    page.fill('#nativeCopyBotName','copy-no-secrets')
+    page.click('#copyNativeBotConfig')
+    page.wait_for_function("() => Boolean(window.__m.configs['copy-no-secrets'])")
+    assert 'SteamTradeToken' not in page.evaluate("window.__m.configs['copy-no-secrets']")
+    assert page.evaluate("window.__m.configs['copy-no-secrets'].Enabled") is False
+    assert page.evaluate("window.__m.configs['copy-no-secrets'].GamesPlayedWhileIdle") == []
 
     # Lock clears browser session
     page.click('#nav button[data-view="security"]'); page.click('#lockNow'); page.wait_for_selector('#authGate:not(.hidden)')
