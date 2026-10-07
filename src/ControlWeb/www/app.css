@@ -323,3 +323,20 @@ dialog.modal::backdrop { background:rgba(2,5,9,.72); backdrop-filter:blur(5px); 
   .topbar-actions { margin-top:12px; justify-content:flex-start; flex-wrap:wrap; }
   .locale-select { min-width:126px; max-width:none; }
 }
+
+
+/* Native ASF parity workspace */
+.native-tabs{display:flex;gap:.55rem;flex-wrap:wrap}
+.native-tabs button.active{border-color:var(--accent,#6aa9ff);box-shadow:0 0 0 1px currentColor inset}
+.native-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-top:1rem}
+.native-field{display:flex;flex-direction:column;gap:.38rem;padding:.85rem;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft)}
+.native-field>label:first-child{font-weight:700}
+.native-json{min-height:7.5rem;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.native-flags{display:grid;gap:.4rem}
+.native-flags label,.switch-row{display:flex;align-items:center;gap:.55rem}
+.mass-bot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;margin-top:1rem}
+.mass-bot{display:grid;grid-template-columns:auto 1fr;column-gap:.55rem;align-items:center;padding:.75rem;border:1px solid var(--border);border-radius:10px}
+.mass-bot small{grid-column:2}
+.command-output{min-height:18rem;max-height:50vh;overflow:auto;white-space:pre-wrap;word-break:break-word;padding:1rem;border:1px solid var(--border);border-radius:12px;background:#05080e;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:900px){.native-editor-grid{grid-template-columns:1fr}.mass-bot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.mass-bot-grid{grid-template-columns:1fr}}
