@@ -1,4 +1,4 @@
-# ASF Control Suite 1.1 — candidate notes
+# ASF Control Suite 1.1.0 — candidate notes
 
 The `main` branch now targets **v1.1.0**. This candidate is not a stable release until the exact generated phone artifact passes the same live acceptance process used for v1.0.0.
 
