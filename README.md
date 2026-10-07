@@ -112,7 +112,7 @@ The canonical source of truth is [`release/pins.env`](release/pins.env).
 Pinned revisions:
 
 - ASF: `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
-- ASF compatibility patch SHA-256: `b3470306ceece048ad82b5358b3e8b3fd67816e35d5e555770c3c660ef13c78e`
+- ASF compatibility patch SHA-256: `bb7cc993a0080bbfccdce1ad9a79876aceab12a69d4b01cc4979ab1265fb312c`
 - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
 - PlaytimeGoals: `6795172c59a43153c4065ed7ae9e17f0862687a3`
 
