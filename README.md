@@ -12,7 +12,7 @@
   </a>
 </p>
 
-**One self-hosted `/Control/` UI · ASF-native APIs · reproducible releases · RAM-only IPC credentials**
+**One self-hosted Control Suite UI at `/` · ASF-native APIs · reproducible releases · RAM-only IPC credentials**
 
 [Installation](docs/installation/manual.md)
 &nbsp;·&nbsp;
@@ -42,7 +42,7 @@ No second daemon. No arbitrary shell API. No separate credential database.
 | --- | --- |
 | **AccountManager** | Multi-account overview, Steam profiles, bot controls and QR/password onboarding |
 | **ControlCenter** | Runtime health, module status and compatibility metadata |
-| **ControlWeb** | Responsive self-hosted `/Control/` interface |
+| **ControlWeb** | Responsive self-hosted Control Suite interface; `/` is the default entrypoint and `/Control/` remains canonical internally |
 | **PlaytimeGoals** | Per-game playtime targets, queues, FREE-license handling and Family View recovery |
 
 ## Preview
@@ -106,7 +106,7 @@ The canonical source of truth is [`release/pins.env`](release/pins.env).
 | ASF Control Suite | **1.0.0** |
 | Control modules | **1.0.0.0** |
 | ArchiSteamFarm | **6.3.10.3** |
-| PlaytimeGoals | **0.5.1.0** |
+| PlaytimeGoals | **0.5.2.0** |
 | .NET SDK | **10.0.400** |
 
 Pinned revisions:
@@ -114,7 +114,7 @@ Pinned revisions:
 - ASF: `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
 - ASF compatibility patch SHA-256: `42026758d985ea54b635bc42b72b5f715369b01e9d19bbed61d576cd57020fcf`
 - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
-- PlaytimeGoals: `6795172c59a43153c4065ed7ae9e17f0862687a3`
+- PlaytimeGoals: `afe080fb5dae505f3b4f7537b08782dda35a260b`
 
 ## Release policy
 
@@ -188,3 +188,9 @@ The suite covers:
 ASF-native APIs · explicit security boundaries · reproducible releases
 
 </div>
+
+## Native ASF compatibility
+
+Control Suite keeps the complete stock ASF-ui reachable for native bot configuration, commands, logs, mass editing, plugin/release management and other upstream ASF functions. Common settings such as Steam persona status (including Invisible) are also exposed directly in the account workspace.
+
+PlaytimeGoals 0.5.2 uses second-precision local deadlines for finite targets while retaining Steam's minute-granularity historical playtime as the authoritative starting baseline.

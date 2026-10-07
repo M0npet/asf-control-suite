@@ -62,7 +62,7 @@ for token, reason in (
         "deferred public release notice",
     ),
     (
-        "| PlaytimeGoals | **0.5.1.0** |",
+        "| PlaytimeGoals | **0.5.2.0** |",
         "current PlaytimeGoals compatibility version",
     ),
     (
@@ -150,7 +150,7 @@ for token, reason in (
         "ControlWeb ZIP",
     ),
     (
-        "PlaytimeGoals-v0.5.1.zip",
+        "PlaytimeGoals-v0.5.2.zip",
         "PlaytimeGoals ZIP",
     ),
     (

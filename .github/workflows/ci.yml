@@ -40,3 +40,65 @@ jobs:
 
       - name: Run complete sandbox suite
         run: bash tests/run-all.sh
+
+
+  exact-build:
+    name: Exact pinned build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out Control Suite
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read canonical release pins
+        id: pins
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          values = {}
+          for raw in Path("release/pins.env").read_text().splitlines():
+              line = raw.strip()
+              if not line or line.startswith("#"):
+                  continue
+              key, value = line.split("=", 1)
+              values[key] = value
+          for key in ("ASF_COMMIT", "PLAYTIMEGOALS_COMMIT", "DOTNET_SDK_VERSION"):
+              print(f"{key.lower()}={values[key]}")
+          PY
+
+      - name: Check out pinned ASF
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: JustArchiNET/ArchiSteamFarm
+          ref: ${{ steps.pins.outputs.asf_commit }}
+          path: deps/asf
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Check out pinned PlaytimeGoals
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: M0npet/PlaytimeGoals
+          ref: ${{ steps.pins.outputs.playtimegoals_commit }}
+          path: deps/ptg
+          persist-credentials: false
+
+      - name: Set up exact .NET SDK
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: ${{ steps.pins.outputs.dotnet_sdk_version }}
+
+      - name: Prepare exact source worktree
+        run: |
+          bash scripts/build/prepare-release-worktree.sh \
+            "$GITHUB_WORKSPACE/deps/asf" \
+            "$GITHUB_WORKSPACE/deps/ptg" \
+            "$RUNNER_TEMP/asf-control-suite-build"
+
+      - name: Compile exact pinned release graph
+        run: bash scripts/build/build-release.sh "$RUNNER_TEMP/asf-control-suite-build"

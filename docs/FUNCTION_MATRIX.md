@@ -1,8 +1,9 @@
 # Final function matrix — v1.0
 
-## PlaytimeGoals 0.5.1.0
+## PlaytimeGoals 0.5.2.0
 
 - Finite target hours and unlimited (`null`) goals.
+- Second-precision local deadlines and v1-minute-ledger migration to v2 seconds; Steam historical playtime remains minute-granularity.
 - Batch scheduling (1..32) and stable queue position.
 - OWN / FAMILY / FREE / EXCLUDED library semantics.
 - Direct ownership takes priority over Steam Family metadata.
@@ -30,9 +31,10 @@
 - Native Steam Mobile QR onboarding through ASF `QrCodeLogin` and `QrChallengeURL`; QR is rendered locally with no third-party QR service.
 - Login/password onboarding remains available through native ASF encryption.
 - PlaytimeGoals sorting: managed, numeric-aware name, Steam hours, target, AppID, own/family priority; sorting is client-side and preserves unsaved edits.
-- Stock `/bots` remains available from Advanced as a legacy fallback.
+- Stock ASF-ui remains directly reachable for the complete native ASF surface; ControlWeb links per-account config/2FA/BGR plus Bots, Commands, Log, ASF config, Mass editor, Plugins, Releases and ASF-ui settings.
+- Per-account native Steam persona status is editable directly from ControlWeb, including Invisible.
 
-- Independent UI at `/Control/`; stock `/opt/asf/www` is not modified.
+- Control Suite is the default UI at `/`; `/Control/` remains its canonical mount. The phone installer transactionally patches only `/opt/asf/www/index.html` as the default entrypoint and backs it up for exact rollback.
 - Reuses the stock ASF-ui locale preference key `asf-ui:locale`; changing English/Ukrainian from ControlWeb updates the same preference.
 - Full Ukrainian (`uk-UA`) localization for ControlWeb with English fallback; no separate localization plugin.
 - Dashboard and multi-account workspace.

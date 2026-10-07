@@ -65,15 +65,17 @@ if not isinstance(data, dict) or data.get("Headless") is not True:
 print("headless=true")
 PY
 
-root="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/ 2>/dev/null || true)"
+root_file="$(mktemp)"
+root="$(curl -sS -o "$root_file" -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/ 2>/dev/null || true)"
 api="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Api/ASF 2>/dev/null || true)"
 control="$(curl -sSL -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Control/ 2>/dev/null || true)"
 health_file="$(mktemp)"
 health="$(curl -sS -o "$health_file" -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Control/healthz 2>/dev/null || true)"
-swagger_file="$(mktemp)"; trap 'rm -f "$health_file" "$swagger_file"' EXIT
+swagger_file="$(mktemp)"; trap 'rm -f "$root_file" "$health_file" "$swagger_file"' EXIT
 swagger="$(curl -sS -o "$swagger_file" -w '%{http_code}' --connect-timeout 4 http://127.0.0.1:1242/swagger/ASF/swagger.json 2>/dev/null || true)"
 echo "root=$root api=$api control=$control health=$health swagger=$swagger"
 [[ "$root" == 200 && "$api" == 401 && "$control" == 200 && "$health" == 200 && "$swagger" == 200 ]] || exit 24
+grep -Fq 'data-asf-control-suite-root="1"' "$root_file" || exit 30
 grep -Fq 'control-suite-health' "$health_file" || exit 28
 grep -Fq 'Api/AccountManager' "$swagger_file" || exit 25
 grep -Fq 'Api/ControlCenter/Status' "$swagger_file" || exit 26

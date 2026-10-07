@@ -375,6 +375,9 @@ if VERIFY.is_file():
                     "<ASF>/",
 
                 "webPath":
+                    "/",
+
+                "canonicalControlPath":
                     "/Control/",
             },
 

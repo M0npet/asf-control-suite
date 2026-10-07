@@ -14,7 +14,7 @@ The current release requires:
 
 - ArchiSteamFarm 6.3.10.3
 - ASF-ui at the pinned revision
-- PlaytimeGoals 0.5.1.0
+- PlaytimeGoals 0.5.2.0
 - .NET SDK 10.0.400
 
 The build intentionally fails if the selected SDK or source revisions do not match the canonical pins.
@@ -78,7 +78,7 @@ A successful canonical build produces:
     artifacts/AccountManager-v1.0.0.zip
     artifacts/ControlCenter-v1.0.0.zip
     artifacts/ControlWeb-v1.0.0.zip
-    artifacts/PlaytimeGoals-v0.5.1.zip
+    artifacts/PlaytimeGoals-v0.5.2.zip
     artifacts/CONTROL-SUITE-METADATA.json
     artifacts/SHA256SUMS
 
@@ -129,7 +129,7 @@ Do not extract the complete suite ZIP into `<ASF>/plugins/`; it is an install-ro
 
 Start ASF again and open:
 
-    /Control/
+    /  (default; redirects to /Control/)
 
 Verify that the expected accounts, modules and PlaytimeGoals state are available.
 
@@ -142,7 +142,7 @@ The same installation rule applies to the individual archives:
     AccountManager-v1.0.0.zip
     ControlCenter-v1.0.0.zip
     ControlWeb-v1.0.0.zip
-    PlaytimeGoals-v0.5.1.zip
+    PlaytimeGoals-v0.5.2.zip
 
 For each archive:
 
@@ -184,7 +184,7 @@ Recommended sequence:
 2. back up the current plugin directories;
 3. extract the complete suite ZIP into `<ASF>/`;
 4. start ASF;
-5. verify `/Control/`;
+5. verify `/` opens Control Suite and `/Control/` remains healthy;
 6. verify account actions;
 7. verify PlaytimeGoals state.
 
@@ -199,7 +199,7 @@ If an update fails:
 1. stop ASF;
 2. restore the previous `ArchiSteamFarm` and plugin directories from backup;
 4. start ASF;
-5. verify `/Control/` and PlaytimeGoals state.
+5. verify `/` opens Control Suite, `/Control/` remains healthy, and PlaytimeGoals state is correct.
 
 Because runtime configuration and databases are outside the native release ZIPs, replacing plugin binaries does not require replacing those files.
 
@@ -223,4 +223,4 @@ The normal public installation path remains:
       ↓
     start ASF
       ↓
-    verify /Control/
+    verify / -> Control Suite and /Control/ health

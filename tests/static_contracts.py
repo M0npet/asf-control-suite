@@ -160,6 +160,11 @@ require('src/ControlWeb/ControlWebPlugin.cs','public string WebPath => "/Control
 require('src/ControlWeb/www/index.html','/Control/i18n.js','i18n loaded')
 require('src/ControlWeb/www/index.html','/Control/core.js','core loaded')
 require('src/ControlWeb/www/index.html','/Control/qrcode.min.js','local QR renderer loaded')
+require('installer/phone-transaction.sh','data-asf-control-suite-root="1"','default-root Control Suite entrypoint marker')
+require('installer/phone-transaction.sh',"params.get('asfui') !== '1'",'legacy ASF-ui requires explicit bypass')
+require('installer/phone-transaction.sh',"window.location.replace('/Control/' + window.location.search + window.location.hash)",'default-root redirect to Control Suite')
+require('installer/phone-transaction.sh','ROOT_UI_INDEX="$ASF_ROOT/www/index.html"','stock ASF-ui entrypoint target')
+require('installer/phone-rollback-core.sh','ROOT_UI_INDEX="$ASF_ROOT/www/index.html"','root UI rollback target')
 require('src/ControlWeb/www/qrcode.min.js','QRCode','local QR renderer asset')
 require('src/ControlWeb/www/qrcode.LICENSE.txt','QRCode for JavaScript','QR renderer license attribution')
 require('src/ControlWeb/www/app.js','function accountDisplayName(','Steam persona primary identity helper')
@@ -168,7 +173,18 @@ require('src/ControlWeb/www/app.js','QrChallengeUrl','native QR challenge render
 require('src/ControlWeb/www/app.js',"Type:QR_INPUT_TYPE, Value:'Y'",'native QR prompt acceptance')
 require('src/ControlWeb/www/app.js','goalSort','playtime sort control')
 require('src/ControlWeb/www/app.js','localeCompare','natural game-name sorting')
-require('src/ControlWeb/www/app.js','href="/bots"','legacy stock bots fallback')
+require('src/ControlWeb/www/app.js','legacyAsfHref','explicit legacy ASF-ui fallback helper')
+require('src/ControlWeb/www/app.js','PERSONA_STATES','native Steam persona status options')
+require('src/ControlWeb/www/app.js','next.OnlineStatus = status','native OnlineStatus persistence')
+require('src/ControlWeb/www/app.js','id="onlineStatus"','per-account Steam persona selector')
+
+
+
+
+
+require('src/ControlWeb/www/app.js','formatGoalDuration','second-precision goal display')
+require('src/ControlWeb/www/app.js','EffectiveSeconds','second-precision effective credit')
+require('src/ControlWeb/www/app.js','RemainingSeconds','second-precision remaining time')
 require('src/ControlWeb/www/app.css','.steam-avatar','Steam avatar styles')
 require('src/ControlWeb/www/app.css','.qr-panel','QR onboarding styles')
 require('src/ControlWeb/www/i18n.js',"ASF_LOCALE_KEY = 'asf-ui:locale'",'shared ASF-ui locale key')
@@ -231,7 +247,7 @@ require('installer/phone-transaction.sh','Api/AccountManager','account health ga
 require('installer/phone-transaction.sh','Api/ControlCenter/Status','control OpenAPI gate')
 require('installer/phone-transaction.sh','/Control/healthz','functional control health gate')
 require('installer/phone-transaction.sh','control-suite-health','functional health sentinel gate')
-require('installer/phone-transaction.sh','Control Suite health gate: control=$control health=$health swagger=$code','diagnostic health codes')
+require('installer/phone-transaction.sh','Control Suite health gate: root=$root control=$control health=$health swagger=$code','diagnostic health codes')
 require('installer/phone-transaction.sh','Api/PlaytimeGoals','PTG health gate')
 require('installer/phone-transaction.sh','CONTROL_PROC_ROOT','testable /proc process detection')
 require('installer/phone-transaction.sh',"IFS= read -r -d '' argv0",'argv0-based ASF process detection')

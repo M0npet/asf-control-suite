@@ -425,6 +425,9 @@ def verify_metadata(
                 "<ASF>/",
 
             "webPath":
+                "/",
+
+            "canonicalControlPath":
                 "/Control/",
         },
 

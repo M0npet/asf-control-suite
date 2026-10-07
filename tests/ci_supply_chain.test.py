@@ -25,6 +25,16 @@ require(
     "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020" in workflow,
     "setup-node must be pinned to v7.0.0 commit SHA",
 )
+require(
+    "actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9" in workflow,
+    "setup-dotnet must be pinned to the resolved v4 commit SHA",
+)
+require(
+    "steps.pins.outputs.asf_commit" in workflow
+    and "steps.pins.outputs.playtimegoals_commit" in workflow
+    and "steps.pins.outputs.dotnet_sdk_version" in workflow,
+    "exact build inputs must come from canonical release pins",
+)
 require("persist-credentials: false" in workflow, "checkout credentials must not persist")
 require(
     "python -m pip install --disable-pip-version-check -r requirements-ci.txt" in workflow,
