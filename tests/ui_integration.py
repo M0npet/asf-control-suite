@@ -279,6 +279,7 @@ with sync_playwright() as pw:
     ua.click('#nav button[data-view="accounts"]'); ua.wait_for_selector('#createBotForm'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Зареєстровані облікові записи').count() == 1
     assert ua.locator('button',has_text='Створити обліковий запис').count() == 1
+    assert ua.locator('#qrOnboardingPanel',has_text='QR-код з’явиться тут після створення облікового запису.').count() == 1
     ua.click('#nav button[data-view="playtime"]'); ua.wait_for_selector('#goalRows'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Налаштування').count() == 1
     assert ua.locator('button',has_text='Зберегти цілі').count() == 1
