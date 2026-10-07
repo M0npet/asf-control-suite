@@ -4,7 +4,7 @@
 
 ### Безпечний модульний центр керування для ArchiSteamFarm
 
-**v1.0.0 · ASF 6.3.10.3 · .NET 10.0.400**
+**main: v1.1.0 candidate · stable: v1.0.0 · ASF 6.3.10.3 · .NET 10.0.400**
 
 [English](README.md) · [Українська](README.uk.md) · [Deutsch](README.de.md)
 
@@ -33,8 +33,8 @@ ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс
 
 | Компонент | Версія / revision |
 | --- | --- |
-| ASF Control Suite | **1.0.0** |
-| Control-модулі | **1.0.0.0** |
+| ASF Control Suite | **1.1.0 candidate** |
+| Control-модулі | **1.1.0.0** |
 | ArchiSteamFarm | **6.3.10.3** |
 | ASF commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
 | ASF-ui commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
@@ -91,10 +91,10 @@ ControlWeb не надає API для довільного запуску shell-
 
 Канонічна release-збірка створює:
 
-    ASF-Control-Suite-v1.0.0.zip
-    AccountManager-v1.0.0.zip
-    ControlCenter-v1.0.0.zip
-    ControlWeb-v1.0.0.zip
+    ASF-Control-Suite-v1.1.0.zip
+    AccountManager-v1.1.0.zip
+    ControlCenter-v1.1.0.zip
+    ControlWeb-v1.1.0.zip
     PlaytimeGoals-v0.5.2.zip
     CONTROL-SUITE-METADATA.json
     SHA256SUMS
@@ -104,13 +104,13 @@ ZIP-файли вже мають нативну структуру ASF plugins.
 Для встановлення повного bundle:
 
 1. Зупиніть ASF.
-2. Розпакуйте `ASF-Control-Suite-v1.0.0.zip` прямо в корінь `<ASF>/`.
+2. Розпакуйте `ASF-Control-Suite-v1.1.0.zip` прямо в корінь `<ASF>/`.
 3. Запустіть ASF.
 4. Відкрийте `/` і перевірте Control Suite та `/Control/`.
 
 Окремі plugin ZIP-файли розпаковуються в `<ASF>/plugins/`.
 
-Стабільний реліз: [v1.0.0](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
+Наведені вище імена пакетів відповідають поточному кандидату `main` v1.1.0. Стабільний реліз залишається [v1.0.0](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0) до проходження нового live acceptance.
 
 ---
 
@@ -186,7 +186,7 @@ Verifier порівнює байти exact build з bundle та individual ZIP.
 
 <div align="center">
 
-**ASF Control Suite v1.0.0**
+**ASF Control Suite · main v1.1.0 candidate · stable v1.0.0**
 
 ASF-native API, відтворювані збірки та чіткі межі безпеки.
 

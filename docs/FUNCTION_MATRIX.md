@@ -1,4 +1,4 @@
-# Final function matrix — v1.0
+# Function matrix — v1.1.0 candidate
 
 ## PlaytimeGoals 0.5.2.0
 
@@ -15,7 +15,7 @@
 - Optional Family View temporary allow policy with exact ABSENT/ALLOW/DENY restore and crash recovery journal.
 - Status, Library and Parental APIs.
 
-## AccountManager 1.0.0.0
+## AccountManager 1.1.0.0
 
 - Cross-account summary.
 - Global defaults for newly-created ASF bots.
@@ -24,7 +24,7 @@
 - Recursive removal of credentials, passwords, tokens, secrets and security-controlled fields.
 - Does not own bot lifecycle or Steam credentials; lifecycle remains native ASF.
 
-## ControlWeb 1.0.0.0
+## ControlWeb 1.1.0.0
 
 - Steam persona/avatar primary identity with ASF BotName retained as the technical ID.
 - First-class multi-account switcher; lifecycle/config/Playtime actions remain explicitly scoped by BotName.
@@ -61,7 +61,7 @@
 - Native ASF restart and exit with typed confirmation.
 - No arbitrary host/shell command surface.
 
-## ControlCenter 1.0.0.0
+## ControlCenter 1.1.0.0
 
 - Runtime health and target compatibility metadata.
 - Bot/connection/farming/input summary.

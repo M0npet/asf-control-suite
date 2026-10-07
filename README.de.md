@@ -4,7 +4,7 @@
 
 ### Eine sichere, modulare Steuerungsebene für ArchiSteamFarm
 
-**v1.0.0 · ASF 6.3.10.3 · .NET 10.0.400**
+**main: v1.1.0 candidate · stable: v1.0.0 · ASF 6.3.10.3 · .NET 10.0.400**
 
 [English](README.md) · [Українська](README.uk.md) · [Deutsch](README.de.md)
 
@@ -33,8 +33,8 @@ Die kanonische Quelle für Release-Versionen und Revisionen ist [`release/pins.e
 
 | Komponente | Version / Revision |
 | --- | --- |
-| ASF Control Suite | **1.0.0** |
-| Control-Module | **1.0.0.0** |
+| ASF Control Suite | **1.1.0 candidate** |
+| Control-Module | **1.1.0.0** |
 | ArchiSteamFarm | **6.3.10.3** |
 | ASF Commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
 | ASF-ui Commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
@@ -91,10 +91,10 @@ Weitere Informationen: [`SECURITY.md`](SECURITY.md).
 
 Der kanonische Release-Build erzeugt:
 
-    ASF-Control-Suite-v1.0.0.zip
-    AccountManager-v1.0.0.zip
-    ControlCenter-v1.0.0.zip
-    ControlWeb-v1.0.0.zip
+    ASF-Control-Suite-v1.1.0.zip
+    AccountManager-v1.1.0.zip
+    ControlCenter-v1.1.0.zip
+    ControlWeb-v1.1.0.zip
     PlaytimeGoals-v0.5.2.zip
     CONTROL-SUITE-METADATA.json
     SHA256SUMS
@@ -104,13 +104,13 @@ Die ZIP-Dateien enthalten bereits das native ASF-Plugin-Layout.
 Installation des vollständigen Bundles:
 
 1. ASF stoppen.
-2. `ASF-Control-Suite-v1.0.0.zip` direkt in `<ASF>/` entpacken.
+2. `ASF-Control-Suite-v1.1.0.zip` direkt in `<ASF>/` entpacken.
 3. ASF starten.
 4. `/` öffnen und Control Suite sowie `/Control/` prüfen.
 
 Einzelne Plugin-ZIPs werden direkt nach `<ASF>/plugins/` entpackt.
 
-Stabiler Release: [v1.0.0](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
+Die oben genannten Paketnamen gehören zum aktuellen v1.1.0-Kandidaten auf `main`. Stabil bleibt [v1.0.0](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0), bis der neue Kandidat die Live-Abnahme bestanden hat.
 
 ---
 
@@ -186,7 +186,7 @@ Sie prüft unter anderem:
 
 <div align="center">
 
-**ASF Control Suite v1.0.0**
+**ASF Control Suite · main v1.1.0 candidate · stable v1.0.0**
 
 ASF-native APIs, reproduzierbare Builds und klar definierte Sicherheitsgrenzen.
 

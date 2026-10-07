@@ -1,6 +1,8 @@
 # Build and installation
 
-This guide covers the canonical build, verification, installation and rollback process for ASF Control Suite v1.0.0.
+This guide covers the canonical build, verification, installation and rollback process for the current ASF Control Suite **v1.1.0 candidate** on `main`.
+
+The latest published stable release remains **v1.0.0**. Do not treat a v1.1.0 build as stable until its exact phone candidate completes live acceptance.
 
 ---
 
@@ -74,10 +76,10 @@ The release pipeline performs:
 
 A successful canonical build produces:
 
-    artifacts/ASF-Control-Suite-v1.0.0.zip
-    artifacts/AccountManager-v1.0.0.zip
-    artifacts/ControlCenter-v1.0.0.zip
-    artifacts/ControlWeb-v1.0.0.zip
+    artifacts/ASF-Control-Suite-v1.1.0.zip
+    artifacts/AccountManager-v1.1.0.zip
+    artifacts/ControlCenter-v1.1.0.zip
+    artifacts/ControlWeb-v1.1.0.zip
     artifacts/PlaytimeGoals-v0.5.2.zip
     artifacts/CONTROL-SUITE-METADATA.json
     artifacts/SHA256SUMS
@@ -106,7 +108,7 @@ Checksum verification is only the first layer. The canonical release pipeline al
 
 Use:
 
-    ASF-Control-Suite-v1.0.0.zip
+    ASF-Control-Suite-v1.1.0.zip
 
 First stop ASF.
 
@@ -139,9 +141,9 @@ Verify that the expected accounts, modules and PlaytimeGoals state are available
 
 The same installation rule applies to the individual archives:
 
-    AccountManager-v1.0.0.zip
-    ControlCenter-v1.0.0.zip
-    ControlWeb-v1.0.0.zip
+    AccountManager-v1.1.0.zip
+    ControlCenter-v1.1.0.zip
+    ControlWeb-v1.1.0.zip
     PlaytimeGoals-v0.5.2.zip
 
 For each archive:
