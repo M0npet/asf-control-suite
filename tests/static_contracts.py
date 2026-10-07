@@ -178,6 +178,22 @@ require('src/ControlWeb/www/app.js','PERSONA_STATES','native Steam persona statu
 require('src/ControlWeb/www/app.js','next.OnlineStatus = status','native OnlineStatus persistence')
 require('src/ControlWeb/www/app.js','id="onlineStatus"','per-account Steam persona selector')
 
+require('src/ControlWeb/www/index.html','data-view="native"','ASF Native navigation')
+require('src/ControlWeb/www/app.js',"native: ['ASF Native'",'ASF Native view metadata')
+require('src/ControlWeb/www/app.js','BOT_PROTECTED_FIELDS','protected BotConfig fields')
+require('src/ControlWeb/www/app.js','GLOBAL_PROTECTED_FIELDS','protected GlobalConfig fields')
+require('src/ControlWeb/www/app.js','function nativeConfigEditor','generic native config editor')
+require('src/ControlWeb/www/app.js','function readNativeConfigEditor','generic native config parser')
+require('src/ControlWeb/www/app.js',"api('/Api/Command'",'native command endpoint')
+require('src/ControlWeb/www/app.js',"api('/Api/IPC/Bans'",'native IPC bans endpoint')
+require('src/ControlWeb/www/app.js',"api('/Api/ASF', {",'native global config save endpoint')
+require('src/ControlWeb/www/app.js','BotConfig:next','native full BotConfig save')
+require('src/ControlWeb/www/app.js','delete next[key]','protected fields omitted on save')
+require('src/ControlWeb/www/app.css','.native-config-grid','native config editor styles')
+require('src/ControlWeb/www/app.css','.native-terminal','native command terminal styles')
+require('src/ControlWeb/www/i18n.js',"'ASF Native': 'Штатний ASF'",'ASF Native Ukrainian localization')
+
+
 
 
 
