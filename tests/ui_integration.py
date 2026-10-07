@@ -43,7 +43,12 @@ mock=r'''(() => {
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
   configs:{main:{Enabled:true,OnlineStatus:1,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},
+  globalConfig:{Headless:true,IPC:true,UpdateChannel:0},
+  plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'ControlWeb',Version:'1.0.0.0'}],
+  bans:['203.0.113.5'],
+  bgr:{main:{UsedKeys:{},UnusedKeys:{}}},
+  commands:[]
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -52,7 +57,8 @@ mock=r'''(() => {
   path=String(path); const method=String(opt.method||'GET').toUpperCase(),auth=opt.headers?.get?.('Authentication');
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
   const body=opt.body?JSON.parse(opt.body):null;
-  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192}));
+  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192,GlobalConfig:window.__m.globalConfig}));
+  if(method==='POST'&&path==='/Api/ASF'){window.__m.globalConfig=body.GlobalConfig;return resp(env(null));}
   if(method==='GET'&&path==='/Api/AccountManager'){window.__m.accountReads++;return resp(env({Accounts:window.__m.accounts}));}
   if(method==='GET'&&path==='/Api/AccountManager/Defaults')return resp(env({Defaults:window.__m.defaults,ForbiddenKeys:['SteamPassword','SteamLogin'],MaxPayloadChars:65536}));
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
@@ -60,6 +66,16 @@ mock=r'''(() => {
   if(method==='POST'&&path==='/Api/ASF/Encrypt')return resp(env('AES-CIPHERTEXT'));
   if(method==='POST'&&path==='/Api/ASF/Restart'){window.__m.restart++;return resp(env(null));}
   if(method==='POST'&&path==='/Api/ASF/Exit'){window.__m.exit++;return resp(env(null));}
+  if(method==='GET'&&path==='/Api/Plugins')return resp(env(window.__m.plugins));
+  if(method==='GET'&&path==='/Api/IPC/Bans')return resp(env(window.__m.bans));
+  if(method==='DELETE'&&path==='/Api/IPC/Bans'){window.__m.bans=[];return resp(env(null));}
+  let ban=path.match(/^\/Api\/IPC\/Bans\/(.+)$/);
+  if(method==='DELETE'&&ban){const ip=decodeURIComponent(ban[1]);window.__m.bans=window.__m.bans.filter(x=>x!==ip);return resp(env(null));}
+  if(method==='POST'&&path==='/Api/Command'){window.__m.commands.push(body.Command);return resp(env('OK '+body.Command));}
+  let nativeBgr=path.match(/^\/Api\/Bot\/([^/]+)\/GamesToRedeemInBackground$/);
+  if(nativeBgr){const bot=decodeURIComponent(nativeBgr[1]);window.__m.bgr[bot]??={UsedKeys:{},UnusedKeys:{}};if(method==='GET')return resp(env({[bot]:window.__m.bgr[bot]}));if(method==='POST'){window.__m.bgr[bot].UnusedKeys={...window.__m.bgr[bot].UnusedKeys,...body.GamesToRedeemInBackground};return resp(env({[bot]:body.GamesToRedeemInBackground}));}}
+  let tokenPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication\/Token$/);
+  if(method==='GET'&&tokenPath){const bot=decodeURIComponent(tokenPath[1]);return resp(env({[bot]:env('12345')}));}
   let m=path.match(/^\/Api\/PlaytimeGoals\/([^/]+)(?:\/(Library|Parental))?$/);
   if(method==='GET'&&m){let bot=decodeURIComponent(m[1]); if(!m[2])return resp(env(ptg(bot))); if(m[2]==='Library'){window.__m.libraryReads++;return resp(env({FamilyMemberCount:4,Games:lib}));} return resp(env({Available:true,Enabled:true,BaseListId:1,BaseEntryCount:2,CustomEntryCount:1,Apps:[{AppId:10,BaseAllowed:true,CustomAllowed:null,EffectiveAllowed:true},{AppId:30,BaseAllowed:false,CustomAllowed:true,EffectiveAllowed:true}]}));}
   m=path.match(/^\/Api\/Bot\/([^/]+)(?:\/(Start|Stop|Pause|Resume|Rename|Input))?$/);
@@ -150,6 +166,48 @@ with sync_playwright() as pw:
     page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
     assert page.locator('#onlineStatus').input_value() == '7'
+
+    # Native ASF workspace replaces common legacy administration surfaces.
+    page.click('#nav button[data-view="native"]'); page.wait_for_selector('#nativeBotConfig')
+    assert page.locator('#nativeGlobalConfig').count() == 1
+    assert page.locator('#nativeCommandForm').count() == 1
+    assert page.locator('#nativeBgrKeys').count() == 1
+    assert page.locator('#fetchNative2faToken').count() == 1
+    assert page.locator('[data-unban-ip="203.0.113.5"]').count() == 1
+    assert page.locator('text=PlaytimeGoals').count() >= 1
+
+    bot_cfg=json.loads(page.locator('#nativeBotConfig').input_value())
+    bot_cfg['OnlineFlags']=1
+    page.fill('#nativeBotConfig',json.dumps(bot_cfg))
+    page.click('#saveNativeBotConfig'); page.wait_for_timeout(420)
+    assert page.evaluate('window.__m.configs.main.OnlineFlags') == 1
+
+    global_cfg=json.loads(page.locator('#nativeGlobalConfig').input_value())
+    global_cfg['FarmingDelay']=17
+    page.fill('#nativeGlobalConfig',json.dumps(global_cfg))
+    page.click('#saveNativeGlobalConfig'); page.wait_for_timeout(320)
+    assert page.evaluate('window.__m.globalConfig.FarmingDelay') == 17
+
+    page.fill('#nativeCommand','status'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(120)
+    assert page.locator('#nativeCommandOutput').input_value() == 'OK status'
+    assert page.evaluate('window.__m.commands.at(-1)') == 'status'
+
+    page.fill('#nativeBgrKeys','AAAAA-BBBBB-CCCCC | Test key'); page.click('#queueNativeBgr'); page.wait_for_timeout(320)
+    assert page.evaluate('window.__m.bgr.main.UnusedKeys["AAAAA-BBBBB-CCCCC"]') == 'Test key'
+
+    page.click('#fetchNative2faToken'); page.wait_for_timeout(120)
+    assert page.locator('#native2faToken').input_value() == '12345'
+
+    page.click('[data-unban-ip="203.0.113.5"]'); page.wait_for_timeout(220)
+    assert page.evaluate('window.__m.bans.length') == 0
+
+    page.fill('#nativeMassPatch','{"OnlineStatus":7,"TradingPreferences":3}')
+    page.check('[data-mass-bot][value="main"]'); page.click('#applyNativeMassPatch'); page.wait_for_timeout(420)
+    assert page.evaluate('window.__m.configs.main.TradingPreferences') == 3
+    assert_accessible_controls(page)
+    assert_no_horizontal_overflow(page)
+
+    page.click('#nav button[data-view="accounts"]'); page.wait_for_selector('#requiredInputForm')
     page.fill('#requiredInputValue','12345'); page.click('#requiredInputForm button[type="submit"]'); page.wait_for_timeout(380)
     assert page.evaluate('window.__m.inputs.at(-1)')==['main',{'Type':1,'Value':'12345'}]
     assert page.locator('.toast-title',has_text='Input sent').count() >= 1
