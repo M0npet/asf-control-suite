@@ -796,6 +796,57 @@
       </div>
 
       <div class="two-col section">
+        <div class="card" id="native-steam-licenses">
+          <div class="card-head"><div><h3>Steam licenses</h3><p>Add app/package licenses or explicitly remove existing licenses through native ASF.</p></div></div>
+          ${botName ? `
+            <div class="settings-grid">
+              <label for="nativeAddLicenseApps">Add app IDs<input id="nativeAddLicenseApps" autocomplete="off" placeholder="570, 730"></label>
+              <label for="nativeAddLicensePackages">Add package IDs<input id="nativeAddLicensePackages" autocomplete="off" placeholder="12345"></label>
+            </div>
+            <div class="actions section"><button id="addNativeLicenses" type="button">Add licenses</button></div>
+            <div class="settings-grid section">
+              <label for="nativeRemoveLicenseApps">Remove app IDs<input id="nativeRemoveLicenseApps" autocomplete="off" placeholder="570"></label>
+              <label for="nativeRemoveLicensePackages">Remove package IDs<input id="nativeRemoveLicensePackages" autocomplete="off" placeholder="12345"></label>
+            </div>
+            <div class="notice warn section">Removing licenses can revoke access to games or packages. Typed confirmation is required.</div>
+            <div class="actions section"><button id="removeNativeLicenses" class="danger" type="button">Remove licenses</button></div>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+
+        <div class="card" id="native-steam-redeem">
+          <div class="card-head"><div><h3>Direct key redeem</h3><p>Redeem keys immediately through ASF instead of queueing them for Background Redeemer.</p></div></div>
+          ${botName ? `
+            <label for="nativeRedeemKeys">Steam keys</label>
+            <textarea id="nativeRedeemKeys" class="code-editor" rows="7" placeholder="AAAAA-BBBBB-CCCCC&#10;DDDDD-EEEEE-FFFFF"></textarea>
+            <div class="actions section"><button id="redeemNativeKeys" type="button">Redeem now</button></div>
+            <label for="nativeRedeemOutput">Result</label>
+            <textarea id="nativeRedeemOutput" class="code-editor" rows="7" readonly placeholder="ASF redeem result appears here."></textarea>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+      </div>
+
+      <div class="two-col section">
+        <div class="card" id="native-inventory">
+          <div class="card-head"><div><h3>Inventory</h3><p>Read the native ASF inventory summary for the selected account.</p></div></div>
+          ${botName ? `
+            <div class="actions"><button id="loadNativeInventoryInfo" class="secondary" type="button">Load inventory info</button></div>
+            <label for="nativeInventoryInfo">Inventory info</label>
+            <textarea id="nativeInventoryInfo" class="code-editor" rows="9" readonly placeholder="Inventory app/context summary appears here."></textarea>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+
+        <div class="card" id="native-points">
+          <div class="card-head"><div><h3>Steam Points</h3><p>Redeem a Steam Points definition through ASF. Typed confirmation is required.</p></div></div>
+          ${botName ? `
+            <label for="nativeRedeemPointsDefinition">Definition ID</label>
+            <input id="nativeRedeemPointsDefinition" inputmode="numeric" autocomplete="off" placeholder="123456">
+            <label class="checkline section"><input id="nativeRedeemPointsForced" type="checkbox"> Force redemption</label>
+            <div class="actions section"><button id="redeemNativePoints" class="danger" type="button">Redeem points item</button></div>
+          ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+      </div>
+
+      <div class="two-col section">
         <div class="card" id="native-2fa">
           <div class="card-head"><div><h3>2FA</h3><p>Steam Guard token, confirmations and authenticator management through native ASF.</p></div></div>
           ${botName ? `
