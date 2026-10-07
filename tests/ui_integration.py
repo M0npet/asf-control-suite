@@ -64,6 +64,7 @@ mock=r'''(() => {
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
   if(method==='GET'&&path==='/Api/ControlCenter/Status')return resp(env({UptimeSeconds:3720,ControlSuiteVersion:'9.8.7',ControlModuleVersion:'9.8.7.6',TargetAsfVersion:'test-asf-version',TargetAsfCommit:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',TargetAsfUiCommit:'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',TargetPlaytimeGoalsVersion:'0.5.9.0',TargetPlaytimeGoalsCommit:'cccccccccccccccccccccccccccccccccccccccc',ManagedMemoryKiB:2048,ProcessWorkingSetKiB:4096,ProcessorCount:8,StorageAvailable:true,DiskFreeBytes:40*1024**3,DiskTotalBytes:64*1024**3,WaitingForInputBots:window.__m.accounts.filter(a=>a.RequiredInput).length,Framework:'.NET 10 mock',OS:'Mock Linux',ProcessArchitecture:'Arm64',Modules:[{Name:'PlaytimeGoals',Loaded:true,Version:'0.5.1.0',ExpectedVersion:'0.5.1.0'},{Name:'AccountManager',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'},{Name:'ControlCenter',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'},{Name:'ControlWeb',Loaded:true,Version:'1.0.0.0',ExpectedVersion:'1.0.0.0'}]}));
   if(method==='POST'&&path==='/Api/ASF/Encrypt')return resp(env('AES-CIPHERTEXT'));
+  if(method==='POST'&&path==='/Api/ASF/Hash')return resp(env('HASHED-VALUE'));
   if(method==='POST'&&path==='/Api/ASF/Restart'){window.__m.restart++;return resp(env(null));}
   if(method==='POST'&&path==='/Api/ASF/Exit'){window.__m.exit++;return resp(env(null));}
   if(method==='GET'&&path==='/Api/Plugins')return resp(env(window.__m.plugins));
@@ -214,6 +215,9 @@ with sync_playwright() as pw:
     page.fill('#nativeMassPatch','{"OnlineStatus":7,"TradingPreferences":3}')
     page.check('[data-mass-bot][value="main"]'); page.click('#applyNativeMassPatch'); page.wait_for_timeout(420)
     assert page.evaluate('window.__m.configs.main.TradingPreferences') == 3
+
+    page.fill('#nativeCryptoInput','hello'); page.click('#runNativeHash'); page.wait_for_timeout(120)
+    assert page.locator('#nativeCryptoOutput').input_value() == 'HASHED-VALUE'
     assert_accessible_controls(page)
     assert_no_horizontal_overflow(page)
 
