@@ -438,6 +438,12 @@
       return `<div id="qrOnboardingPanel" class="qr-panel" data-qr-signature="challenge:${escapeHtml(account.QrChallengeUrl)}"><div><h4>Scan with Steam Mobile</h4><p id="qrOnboardingStatus">Open the Steam app, scan this QR code and confirm the sign-in. The challenge is rendered locally in this browser and automatically refreshes when ASF rotates it.</p></div><div id="qrCode" data-qr-url="${escapeHtml(account.QrChallengeUrl)}"></div></div>`;
     }
     const required = Number(account.RequiredInput || 0);
+    if (!account.KeepRunning || (required > 0 && required !== QR_INPUT_TYPE)) {
+      const detail = required > 0 && required !== QR_INPUT_TYPE
+        ? ` ASF is waiting for input type ${required}.`
+        : ' The bot stopped before QR login completed.';
+      return `<div id="qrOnboardingPanel" class="qr-panel qr-error" data-qr-signature="terminal:${account.KeepRunning ? 1 : 0}:${required}"><div><h4>QR login could not continue</h4><p id="qrOnboardingStatus">QR login could not continue.${detail}</p></div><div class="qr-status-mark" aria-hidden="true">!</div></div>`;
+    }
     const status = required === QR_INPUT_TYPE
       ? 'Starting Steam QR session…'
       : 'Reconnecting to Steam…';
@@ -649,7 +655,8 @@
     if (qrPollTimer) { clearTimeout(qrPollTimer); qrPollTimer = null; }
     if (state.view !== 'accounts' || !state.qrOnboardingBot) return;
     const account = qrAccount();
-    if (!account || account.Connected) {
+    const required = Number(account?.RequiredInput || 0);
+    if (!account || account.Connected || !account.KeepRunning || (required > 0 && required !== QR_INPUT_TYPE)) {
       updateQrOnboardingPanel();
       return;
     }
@@ -658,9 +665,11 @@
       try {
         await loadAccounts();
         const latest = qrAccount();
-        if (latest && !latest.Connected) await maybeAcceptQrPrompt(latest);
+        const latestRequired = Number(latest?.RequiredInput || 0);
+        const terminal = !latest || latest.Connected || !latest.KeepRunning || (latestRequired > 0 && latestRequired !== QR_INPUT_TYPE);
+        if (latest && !terminal) await maybeAcceptQrPrompt(latest);
         updateQrOnboardingPanel();
-        scheduleQrRefresh();
+        if (!terminal) scheduleQrRefresh();
       } catch (_) {
         updateQrOnboardingPanel();
         scheduleQrRefresh();
