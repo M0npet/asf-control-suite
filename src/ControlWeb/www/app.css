@@ -323,3 +323,34 @@ dialog.modal::backdrop { background:rgba(2,5,9,.72); backdrop-filter:blur(5px); 
   .topbar-actions { margin-top:12px; justify-content:flex-start; flex-wrap:wrap; }
   .locale-select { min-width:126px; max-width:none; }
 }
+
+
+/* Native ASF parity */
+.native-hub-head { border-color:#32445f; }
+.native-tabs { display:flex; gap:8px; flex-wrap:wrap; }
+.native-tabs button.active { color:#08101d; background:var(--accent); border-color:var(--accent); }
+.native-config-toolbar { grid-template-columns:minmax(220px,.8fr) minmax(240px,1fr); }
+.native-config-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.native-config-field { padding:12px; border:1px solid var(--line-soft); border-radius:12px; background:#0b111a; min-width:0; }
+.native-config-field-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.native-config-field-head strong { display:block; overflow-wrap:anywhere; font-size:12px; color:var(--text-soft); }
+.native-config-field-head small { display:block; margin-top:3px; color:var(--muted-2); font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+.native-config-field textarea { min-height:110px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11px; }
+.native-boolean { display:flex; align-items:center; gap:9px; margin:0; min-height:42px; color:var(--text-soft); }
+.native-boolean input { width:auto; min-height:0; accent-color:var(--accent); }
+.native-terminal-card { min-height:440px; display:flex; flex-direction:column; }
+.native-terminal { min-height:320px; max-height:58vh; overflow:auto; padding:14px; border:1px solid var(--line-soft); border-radius:12px; background:#070b11; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.native-terminal-empty { color:var(--muted); font-size:12px; }
+.native-terminal-row { display:grid; grid-template-columns:18px minmax(0,1fr); gap:6px; align-items:start; padding:4px 0; }
+.native-terminal-row.out { color:var(--accent-2); }
+.native-terminal-row.in { color:var(--text-soft); }
+.native-terminal-sign { font-weight:900; }
+.native-terminal-row pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; color:inherit; }
+.ban-grid { display:grid; gap:8px; }
+.ban-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 12px; border:1px solid var(--line-soft); border-radius:11px; background:#0b111a; }
+.ban-row code { overflow-wrap:anywhere; color:var(--text-soft); }
+
+@media (max-width: 900px) {
+  .native-config-grid { grid-template-columns:1fr; }
+  .native-config-toolbar { grid-template-columns:1fr; }
+}
