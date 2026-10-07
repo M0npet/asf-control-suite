@@ -3,7 +3,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>AccountManager</AssemblyName>
     <RootNamespace>AccountManager</RootNamespace>
-    <Version>1.0.0.0</Version>
+    <Version>1.1.0.0</Version>
     <Description>Safe account defaults and cross-bot summary for ArchiSteamFarm.</Description>
   </PropertyGroup>
 
