@@ -139,6 +139,7 @@ for asset in \
     index.html \
     i18n.js \
     core.js \
+    native.js \
     qrcode.min.js \
     qrcode.LICENSE.txt \
     app.js \
