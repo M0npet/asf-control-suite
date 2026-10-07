@@ -169,7 +169,8 @@ with sync_playwright() as pw:
     assert page.locator('#onlineStatus').input_value() == '1'
     assert page.locator('[data-native-focus="bot-config"]').count() == 1
     assert page.locator('[data-native-focus="2fa"]').count() == 1
-    page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
+    page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus')
+    page.wait_for_function("() => !document.querySelector('#saveOnlineStatus')?.disabled")
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
     assert page.locator('#onlineStatus').input_value() == '7'
 
@@ -193,13 +194,7 @@ with sync_playwright() as pw:
     bot_cfg['CustomGamePlayedWhileIdle']='must-be-cleared'
     page.fill('#nativeBotConfig',json.dumps(bot_cfg))
     page.click('#saveNativeBotConfig')
-    page.wait_for_timeout(650)
-    if page.evaluate('window.__m.configs.main.OnlineFlags') != 1:
-        print('NATIVE BOTCONFIG SAVE DIAGNOSTICS', {
-            'config': page.evaluate('window.__m.configs.main'),
-            'toasts': page.locator('#toastRegion').inner_text(),
-            'editor': page.locator('#nativeBotConfig').input_value(),
-        })
+    page.wait_for_function("() => window.__m.configs.main.OnlineFlags === 1")
     assert page.evaluate('window.__m.configs.main.OnlineFlags') == 1
     assert page.evaluate('window.__m.configs.main.SteamTradeToken') == 'SECRET-TOKEN'
     assert page.evaluate('window.__m.configs.main.GamesPlayedWhileIdle') == []
