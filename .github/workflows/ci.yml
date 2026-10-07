@@ -112,6 +112,12 @@ jobs:
       - name: Record Control Suite source revision
         run: printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/asf-control-suite-artifacts/CONTROL-SUITE-COMMIT.txt"
 
+      - name: Build canonical phone candidate
+        run: |
+          python3 scripts/phone/make-phone-dist.py \
+            --artifacts "$RUNNER_TEMP/asf-control-suite-artifacts" \
+            --out "$RUNNER_TEMP/asf-control-suite-artifacts/asf-control-suite-v1.0-dist.tar.gz"
+
       - name: Upload verified release candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
