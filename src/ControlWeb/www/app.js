@@ -311,6 +311,7 @@
       const name = input.dataset.nativeField;
       const type = input.dataset.nativeType;
       if (input.dataset.nativeSecret === '1' && String(input.value || '') === '') return;
+      if (name.startsWith('s_')) delete next[name.slice(2)];
       let value;
       if (type === 'boolean') value = input.checked;
       else if (['byte','uint16','uint32','enum','flag'].includes(type)) {
