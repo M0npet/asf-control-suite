@@ -142,6 +142,11 @@
     'Legacy fallback': 'Резервний старий інтерфейс',
     'Only for a native ASF function not yet migrated into Control Suite.': 'Лише для функції ASF, яку ще не перенесено до Control Suite.',
     'Open stock ASF-ui': 'Відкрити стандартний ASF-ui',
+    'ASF log': 'Журнал ASF',
+    'Authenticated read-only tail of the current ASF log.': 'Автентифікований фрагмент поточного журналу ASF лише для читання.',
+    'Refresh log': 'Оновити журнал',
+    'Log refreshed': 'Журнал оновлено',
+    'Log refresh failed': 'Не вдалося оновити журнал',
     'The fallback remains hidden behind an explicit bypass. Normal administration should stay in Control Suite.': 'Резервний інтерфейс прихований за явним обходом. Звичайне адміністрування має виконуватися в Control Suite.',
     'native ASF APIs': 'штатні API ASF',
 
