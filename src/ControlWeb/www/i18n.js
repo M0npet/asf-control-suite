@@ -174,7 +174,7 @@
     'idle': 'неактивний',
     'Authenticator': 'Автентифікатор',
     'Steam / ASF settings': 'Налаштування Steam / ASF',
-    'Common native ASF settings here; the full stock editor remains one click away.': 'Основні штатні налаштування ASF доступні тут; повний редактор ASF відкривається одним кліком.',
+    'Common native ASF settings here; the full native editor is built into Control Suite.': 'Основні штатні налаштування ASF доступні тут; повний штатний редактор вбудовано безпосередньо в Control Suite.',
     'Steam persona status': 'Статус Steam',
     'Invisible keeps ASF connected while your Steam persona appears offline to friends.': 'Невидимий режим залишає ASF підключеним, але для друзів профіль Steam виглядає офлайн.',
     'Save Steam status': 'Зберегти статус Steam',
