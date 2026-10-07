@@ -360,6 +360,7 @@
     if (lockTimer) { clearInterval(lockTimer); lockTimer = null; }
     if (qrPollTimer) { clearTimeout(qrPollTimer); qrPollTimer = null; }
     if ($('modal')?.open) closeModal(null);
+    $('content')?.replaceChildren();
     setConnection(false, 'locked');
     showAuth(message);
   }
