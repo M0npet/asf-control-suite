@@ -298,7 +298,7 @@ require_file "$DIST/BUILD-METADATA.txt"
 require_file "$DIST/ArchiSteamFarm"
 [[ -x "$DIST/ArchiSteamFarm" ]] || die "patched ASF runtime is not executable"
 for plugin in "${PLUGINS[@]}"; do require_file "$DIST/plugins/$plugin/$plugin.dll"; done
-for asset in index.html i18n.js core.js qrcode.min.js qrcode.LICENSE.txt app.js app.css; do require_file "$DIST/plugins/ControlWeb/www/$asset"; done
+for asset in index.html i18n.js core.js native.js qrcode.min.js qrcode.LICENSE.txt app.js app.css; do require_file "$DIST/plugins/ControlWeb/www/$asset"; done
 (
   cd "$DIST"
   sha256sum -c SHA256SUMS
