@@ -46,6 +46,7 @@
     createMode: 'qr',
     goalSort: 'managed-first',
     qrOnboardingBot: '',
+    nativeFocus: '',
   };
 
   let lockTimer = null;
@@ -531,7 +532,7 @@
       ? `<div class="notice warn section"><strong>Action required.</strong> ASF is waiting for interactive input type ${requiredInput}.</div><form id="requiredInputForm" class="section" data-input-type="${requiredInput}"><label for="requiredInputValue">Steam / ASF input</label><div class="inline-form"><input id="requiredInputValue" autocomplete="one-time-code" placeholder="Enter requested value" required><button type="submit">Send securely</button></div></form>`
       : requiredInput === QR_INPUT_TYPE ? '<div class="notice section">QR sign-in is active in the Add account card above.</div>' : '<div class="notice good section">No interactive input is required from this account.</div>';
     const [statusLabel, statusTone] = accountStatus(summary);
-    return `<div class="card account-workspace section"><div class="card-head"><div>${accountIdentityMarkup(summary, { large:true })}<div class="workspace-title"><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span><span class="workspace-steamid">Steam ${escapeHtml(summary.SteamId || 'unknown')}</span></div></div><div class="actions"><button data-act="goals" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">Open goals</button><button data-act="${summary.KeepRunning ? 'stop' : 'start'}" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">${summary.KeepRunning ? 'Stop' : 'Start'}</button><button data-act="${summary.FarmerPaused ? 'resume' : 'pause'}" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">${summary.FarmerPaused ? 'Resume' : 'Pause'}</button><button data-act="rename" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">Rename ASF ID</button><button id="toggleConfigEnabled" class="secondary">${summary.Enabled ? 'Disable config' : 'Enable config'}</button></div></div><div class="grid compact-grid"><div class="metric"><span>Keep running</span><strong>${yesNo(summary.KeepRunning)}</strong></div><div class="metric"><span>Playing</span><strong>${summary.IsPlayingPossible ? 'possible' : 'blocked'}</strong></div><div class="metric"><span>CardsFarmer</span><strong>${summary.Farming ? 'active' : summary.FarmerPaused ? 'paused' : 'idle'}</strong></div><div class="metric"><span>Authenticator</span><strong>${yesNo(summary.HasMobileAuthenticator)}</strong></div></div><div class="card section native-settings"><div class="card-head"><div><h3>Steam / ASF settings</h3><p>Common native ASF settings here; the full stock editor remains one click away.</p></div><span class="pill neutral">native</span></div><div class="settings-grid"><label for="onlineStatus">Steam persona status<select id="onlineStatus" ${personaDisabled}>${personaOptions}</select></label><div><span class="field-help">${onlineStatus == null ? 'Native BotConfig is temporarily unavailable.' : 'Invisible keeps ASF connected while your Steam persona appears offline to friends.'}</span><button id="saveOnlineStatus" class="secondary" type="button" ${personaDisabled}>Save Steam status</button></div></div><div class="actions section"><a href="${legacyAsfHref(`/bot/${encodedBot}/config`)}"><button class="secondary" type="button">Full bot config</button></a><a href="${legacyAsfHref(`/bot/${encodedBot}/2fa`)}"><button class="secondary" type="button">2FA</button></a><a href="${legacyAsfHref(`/bot/${encodedBot}/bgr`)}"><button class="secondary" type="button">Background redeemer</button></a><a href="${legacyAsfHref('/commands')}"><button class="secondary" type="button">Commands</button></a><a href="${legacyAsfHref('/log')}"><button class="secondary" type="button">Log</button></a></div></div>${inputForm}</div>`;
+    return `<div class="card account-workspace section"><div class="card-head"><div>${accountIdentityMarkup(summary, { large:true })}<div class="workspace-title"><span class="pill ${statusTone}">${escapeHtml(statusLabel)}</span><span class="workspace-steamid">Steam ${escapeHtml(summary.SteamId || 'unknown')}</span></div></div><div class="actions"><button data-act="goals" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">Open goals</button><button data-act="${summary.KeepRunning ? 'stop' : 'start'}" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">${summary.KeepRunning ? 'Stop' : 'Start'}</button><button data-act="${summary.FarmerPaused ? 'resume' : 'pause'}" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">${summary.FarmerPaused ? 'Resume' : 'Pause'}</button><button data-act="rename" data-bot="${escapeHtml(state.selectedBot)}" class="secondary">Rename ASF ID</button><button id="toggleConfigEnabled" class="secondary">${summary.Enabled ? 'Disable config' : 'Enable config'}</button></div></div><div class="grid compact-grid"><div class="metric"><span>Keep running</span><strong>${yesNo(summary.KeepRunning)}</strong></div><div class="metric"><span>Playing</span><strong>${summary.IsPlayingPossible ? 'possible' : 'blocked'}</strong></div><div class="metric"><span>CardsFarmer</span><strong>${summary.Farming ? 'active' : summary.FarmerPaused ? 'paused' : 'idle'}</strong></div><div class="metric"><span>Authenticator</span><strong>${yesNo(summary.HasMobileAuthenticator)}</strong></div></div><div class="card section native-settings"><div class="card-head"><div><h3>Steam / ASF settings</h3><p>Common native ASF settings here; the full stock editor remains one click away.</p></div><span class="pill neutral">native</span></div><div class="settings-grid"><label for="onlineStatus">Steam persona status<select id="onlineStatus" ${personaDisabled}>${personaOptions}</select></label><div><span class="field-help">${onlineStatus == null ? 'Native BotConfig is temporarily unavailable.' : 'Invisible keeps ASF connected while your Steam persona appears offline to friends.'}</span><button id="saveOnlineStatus" class="secondary" type="button" ${personaDisabled}>Save Steam status</button></div></div><div class="actions section"><button class="secondary" type="button" data-native-focus="bot-config">Full bot config</button><button class="secondary" type="button" data-native-focus="2fa">2FA</button><button class="secondary" type="button" data-native-focus="bgr">Background redeemer</button><button class="secondary" type="button" data-native-focus="commands">Commands</button><button class="secondary" type="button" data-native-focus="log">Log</button></div></div>${inputForm}</div>`;
   }
 
   async function renderDashboard() {
@@ -722,7 +723,7 @@
       </div>
 
       <div class="two-col section">
-        <div class="card">
+        <div class="card" id="native-bot-config">
           <div class="card-head"><div><h3>Bot configuration</h3><p>Complete BotConfig editor. ASF preserves omitted security-controlled values.</p></div><span class="pill good">native</span></div>
           ${botName ? `<textarea id="nativeBotConfig" class="code-editor" rows="22" spellcheck="false" aria-label="Complete BotConfig JSON">${escapeHtml(prettyJson(botConfig))}</textarea><div class="actions section"><button id="saveNativeBotConfig">Save bot config</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Add an ASF account first.</div>'}
         </div>
@@ -735,7 +736,7 @@
       </div>
 
       <div class="two-col section">
-        <div class="card">
+        <div class="card" id="native-commands">
           <div class="card-head"><div><h3>Commands</h3><p>Run standard ASF commands through /Api/Command.</p></div></div>
           <form id="nativeCommandForm">
             <label for="nativeCommand">ASF command</label>
@@ -745,14 +746,14 @@
           <textarea id="nativeCommandOutput" class="code-editor" rows="10" readonly placeholder="Command output appears here."></textarea>
         </div>
 
-        <div class="card">
+        <div class="card" id="native-bgr">
           <div class="card-head"><div><h3>Background redeemer</h3><p>Queue Steam keys without exposing existing key contents in the UI.</p></div><span class="pill neutral">${usedCount} used · ${unusedCount} unused</span></div>
           ${botName ? `<label for="nativeBgrKeys">Keys to queue</label><textarea id="nativeBgrKeys" class="code-editor" rows="10" placeholder="AAAAA-BBBBB-CCCCC | Optional name"></textarea><span class="field-help">One key per line. Existing stored keys are counted but never rendered.</span><div class="actions section"><button id="queueNativeBgr">Queue keys</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
         </div>
       </div>
 
       <div class="two-col section">
-        <div class="card">
+        <div class="card" id="native-2fa">
           <div class="card-head"><div><h3>2FA</h3><p>Steam Guard token, confirmations and authenticator management through native ASF.</p></div></div>
           ${botName ? `
             <div class="inline-form"><input id="native2faToken" readonly placeholder="Token hidden until requested"><button id="fetchNative2faToken" type="button">Generate token</button></div>
@@ -786,7 +787,7 @@
         </div>
       </div>
 
-      <div class="card section">
+      <div class="card section" id="native-log">
         <div class="card-head"><div><h3>ASF log</h3><p>Authenticated read-only tail of the current ASF log.</p></div><span class="pill neutral">${logTail.length} lines</span></div>
         <textarea id="nativeLogTail" class="code-editor" rows="18" readonly aria-label="ASF log tail">${escapeHtml(logTail.join('\n'))}</textarea>
         <div class="actions section"><button id="refreshNativeLog" class="secondary" type="button">Refresh log</button></div>
@@ -816,7 +817,7 @@
     const ptgVersion = String(control?.TargetPlaytimeGoalsVersion || 'unknown');
     const ptgCommit = shortCommit(control?.TargetPlaytimeGoalsCommit);
 
-    return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Pinned compatibility</h3><p>Control Suite ${escapeHtml(suiteVersion)} is built against a fixed baseline.</p></div></div><div class="row"><div class="row-main"><strong>ASF</strong><small>${escapeHtml(asfVersion)} · ${escapeHtml(asfCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF compatibility patch</strong><small>SHA-256 · ${escapeHtml(asfPatch)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF-ui</strong><small>${escapeHtml(asfUiCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>PlaytimeGoals</strong><small>${escapeHtml(ptgVersion)} · ${escapeHtml(ptgCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>Control modules</strong><small>AccountManager · ControlCenter · ControlWeb</small></div><span class="pill good">${escapeHtml(moduleVersion)}</span></div></div><div class="card"><div class="card-head"><div><h3>Ownership boundaries</h3><p>Each module has one clear job.</p></div></div><div class="boundary"><span class="boundary-index">P</span><div><strong>PlaytimeGoals</strong><small>Managed GamesPlayed, Family availability and Family View journal.</small></div></div><div class="boundary"><span class="boundary-index">A</span><div><strong>AccountManager</strong><small>Credential-free defaults and account summary.</small></div></div><div class="boundary"><span class="boundary-index">C</span><div><strong>ControlCenter</strong><small>Read-only runtime and module health.</small></div></div><div class="boundary"><span class="boundary-index">W</span><div><strong>ControlWeb</strong><small>Presentation and orchestration through existing authenticated APIs.</small></div></div></div></div><div class="card section"><div class="card-head"><div><h3>Native API</h3><p>Use ASF Swagger when you need direct endpoint inspection.</p></div><div class="actions"><a href="/swagger" target="_blank" rel="noreferrer"><button class="secondary" type="button">Open API docs</button></a><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Open legacy Bots</button></a></div></div><div class="notice">The stock ASF-ui remains available for every native ASF function. Control Suite adds focused workflows without removing upstream functionality. Deployment, backups and rollback remain out-of-band through the ADB installer. The browser cannot execute arbitrary host commands.</div><div class="actions section"><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Bots</button></a><a href="${legacyAsfHref('/commands')}"><button class="secondary" type="button">Commands</button></a><a href="${legacyAsfHref('/log')}"><button class="secondary" type="button">Log</button></a><a href="${legacyAsfHref('/asf-config')}"><button class="secondary" type="button">ASF config</button></a><a href="${legacyAsfHref('/asf-bans')}"><button class="secondary" type="button">ASF bans</button></a><a href="${legacyAsfHref('/mass-editor')}"><button class="secondary" type="button">Mass editor</button></a><a href="${legacyAsfHref('/plugins')}"><button class="secondary" type="button">Plugins</button></a><a href="${legacyAsfHref('/releases')}"><button class="secondary" type="button">Releases</button></a><a href="${legacyAsfHref('/ui-config')}"><button class="secondary" type="button">ASF-ui settings</button></a></div></div>`;
+    return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Pinned compatibility</h3><p>Control Suite ${escapeHtml(suiteVersion)} is built against a fixed baseline.</p></div></div><div class="row"><div class="row-main"><strong>ASF</strong><small>${escapeHtml(asfVersion)} · ${escapeHtml(asfCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF compatibility patch</strong><small>SHA-256 · ${escapeHtml(asfPatch)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF-ui</strong><small>${escapeHtml(asfUiCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>PlaytimeGoals</strong><small>${escapeHtml(ptgVersion)} · ${escapeHtml(ptgCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>Control modules</strong><small>AccountManager · ControlCenter · ControlWeb</small></div><span class="pill good">${escapeHtml(moduleVersion)}</span></div></div><div class="card"><div class="card-head"><div><h3>Ownership boundaries</h3><p>Each module has one clear job.</p></div></div><div class="boundary"><span class="boundary-index">P</span><div><strong>PlaytimeGoals</strong><small>Managed GamesPlayed, Family availability and Family View journal.</small></div></div><div class="boundary"><span class="boundary-index">A</span><div><strong>AccountManager</strong><small>Credential-free defaults and account summary.</small></div></div><div class="boundary"><span class="boundary-index">C</span><div><strong>ControlCenter</strong><small>Read-only runtime and module health.</small></div></div><div class="boundary"><span class="boundary-index">W</span><div><strong>ControlWeb</strong><small>Presentation and orchestration through existing authenticated APIs.</small></div></div></div></div><div class="card section"><div class="card-head"><div><h3>Native API</h3><p>Use ASF Swagger when you need direct endpoint inspection.</p></div><div class="actions"><a href="/swagger" target="_blank" rel="noreferrer"><button class="secondary" type="button">Open API docs</button></a><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Open legacy Bots</button></a></div></div><div class="notice">The stock ASF-ui remains available for every native ASF function. Control Suite adds focused workflows without removing upstream functionality. Deployment, backups and rollback remain out-of-band through the ADB installer. The browser cannot execute arbitrary host commands.</div><div class="actions section"><button data-view-jump="native" type="button">Open Native ASF workspace</button><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Emergency legacy fallback</button></a></div></div>`;
   }
 
   const renderers = { dashboard:renderDashboard, accounts:renderAccounts, playtime:renderPlaytime, native:renderNative, security:renderSecurity, system:renderSystem, advanced:renderAdvanced };
@@ -876,6 +877,9 @@
       wireDynamicEvents();
       renderQrCode();
       scheduleQrRefresh();
+      if (state.view === 'native' && state.nativeFocus) {
+        requestAnimationFrame(() => document.getElementById(`native-${state.nativeFocus}`)?.scrollIntoView({ block:'start' }));
+      }
     } catch (error) {
       if (!state.password) return;
       setConnection(false, 'error');
@@ -959,6 +963,13 @@
         if (action === 'delete') await deleteBot(bot);
       } catch (error) { toast('Action failed', error.message, 'bad', 7000); }
       finally { button.disabled = false; }
+    }));
+    document.querySelectorAll('[data-native-focus]').forEach((button) => button.addEventListener('click', async () => {
+      state.nativeFocus = button.dataset.nativeFocus || '';
+      state.view = 'native';
+      updateNav();
+      await render();
+      document.getElementById(`native-${state.nativeFocus}`)?.scrollIntoView({ behavior:'smooth', block:'start' });
     }));
     document.querySelectorAll('[data-view-jump]').forEach((button) => button.addEventListener('click', async () => { state.view = button.dataset.viewJump; updateNav(); await render(); }));
     const form = $('createBotForm');
