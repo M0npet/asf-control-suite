@@ -423,19 +423,19 @@
   function qrOnboardingMarkup() {
     const account = qrAccount();
     if (!account) {
-      return `<div id="qrOnboardingPanel" class="qr-panel qr-placeholder"><div><h4>QR login</h4><p id="qrOnboardingStatus">QR will appear here after account creation.</p></div><div class="qr-placeholder-box" aria-hidden="true">QR</div></div>`;
+      return `<div id="qrOnboardingPanel" class="qr-panel qr-placeholder" data-qr-signature="idle"><div><h4>QR login</h4><p id="qrOnboardingStatus">QR will appear here after account creation.</p></div><div class="qr-placeholder-box" aria-hidden="true">QR</div></div>`;
     }
     if (account.Connected) {
-      return `<div id="qrOnboardingPanel" class="qr-panel qr-success"><div><h4>Steam account connected</h4><p id="qrOnboardingStatus">${escapeHtml(accountDisplayName(account))} is connected. You can add another account when ready.</p></div><div class="qr-status-mark" aria-hidden="true">✓</div></div>`;
+      return `<div id="qrOnboardingPanel" class="qr-panel qr-success" data-qr-signature="connected:${escapeHtml(account.BotName)}"><div><h4>Steam account connected</h4><p id="qrOnboardingStatus">${escapeHtml(accountDisplayName(account))} is connected. You can add another account when ready.</p></div><div class="qr-status-mark" aria-hidden="true">✓</div></div>`;
     }
     if (account.QrChallengeUrl) {
-      return `<div id="qrOnboardingPanel" class="qr-panel"><div><h4>Scan with Steam Mobile</h4><p id="qrOnboardingStatus">Open the Steam app, scan this QR code and confirm the sign-in. The challenge is rendered locally in this browser and automatically refreshes when ASF rotates it.</p></div><div id="qrCode" data-qr-url="${escapeHtml(account.QrChallengeUrl)}"></div></div>`;
+      return `<div id="qrOnboardingPanel" class="qr-panel" data-qr-signature="challenge:${escapeHtml(account.QrChallengeUrl)}"><div><h4>Scan with Steam Mobile</h4><p id="qrOnboardingStatus">Open the Steam app, scan this QR code and confirm the sign-in. The challenge is rendered locally in this browser and automatically refreshes when ASF rotates it.</p></div><div id="qrCode" data-qr-url="${escapeHtml(account.QrChallengeUrl)}"></div></div>`;
     }
     const required = Number(account.RequiredInput || 0);
     const status = required === QR_INPUT_TYPE
       ? 'Starting Steam QR session…'
       : 'Reconnecting to Steam…';
-    return `<div id="qrOnboardingPanel" class="qr-panel qr-placeholder"><div><h4>QR login</h4><p id="qrOnboardingStatus">${status}</p></div><div class="qr-placeholder-box" aria-hidden="true">QR</div></div>`;
+    return `<div id="qrOnboardingPanel" class="qr-panel qr-placeholder" data-qr-signature="waiting:${required}"><div><h4>QR login</h4><p id="qrOnboardingStatus">${status}</p></div><div class="qr-placeholder-box" aria-hidden="true">QR</div></div>`;
   }
 
   function updateQrOnboardingPanel() {
@@ -445,6 +445,7 @@
     wrapper.innerHTML = qrOnboardingMarkup();
     const next = wrapper.firstElementChild;
     if (!next) return;
+    if (panel.dataset.qrSignature === next.dataset.qrSignature) return;
     panel.replaceWith(next);
     window.ControlI18n?.apply?.(next);
     renderQrCode();
