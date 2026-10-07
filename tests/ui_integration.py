@@ -320,6 +320,8 @@ with sync_playwright() as pw:
     page.fill('[data-native-field="HoursUntilCardDrops"]','5')
     page.click('#saveNativeBotConfig'); page.wait_for_timeout(750)
     assert page.evaluate('window.__m.configs.main.HoursUntilCardDrops') == 5
+    assert 'SteamLogin' not in page.evaluate('window.__m.configs.main')
+    assert 'SteamPassword' not in page.evaluate('window.__m.configs.main')
 
     page.click('[data-advanced-tab="2fa"]'); page.wait_for_selector('.token-display')
     assert page.locator('.token-display').inner_text().strip() == '12345'
