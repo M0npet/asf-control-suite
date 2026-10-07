@@ -1186,6 +1186,97 @@
       }
     });
 
+    $('addNativeLicenses')?.addEventListener('click', async () => {
+      const button = $('addNativeLicenses');
+      button.disabled = true;
+      try {
+        const apps = parseUintList($('nativeAddLicenseApps').value, 'App IDs');
+        const packages = parseUintList($('nativeAddLicensePackages').value, 'Package IDs');
+        if (!apps.length && !packages.length) throw new Error('Enter at least one app ID or package ID.');
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/AddLicense`, { method:'POST', body:JSON.stringify({ Apps:apps, Packages:packages }) });
+        $('nativeAddLicenseApps').value = '';
+        $('nativeAddLicensePackages').value = '';
+        toast('License request sent', `${apps.length} app(s) · ${packages.length} package(s)`);
+      } catch (error) {
+        toast('Licenses not added', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('removeNativeLicenses')?.addEventListener('click', async () => {
+      const apps = parseUintList($('nativeRemoveLicenseApps').value, 'App IDs');
+      const packages = parseUintList($('nativeRemoveLicensePackages').value, 'Package IDs');
+      if (!apps.length && !packages.length) { toast('Nothing to remove', 'Enter at least one app ID or package ID.', 'bad', 7000); return; }
+      const values = await openModal({ title:'Remove Steam licenses', eyebrow:'Destructive Steam action', body:`<p>Remove ${apps.length} app license(s) and ${packages.length} package license(s) from <strong>${escapeHtml(state.selectedBot)}</strong>?</p><div class="notice bad">This can revoke access to games or packages.</div>`, confirmLabel:'Remove licenses', tone:'danger', requireText:'REMOVE LICENSES' });
+      if (!values) return;
+      const button = $('removeNativeLicenses');
+      button.disabled = true;
+      try {
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/RemoveLicense`, { method:'POST', body:JSON.stringify({ Apps:apps, Packages:packages }) });
+        $('nativeRemoveLicenseApps').value = '';
+        $('nativeRemoveLicensePackages').value = '';
+        toast('License removal requested', `${apps.length} app(s) · ${packages.length} package(s)`, 'warn');
+      } catch (error) {
+        toast('Licenses not removed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('redeemNativeKeys')?.addEventListener('click', async () => {
+      const button = $('redeemNativeKeys');
+      button.disabled = true;
+      try {
+        const keys = parseKeyList($('nativeRedeemKeys').value);
+        if (!keys.length) throw new Error('Enter at least one Steam key.');
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/Redeem`, { method:'POST', body:JSON.stringify({ KeysToRedeem:keys }) });
+        $('nativeRedeemOutput').value = prettyJson(result);
+        $('nativeRedeemKeys').value = '';
+        toast('Redeem completed', `${keys.length} key(s) sent to ASF.`);
+      } catch (error) {
+        $('nativeRedeemOutput').value = `ERROR: ${error.message}`;
+        toast('Redeem failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('loadNativeInventoryInfo')?.addEventListener('click', async () => {
+      const button = $('loadNativeInventoryInfo');
+      button.disabled = true;
+      try {
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/Inventory`);
+        $('nativeInventoryInfo').value = prettyJson(result);
+        toast('Inventory loaded');
+      } catch (error) {
+        $('nativeInventoryInfo').value = `ERROR: ${error.message}`;
+        toast('Inventory unavailable', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('redeemNativePoints')?.addEventListener('click', async () => {
+      const definition = Number(String($('nativeRedeemPointsDefinition').value || '').trim());
+      if (!Number.isSafeInteger(definition) || definition <= 0 || definition > 4294967295) { toast('Invalid definition ID', 'Enter a positive 32-bit Steam Points definition ID.', 'bad', 7000); return; }
+      const forced = Boolean($('nativeRedeemPointsForced').checked);
+      const values = await openModal({ title:'Redeem Steam Points item', eyebrow:'Steam Points', body:`<p>Redeem definition <strong>${definition}</strong> for <strong>${escapeHtml(state.selectedBot)}</strong>${forced ? ' with forced=true' : ''}?</p>`, confirmLabel:'Redeem points item', tone:'warning', requireText:'REDEEM POINTS' });
+      if (!values) return;
+      const button = $('redeemNativePoints');
+      button.disabled = true;
+      try {
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/RedeemPoints/${definition}?forced=${forced ? 'true' : 'false'}`, { method:'POST' });
+        $('nativeRedeemPointsDefinition').value = '';
+        $('nativeRedeemPointsForced').checked = false;
+        toast('Steam Points redemption requested', `Definition ${definition}`);
+      } catch (error) {
+        toast('Steam Points redemption failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
     $('fetchNative2faToken')?.addEventListener('click', async () => {
       const button = $('fetchNative2faToken');
       button.disabled = true;
