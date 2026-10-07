@@ -193,7 +193,14 @@ with sync_playwright() as pw:
     bot_cfg['CustomGamePlayedWhileIdle']='must-be-cleared'
     page.fill('#nativeBotConfig',json.dumps(bot_cfg))
     page.click('#saveNativeBotConfig')
-    page.wait_for_function("() => window.__m.configs.main.OnlineFlags === 1")
+    page.wait_for_timeout(650)
+    if page.evaluate('window.__m.configs.main.OnlineFlags') != 1:
+        print('NATIVE BOTCONFIG SAVE DIAGNOSTICS', {
+            'config': page.evaluate('window.__m.configs.main'),
+            'toasts': page.locator('#toastRegion').inner_text(),
+            'editor': page.locator('#nativeBotConfig').input_value(),
+        })
+    assert page.evaluate('window.__m.configs.main.OnlineFlags') == 1
     assert page.evaluate('window.__m.configs.main.SteamTradeToken') == 'SECRET-TOKEN'
     assert page.evaluate('window.__m.configs.main.GamesPlayedWhileIdle') == []
     assert page.evaluate('window.__m.configs.main.CustomGamePlayedWhileIdle') is None
