@@ -42,7 +42,9 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,OnlineStatus:1,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  configs:{main:{Enabled:true,OnlineStatus:1,SteamLogin:'private-login',SteamPassword:'private-password',SteamParentalCode:'1234',WebProxyPassword:'proxy-secret',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  globalConfig:{IPC:true,IPCPassword:'stored-scrypt-hash',IPCPasswordFormat:1,LicenseID:'protected-license',WebProxyPassword:'global-proxy-secret',CommandPrefix:'!',Headless:true},
+  bans:['203.0.113.7','198.51.100.9'],commands:[],
   inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
@@ -52,7 +54,18 @@ mock=r'''(() => {
   path=String(path); const method=String(opt.method||'GET').toUpperCase(),auth=opt.headers?.get?.('Authentication');
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
   const body=opt.body?JSON.parse(opt.body):null;
-  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192}));
+  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192,GlobalConfig:structuredClone(window.__m.globalConfig)}));
+  if(method==='POST'&&path==='/Api/ASF'){
+    const old=window.__m.globalConfig;
+    const next=structuredClone(body.GlobalConfig||{});
+    for(const key of ['IPCPassword','LicenseID','WebProxyPassword']) if(!(key in next)&&key in old) next[key]=old[key];
+    window.__m.globalConfig=next;
+    return resp(env(null));
+  }
+  if(method==='POST'&&path==='/Api/Command'){window.__m.commands.push(body.Command);return resp(env(`mock response: ${body.Command}`));}
+  if(method==='GET'&&path==='/Api/IPC/Bans')return resp(env([...window.__m.bans]));
+  if(method==='DELETE'&&path==='/Api/IPC/Bans'){window.__m.bans=[];return resp(env(null));}
+  if(method==='DELETE'&&path.startsWith('/Api/IPC/Bans/')){const ip=decodeURIComponent(path.slice('/Api/IPC/Bans/'.length));window.__m.bans=window.__m.bans.filter(x=>x!==ip);return resp(env(null));}
   if(method==='GET'&&path==='/Api/AccountManager'){window.__m.accountReads++;return resp(env({Accounts:window.__m.accounts}));}
   if(method==='GET'&&path==='/Api/AccountManager/Defaults')return resp(env({Defaults:window.__m.defaults,ForbiddenKeys:['SteamPassword','SteamLogin'],MaxPayloadChars:65536}));
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
@@ -69,7 +82,7 @@ mock=r'''(() => {
    if(method==='POST'&&act==='Input'){window.__m.inputs.push([bot,body]);const a=window.__m.accounts.find(a=>a.BotName===bot);if(body.Type===8&&body.Value==='Y'){window.__m.qrInputCounts[bot]=(window.__m.qrInputCounts[bot]||0)+1;a.RequiredInput=8;a.QrChallengeUrl=window.__m.qrInputCounts[bot]===1?'https://s.team/q/TEST-ONE':'https://s.team/q/TEST-RETRY';}else a.RequiredInput=0;return resp(env(null));}
    if(method==='POST'&&act==='Rename'){const next=body.NewName; const a=window.__m.accounts.find(x=>x.BotName===bot); if(a)a.BotName=next; window.__m.configs[next]=window.__m.configs[bot]; delete window.__m.configs[bot]; return resp(env(null));}
    if(method==='POST'&&act){window.__m.actions.push([bot,act]);const a=window.__m.accounts.find(x=>x.BotName===bot); if(a){if(act==='Start')a.KeepRunning=true;if(act==='Stop')a.KeepRunning=false;if(act==='Pause')a.FarmerPaused=true;if(act==='Resume')a.FarmerPaused=false;}return resp(env(null));}
-   if(method==='POST'&&!act){let cfg=body.BotConfig;window.__m.configs[bot]=cfg;let a=window.__m.accounts.find(x=>x.BotName===bot); if(!a){window.__m.accounts.push({BotName:bot,Nickname:'',SteamId:'0',AvatarHash:null,QrChallengeUrl:null,Enabled:!!cfg.Enabled,KeepRunning:true,Connected:false,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:false,RequiredInput:(!cfg.SteamLogin&&!cfg.SteamPassword)?8:0});} else a.Enabled=!!cfg.Enabled;return resp(env({[bot]:true}));}
+   if(method==='POST'&&!act){let cfg=structuredClone(body.BotConfig),old=window.__m.configs[bot]||{};for(const key of ['SteamLogin','SteamPassword','SteamParentalCode','WebProxyPassword'])if(!(key in cfg)&&key in old)cfg[key]=old[key];window.__m.configs[bot]=cfg;let a=window.__m.accounts.find(x=>x.BotName===bot); if(!a){window.__m.accounts.push({BotName:bot,Nickname:'',SteamId:'0',AvatarHash:null,QrChallengeUrl:null,Enabled:!!cfg.Enabled,KeepRunning:true,Connected:false,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:false,RequiredInput:(!cfg.SteamLogin&&!cfg.SteamPassword)?8:0});} else a.Enabled=!!cfg.Enabled;return resp(env({[bot]:true}));}
    if(method==='DELETE'){window.__m.accounts=window.__m.accounts.filter(x=>x.BotName!==bot);delete window.__m.configs[bot];return resp(env(null));}
   }
   return resp(env(null,false,'not found'),404);
