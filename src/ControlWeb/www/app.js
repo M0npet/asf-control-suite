@@ -543,13 +543,6 @@
 
   function setCreateMode(mode) {
     state.createMode = mode === 'password' ? 'password' : 'qr';
-    document.querySelectorAll('[data-native-tab]').forEach((button) => button.addEventListener('click', async () => { state.nativeTab = button.dataset.nativeTab; await render(); }));
-    Native.wireFlags(document);
-    $('saveNativeBot')?.addEventListener('click', async () => { const button = $('saveNativeBot'); button.disabled = true; try { await saveNativeBotEditor(); } catch (error) { toast('BotConfig not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
-    $('saveNativeAsf')?.addEventListener('click', async () => { const button = $('saveNativeAsf'); button.disabled = true; try { await saveNativeAsfEditor(); } catch (error) { toast('ASF config not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
-    $('applyMassEdit')?.addEventListener('click', async () => { const button = $('applyMassEdit'); button.disabled = true; try { await applyNativeMassEdit(); } catch (error) { toast('Mass edit failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
-    $('nativeCommandForm')?.addEventListener('submit', async (event) => { event.preventDefault(); const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; try { await executeNativeCommand(); } catch (error) { toast('Command failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
-    $('clearNativeCommands')?.addEventListener('click', () => { const node = $('nativeCommandOutput'); if (node) node.textContent = ''; });
     const form = $('createBotForm');
     if (!form) return;
     form.dataset.mode = state.createMode;
@@ -672,7 +665,7 @@
     await writeBotConfig(state.selectedBot, next);
     await sleep(500);
     await loadAccounts();
-    toast('Bot configuration saved', `${state.selectedBot} Â· ${Object.keys(changes).length} field(s)`);
+    toast('Bot configuration saved', `${state.selectedBot} · ${Object.keys(changes).length} field(s)`);
     await render();
   }
 
@@ -725,7 +718,7 @@
     for (const bot of bots) {
       const record = await getBotRecord(bot);
       const next = JSON.parse(JSON.stringify(record.BotConfig));
-      next[property] = value;
+      next[field.paramName] = value;
       await writeBotConfig(bot, next);
     }
     await sleep(500);
@@ -750,17 +743,17 @@
         getBotRecord(state.selectedBot),
         Native.schema(api, 'ArchiSteamFarm.Steam.Storage.BotConfig'),
       ]);
-      body = `<div class="card"><div class="card-head"><div><h3>Full BotConfig Â· ${escapeHtml(state.selectedBot)}</h3><p>Generated from ASF runtime type metadata. Blank secret fields preserve their current values.</p></div><button id="saveNativeBot" type="button">Save BotConfig</button></div><div id="nativeBotEditor" class="native-editor-grid">${fields.map((field) => Native.fieldMarkup(field, record.BotConfig?.[field.name], 'botcfg', escapeHtml)).join('')}</div></div>`;
+      body = `<div class="card"><div class="card-head"><div><h3>Full BotConfig · ${escapeHtml(state.selectedBot)}</h3><p>Generated from ASF runtime type metadata. Blank secret fields preserve their current values.</p></div><button id="saveNativeBot" type="button">Save BotConfig</button></div><div id="nativeBotEditor" class="native-editor-grid">${fields.map((field) => Native.fieldMarkup(field, record.BotConfig?.[field.paramName], 'botcfg', escapeHtml)).join('')}</div></div>`;
     } else if (tab === 'asf') {
       const [asf, fields] = await Promise.all([
         api('/Api/ASF'),
         Native.schema(api, 'ArchiSteamFarm.Storage.GlobalConfig'),
       ]);
-      body = `<div class="card"><div class="card-head"><div><h3>Global ASF config</h3><p>Complete GlobalConfig generated from ASF runtime type metadata.</p></div><button id="saveNativeAsf" type="button">Save ASF config</button></div><div id="nativeAsfEditor" class="native-editor-grid">${fields.map((field) => Native.fieldMarkup(field, asf?.GlobalConfig?.[field.name], 'asfcfg', escapeHtml)).join('')}</div></div>`;
+      body = `<div class="card"><div class="card-head"><div><h3>Global ASF config</h3><p>Complete GlobalConfig generated from ASF runtime type metadata.</p></div><button id="saveNativeAsf" type="button">Save ASF config</button></div><div id="nativeAsfEditor" class="native-editor-grid">${fields.map((field) => Native.fieldMarkup(field, asf?.GlobalConfig?.[field.paramName], 'asfcfg', escapeHtml)).join('')}</div></div>`;
     } else if (tab === 'mass') {
       const fields = await Native.schema(api, 'ArchiSteamFarm.Steam.Storage.BotConfig');
       const bots = state.accounts.map((account) => `<label class="mass-bot"><input type="checkbox" data-mass-bot value="${escapeHtml(account.BotName)}"><span>${escapeHtml(accountDisplayName(account))}</span><small>${escapeHtml(account.BotName)}</small></label>`).join('');
-      body = `<div class="card"><div class="card-head"><div><h3>Mass BotConfig editor</h3><p>Apply one native property to multiple bots while preserving every other property.</p></div></div><div class="mass-bot-grid">${bots || '<div class="empty-state">No bots.</div>'}</div><div class="settings-grid section"><label for="massProperty">Property<select id="massProperty"><option value="">Choose propertyâ¦</option>${fields.map((field) => `<option value="${escapeHtml(field.name)}">${escapeHtml(field.name)} Â· ${escapeHtml(field.fieldType)}</option>`).join('')}</select></label><label for="massValue">Value<input id="massValue" type="text" autocomplete="off" placeholder="JSON for collections/objects; number for enum/flags"></label></div><button id="applyMassEdit" type="button">Apply mass edit</button></div>`;
+      body = `<div class="card"><div class="card-head"><div><h3>Mass BotConfig editor</h3><p>Apply one native property to multiple bots while preserving every other property.</p></div></div><div class="mass-bot-grid">${bots || '<div class="empty-state">No bots.</div>'}</div><div class="settings-grid section"><label for="massProperty">Property<select id="massProperty"><option value="">Choose property…</option>${fields.map((field) => `<option value="${escapeHtml(field.name)}">${escapeHtml(field.name)} · ${escapeHtml(field.fieldType)}</option>`).join('')}</select></label><label for="massValue">Value<input id="massValue" type="text" autocomplete="off" placeholder="JSON for collections/objects; number for enum/flags"></label></div><button id="applyMassEdit" type="button">Apply mass edit</button></div>`;
     } else {
       body = `<div class="card command-card"><div class="card-head"><div><h3>ASF command terminal</h3><p>Native /Api/Command endpoint. Structured controls remain preferred when available.</p></div><button id="clearNativeCommands" type="button" class="secondary">Clear</button></div><div id="nativeCommandOutput" class="command-output" role="log" aria-live="polite"></div><form id="nativeCommandForm" class="inline-form section"><input id="nativeCommandInput" autocomplete="off" placeholder="status ASF" required><button type="submit">Run command</button></form></div>`;
     }
@@ -930,6 +923,13 @@
   }
 
   function wireDynamicEvents() {
+    document.querySelectorAll('[data-native-tab]').forEach((button) => button.addEventListener('click', async () => { state.nativeTab = button.dataset.nativeTab; await render(); }));
+    Native.wireFlags(document);
+    $('saveNativeBot')?.addEventListener('click', async () => { const button = $('saveNativeBot'); button.disabled = true; try { await saveNativeBotEditor(); } catch (error) { toast('BotConfig not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('saveNativeAsf')?.addEventListener('click', async () => { const button = $('saveNativeAsf'); button.disabled = true; try { await saveNativeAsfEditor(); } catch (error) { toast('ASF config not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('applyMassEdit')?.addEventListener('click', async () => { const button = $('applyMassEdit'); button.disabled = true; try { await applyNativeMassEdit(); } catch (error) { toast('Mass edit failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('nativeCommandForm')?.addEventListener('submit', async (event) => { event.preventDefault(); const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; try { await executeNativeCommand(); } catch (error) { toast('Command failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('clearNativeCommands')?.addEventListener('click', () => { const node = $('nativeCommandOutput'); if (node) node.textContent = ''; });
     document.querySelectorAll('[data-act]').forEach((button) => button.addEventListener('click', async () => {
       const bot = button.dataset.bot, action = button.dataset.act;
       button.disabled = true;
