@@ -12,7 +12,7 @@
   </a>
 </p>
 
-**One self-hosted `/Control/` UI · ASF-native APIs · reproducible releases · RAM-only IPC credentials**
+**One self-hosted Control Suite UI at `/` · ASF-native APIs · reproducible releases · RAM-only IPC credentials**
 
 [Installation](docs/installation/manual.md)
 &nbsp;·&nbsp;
@@ -42,7 +42,7 @@ No second daemon. No arbitrary shell API. No separate credential database.
 | --- | --- |
 | **AccountManager** | Multi-account overview, Steam profiles, bot controls and QR/password onboarding |
 | **ControlCenter** | Runtime health, module status and compatibility metadata |
-| **ControlWeb** | Responsive self-hosted `/Control/` interface |
+| **ControlWeb** | Responsive self-hosted Control Suite interface; `/` is the default entrypoint and `/Control/` remains canonical internally |
 | **PlaytimeGoals** | Per-game playtime targets, queues, FREE-license handling and Family View recovery |
 
 ## Preview
