@@ -44,6 +44,9 @@ while i < len(text):
             break
 
         if not body:
+            if i == len(text) - 1:
+                i += 1
+                continue
             errors.append(f"line {i + 1}: empty patch body line has no diff prefix")
             i += 1
             continue
