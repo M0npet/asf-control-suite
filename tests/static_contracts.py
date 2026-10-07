@@ -211,6 +211,8 @@ require('src/ControlWeb/www/app.js','restoreSensitiveBotConfig','BotConfig sensi
 require('src/ControlWeb/www/app.js','if (next.PlaytimeGoalsEnabled === true)','native editor preserves single GamesPlayed owner')
 require('src/ControlWeb/www/app.js','assertNoSensitiveBotPatch','mass editor blocks security-controlled fields')
 require('src/ControlWeb/www/app.js','Earlier writes were rolled back.','mass editor rollback')
+require('src/ControlWeb/www/app.css','.toast { pointer-events:none;','toast body cannot block controls')
+require('src/ControlWeb/www/app.css','.toast-close { pointer-events:auto;','toast close remains clickable')
 for controlweb_cs in (ROOT / 'src' / 'ControlWeb').glob('*.cs'):
     if 'System.IO' in controlweb_cs.read_text(encoding='utf-8'):
         errors.append(f'trim-unsafe System.IO dependency in {controlweb_cs.relative_to(ROOT)}')
