@@ -5,7 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SUITE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ARTIFACTS="${1:-}"
 OUT_PARENT="${2:-$SUITE_ROOT/artifacts}"
-DIST_NAME="asf-control-suite-v1.0-dist"
 
 die(){ printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
@@ -18,6 +17,7 @@ command -v tar >/dev/null 2>&1 || die "tar not found"
 # shellcheck disable=SC1091
 . "$SUITE_ROOT/scripts/build/pins.sh"
 load_release_pins "$SUITE_ROOT/release/pins.env"
+DIST_NAME="asf-control-suite-v${CONTROL_SUITE_VERSION}-dist"
 
 BUNDLE="$ARTIFACTS/ASF-Control-Suite-v$CONTROL_SUITE_VERSION.zip"
 META="$ARTIFACTS/CONTROL-SUITE-METADATA.json"

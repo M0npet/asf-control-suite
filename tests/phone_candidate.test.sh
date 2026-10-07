@@ -80,17 +80,20 @@ JSON
   sha256sum     "ASF-Control-Suite-v$CONTROL_SUITE_VERSION.zip"     CONTROL-SUITE-METADATA.json     > SHA256SUMS
 )
 
-bash "$ROOT/scripts/phone/make-phone-candidate.sh" "$ART" "$OUT"
-FIRST="$(sha256sum "$OUT/asf-control-suite-v1.0-dist.tar.gz" | awk '{print $1}')"
-cp "$OUT/asf-control-suite-v1.0-dist.tar.gz" "$TMP/first.tar.gz"
+DIST_NAME="asf-control-suite-v${CONTROL_SUITE_VERSION}-dist"
+ARCHIVE="$OUT/$DIST_NAME.tar.gz"
 
 bash "$ROOT/scripts/phone/make-phone-candidate.sh" "$ART" "$OUT"
-SECOND="$(sha256sum "$OUT/asf-control-suite-v1.0-dist.tar.gz" | awk '{print $1}')"
+FIRST="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
+cp "$ARCHIVE" "$TMP/first.tar.gz"
+
+bash "$ROOT/scripts/phone/make-phone-candidate.sh" "$ART" "$OUT"
+SECOND="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
 [[ "$FIRST" == "$SECOND" ]]
 
 mkdir -p "$TMP/extract"
-tar -xzf "$OUT/asf-control-suite-v1.0-dist.tar.gz" -C "$TMP/extract"
-DIST="$TMP/extract/asf-control-suite-v1.0-dist"
+tar -xzf "$ARCHIVE" -C "$TMP/extract"
+DIST="$TMP/extract/$DIST_NAME"
 
 [[ -x "$DIST/ArchiSteamFarm" ]]
 [[ -x "$DIST/installer/phone-transaction.sh" ]]

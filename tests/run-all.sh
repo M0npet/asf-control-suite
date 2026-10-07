@@ -5,7 +5,11 @@ cd "$ROOT"
 
 PYTHON="${CONTROL_PYTHON:-python3}"
 
-echo '=== ASF CONTROL SUITE 1.0 SANDBOX SUITE ==='
+# shellcheck disable=SC1091
+. "$ROOT/scripts/build/pins.sh"
+load_release_pins "$ROOT/release/pins.env"
+
+echo "=== ASF CONTROL SUITE $CONTROL_SUITE_VERSION SANDBOX SUITE ==="
 "$PYTHON" tests/migration_structure.test.py
 "$PYTHON" tests/pins_single_source.test.py
 "$PYTHON" tests/build_info_contract.test.py

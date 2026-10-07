@@ -39,9 +39,9 @@ def require(
 # Public source/documentation release contract.
 #
 # v1.0.0 has passed final live verification and is published.
-# Public docs must describe the released state and point users
-# at the verified GitHub release, rather than carrying old
-# pre-publication wording.
+# main may target a newer candidate, but public docs must keep
+# stable provenance explicit while current build artifact names
+# are derived from release/pins.env.
 # ------------------------------------------------------------
 
 for relative in (
@@ -55,7 +55,7 @@ for relative in (
     read(relative)
 
 
-# README must describe the current published stable state.
+# README must describe both the published stable state and the current main candidate.
 for token, reason in (
     (
         "releases/tag/v1.0.0",
@@ -64,6 +64,10 @@ for token, reason in (
     (
         "| PlaytimeGoals | **0.5.2.0** |",
         "current PlaytimeGoals compatibility version",
+    ),
+    (
+        "v1.1.0 candidate",
+        "current unreleased candidate identity",
     ),
     (
         "release/pins.env",
@@ -132,29 +136,32 @@ for key, label in (
 # release pipeline and native ZIP layout.
 manual = "docs/installation/manual.md"
 
+suite_version = pins.get("CONTROL_SUITE_VERSION", "")
+playtime_version = pins.get("PLAYTIMEGOALS_VERSION", "").removesuffix(".0")
+
 for token, reason in (
     (
         "scripts/build/make-release.sh",
         "current release builder",
     ),
     (
-        "ASF-Control-Suite-v1.0.0.zip",
+        f"ASF-Control-Suite-v{suite_version}.zip",
         "bundle ZIP",
     ),
     (
-        "AccountManager-v1.0.0.zip",
+        f"AccountManager-v{suite_version}.zip",
         "AccountManager ZIP",
     ),
     (
-        "ControlCenter-v1.0.0.zip",
+        f"ControlCenter-v{suite_version}.zip",
         "ControlCenter ZIP",
     ),
     (
-        "ControlWeb-v1.0.0.zip",
+        f"ControlWeb-v{suite_version}.zip",
         "ControlWeb ZIP",
     ),
     (
-        "PlaytimeGoals-v0.5.2.zip",
+        f"PlaytimeGoals-v{playtime_version}.zip",
         "PlaytimeGoals ZIP",
     ),
     (
