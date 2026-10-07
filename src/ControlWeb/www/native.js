@@ -5,12 +5,16 @@
   const SECRET = new Set(['SteamPassword','SteamParentalCode','IPCPassword','WebProxyPassword','LicenseID']);
   const PRIMITIVE = new Map([
     ['System.Boolean','boolean'], ['System.String','string'], ['System.Guid','string'],
-    ['System.Byte','number'], ['System.UInt16','number'], ['System.UInt32','number'], ['System.UInt64','number'],
-    ['System.Int16','number'], ['System.Int32','number'], ['System.Int64','number'],
+    ['System.Byte','number'], ['System.UInt16','number'], ['System.UInt32','number'], ['System.UInt64','string'],
+    ['System.Int16','number'], ['System.Int32','number'], ['System.Int64','string'],
     ['System.Single','number'], ['System.Double','number'], ['System.Decimal','number'],
   ]);
 
-  const subtypes = (type) => [...String(type || '').matchAll(/\\[([^\\]]+)]/g)].map((m) => m[1]);
+  const SUBTYPE_REGEX = /\[[^\]]+]/g;
+  function subtypes(type) {
+    const matches = String(type || '').match(SUBTYPE_REGEX);
+    return matches ? matches.map((value) => value.slice(1, -1)) : [];
+  }
 
   async function cached(key, fn) {
     if (!CACHE.has(key)) CACHE.set(key, fn());
@@ -45,7 +49,8 @@
       const [info, defaults] = await Promise.all([typeInfo(api, type), structure(api, type)]);
       const fields = [];
       for (const [name, fieldType] of Object.entries(info?.Body || {})) {
-        fields.push({ name, fieldType, defaultValue:defaults?.[name], ...(await describe(api, fieldType)) });
+        const paramName = fieldType === 'System.UInt64' ? `s_${name}` : name;
+        fields.push({ name, paramName, fieldType, defaultValue:defaults?.[name], ...(await describe(api, fieldType)) });
       }
       return fields.sort((a,b) => a.name.localeCompare(b.name));
     });
@@ -61,7 +66,7 @@
   function fieldMarkup(field, value, prefix, escapeHtml) {
     const id = `${prefix}-${field.name}`;
     const initial = JSON.stringify(value === undefined ? field.defaultValue : value);
-    const common = `data-native-field="${escapeHtml(field.name)}" data-native-kind="${escapeHtml(field.kind)}" data-native-initial="${escapeHtml(initial)}"`;
+    const common = `data-native-field="${escapeHtml(field.paramName)}" data-native-source-field="${escapeHtml(field.name)}" data-native-kind="${escapeHtml(field.kind)}" data-native-initial="${escapeHtml(initial)}"`;
     const label = `<label for="${escapeHtml(id)}">${escapeHtml(field.name)}</label>`;
     const help = `<small class="field-help">${escapeHtml(field.fieldType)}${SECRET.has(field.name) ? ' · blank keeps the existing secret' : ''}</small>`;
     let control = '';
@@ -74,7 +79,8 @@
       const selected = Number(value ?? field.defaultValue ?? 0);
       control = `<div id="${escapeHtml(id)}" class="native-flags" ${common} data-native-flags="1">${field.values.filter(([,v]) => v !== 0).map(([name,v]) => `<label><input type="checkbox" data-native-flag-value="${v}" ${(selected & v) === v ? 'checked' : ''}><span>${escapeHtml(name)}</span></label>`).join('')}<small>numeric value: <span data-native-flag-total>${selected}</span></div>`;
     } else if (field.kind === 'number') {
-      control = `<input id="${escapeHtml(id)}" type="number" step="1" value="${escapeHtml(displayValue(field,value))}" ${common}>`;
+      const step = ['System.Single','System.Double','System.Decimal'].includes(field.fieldType) ? 'any' : '1';
+      control = `<input id="${escapeHtml(id)}" type="number" step="${step}" value="${escapeHtml(displayValue(field,value))}" ${common}>`;
     } else if (field.kind === 'json') {
       control = `<textarea id="${escapeHtml(id)}" class="native-json" rows="4" spellcheck="false" ${common}>${escapeHtml(displayValue(field,value))}</textarea>`;
     } else {
@@ -103,13 +109,13 @@
 
   function collect(container, fields) {
     const changes = {};
-    const byName = new Map(fields.map((f) => [f.name, f]));
+    const byName = new Map(fields.map((f) => [f.paramName, f]));
     container.querySelectorAll('[data-native-field]').forEach((node) => {
       const name = node.dataset.nativeField;
       const field = byName.get(name);
       if (!field) return;
       const value = readControl(node);
-      if (SECRET.has(name) && value === '') return;
+      if (SECRET.has(field.name) && value === '') return;
       let initial;
       try { initial = JSON.parse(node.dataset.nativeInitial); } catch (_) { initial = undefined; }
       if (JSON.stringify(value) !== JSON.stringify(initial)) changes[name] = value;
@@ -119,8 +125,8 @@
 
   function wireFlags(root=document) {
     root.querySelectorAll('[data-native-flags]').forEach((group) => group.addEventListener('change', () => {
-      const total = [...group.querySelectorAll('[data-native-flag-value]:checked')].reduce((sum, box) => sum | Number(box.dataset.nativeFlagValue || 0), 0);
-      const node = group.querySelectorAll('[data-native-flag-total]');
+      const total = [...group.querySelectorAll('[data-native-flag-value]:checked')].reduce((sum, box) => sum + Number(box.dataset.nativeFlagValue || 0), 0);
+      const node = group.querySelector('[data-native-flag-total]');
       if (node) node.textContent = String(total);
     }));
   }
