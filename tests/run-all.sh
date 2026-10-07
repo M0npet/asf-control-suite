@@ -33,7 +33,7 @@ bash tests/pins_parser.test.sh
 node tests/control_core.test.js
 "$PYTHON" tests/ui_integration.py
 bash tests/phone_transaction.test.sh
-bash tests/phone_candidate.test.sh
+bash tests/phone_candidate.test.sh\nbash tests/phone_install_wrapper.test.sh
 node --check src/ControlWeb/www/i18n.js
 node --check src/ControlWeb/www/core.js
 node --check src/ControlWeb/www/app.js
