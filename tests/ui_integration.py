@@ -43,7 +43,12 @@ mock=r'''(() => {
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
   configs:{main:{Enabled:true,OnlineStatus:1,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},
+  globalConfig:{Headless:true,IPC:true,IPCPasswordFormat:1,UpdateChannel:1,LoginLimiterDelay:10},
+  bans:['192.0.2.10'],
+  bgr:{main:{UnusedKeys:{'AAAAA-BBBBB-CCCCC':'Mock unused'},UsedKeys:{'DDDDD-EEEEE-FFFFF':'Mock used'}}},
+  commands:[],
+  plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'ControlWeb',Version:'1.0.0.0'}]
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -52,7 +57,29 @@ mock=r'''(() => {
   path=String(path); const method=String(opt.method||'GET').toUpperCase(),auth=opt.headers?.get?.('Authentication');
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
   const body=opt.body?JSON.parse(opt.body):null;
-  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192}));
+  if(method==='GET'&&path==='/Api/ASF')return resp(env({Version:'6.3.10.3',BuildVariant:'linux-arm64',MemoryUsage:8192,CanUpdate:false,GlobalConfig:window.__m.globalConfig}));
+  if(method==='POST'&&path==='/Api/ASF'){window.__m.globalConfig=body.GlobalConfig;return resp(env(null));}
+  if(method==='POST'&&path==='/Api/Command'){window.__m.commands.push(body.Command);return resp(env('mock:'+body.Command));}
+  if(method==='GET'&&path.startsWith('/Api/NLog/File?'))return resp(env({TotalLines:2,Content:['2026-10-07|ASF|Info|Mock|one','2026-10-07|ASF|Info|Mock|two']}));
+  if(method==='GET'&&path==='/Api/IPC/Bans')return resp(env(window.__m.bans));
+  if(method==='DELETE'&&path==='/Api/IPC/Bans'){window.__m.bans=[];return resp(env(null));}
+  if(method==='DELETE'&&path.startsWith('/Api/IPC/Bans/')){window.__m.bans=window.__m.bans.filter(x=>x!==decodeURIComponent(path.split('/').pop()));return resp(env(null));}
+  if(method==='GET'&&path.startsWith('/Api/Plugins?'))return resp(env(window.__m.plugins));
+  if(method==='GET'&&path.startsWith('/Api/WWW/GitHub/Release'))return resp(env({Version:'6.3.10.3',Stable:true,ReleasedAt:'2026-10-01T00:00:00Z',ChangelogHTML:'<p>mock</p>'}));
+  if(method==='GET'&&path.startsWith('/Api/Type/')){
+    const type=decodeURIComponent(path.slice('/Api/Type/'.length));
+    if(type==='ArchiSteamFarm.Steam.Storage.BotConfig')return resp(env({Properties:{BaseType:'System.Object'},Body:{Enabled:'System.Boolean',OnlineStatus:'Mock.Persona',SteamLogin:'System.String',SteamPassword:'System.String',HoursUntilCardDrops:'System.Byte',GamesPlayedWhileIdle:'System.Collections.Generic.HashSet\`1[System.UInt32]'}}));
+    if(type==='ArchiSteamFarm.Storage.GlobalConfig')return resp(env({Properties:{BaseType:'System.Object'},Body:{Headless:'System.Boolean',IPC:'System.Boolean',IPCPassword:'System.String',IPCPasswordFormat:'Mock.Hashing',LoginLimiterDelay:'System.Byte',UpdateChannel:'System.Byte'}}));
+    if(type==='Mock.Persona')return resp(env({Properties:{BaseType:'System.Enum',CustomAttributes:[]},Body:{Offline:'0',Online:'1',Invisible:'7'}}));
+    if(type==='Mock.Hashing')return resp(env({Properties:{BaseType:'System.Enum',CustomAttributes:[]},Body:{PlainText:'0',SCrypt:'1',Pbkdf2:'2'}}));
+    return resp(env({Properties:{BaseType:'System.Object'},Body:{}}));
+  }
+  if(method==='GET'&&path.startsWith('/Api/Structure/')){
+    const type=decodeURIComponent(path.slice('/Api/Structure/'.length));
+    if(type==='ArchiSteamFarm.Steam.Storage.BotConfig')return resp(env({Enabled:false,OnlineStatus:1,SteamLogin:null,SteamPassword:null,HoursUntilCardDrops:3,GamesPlayedWhileIdle:[]}));
+    if(type==='ArchiSteamFarm.Storage.GlobalConfig')return resp(env({Headless:false,IPC:true,IPCPassword:null,IPCPasswordFormat:0,LoginLimiterDelay:10,UpdateChannel:1}));
+    return resp(env({}));
+  }
   if(method==='GET'&&path==='/Api/AccountManager'){window.__m.accountReads++;return resp(env({Accounts:window.__m.accounts}));}
   if(method==='GET'&&path==='/Api/AccountManager/Defaults')return resp(env({Defaults:window.__m.defaults,ForbiddenKeys:['SteamPassword','SteamLogin'],MaxPayloadChars:65536}));
   if(method==='POST'&&path==='/Api/AccountManager/Defaults'){window.__m.defaults=body;return resp(env({Defaults:body}));}
@@ -62,6 +89,21 @@ mock=r'''(() => {
   if(method==='POST'&&path==='/Api/ASF/Exit'){window.__m.exit++;return resp(env(null));}
   let m=path.match(/^\/Api\/PlaytimeGoals\/([^/]+)(?:\/(Library|Parental))?$/);
   if(method==='GET'&&m){let bot=decodeURIComponent(m[1]); if(!m[2])return resp(env(ptg(bot))); if(m[2]==='Library'){window.__m.libraryReads++;return resp(env({FamilyMemberCount:4,Games:lib}));} return resp(env({Available:true,Enabled:true,BaseListId:1,BaseEntryCount:2,CustomEntryCount:1,Apps:[{AppId:10,BaseAllowed:true,CustomAllowed:null,EffectiveAllowed:true},{AppId:30,BaseAllowed:false,CustomAllowed:true,EffectiveAllowed:true}]}));}
+  m=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication(?:\/(Token|Confirmations))?$/);
+  if(m){
+   const bot=decodeURIComponent(m[1]),part=m[2]||'';
+   if(method==='GET'&&part==='Token')return resp(env({[bot]:{Success:true,Result:'12345',Message:''}}));
+   if(method==='POST'&&part==='Confirmations')return resp(env({[bot]:{Success:true,Result:[],Message:'0'}}));
+   if(method==='POST'&&!part){const a=window.__m.accounts.find(x=>x.BotName===bot);if(a)a.HasMobileAuthenticator=true;return resp(env({[bot]:{Success:true}}));}
+   if(method==='DELETE'&&!part){const a=window.__m.accounts.find(x=>x.BotName===bot);if(a)a.HasMobileAuthenticator=false;return resp(env({[bot]:{Success:true,Result:'removed'}}));}
+  }
+  m=path.match(/^\/Api\/Bot\/([^/]+)\/GamesToRedeemInBackground$/);
+  if(m){
+   const bot=decodeURIComponent(m[1]);
+   if(method==='GET')return resp(env({[bot]:window.__m.bgr[bot]||{UnusedKeys:{},UsedKeys:{}}}));
+   if(method==='POST'){window.__m.bgr[bot]=window.__m.bgr[bot]||{UnusedKeys:{},UsedKeys:{}};Object.assign(window.__m.bgr[bot].UnusedKeys,body.GamesToRedeemInBackground||{});return resp(env({[bot]:body.GamesToRedeemInBackground||{}}));}
+   if(method==='DELETE'){window.__m.bgr[bot]={UnusedKeys:{},UsedKeys:{}};return resp(env(null));}
+  }
   m=path.match(/^\/Api\/Bot\/([^/]+)(?:\/(Start|Stop|Pause|Resume|Rename|Input))?$/);
   if(m){
    let bot=decodeURIComponent(m[1]),act=m[2]||null;
