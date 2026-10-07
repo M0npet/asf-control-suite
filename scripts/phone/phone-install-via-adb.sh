@@ -58,7 +58,7 @@ cat "$SRC" > "$STAGE"
 chmod 0600 "$STAGE"
 PD="$PREFIX/bin/proot-distro"
 TERMUX_HOME="$HOME"
-"$PD" login debian -- env CONTROL_ARCHIVE_NAME="$CONTROL_ARCHIVE_NAME" CONTROL_DIST_NAME="$CONTROL_DIST_NAME" /bin/bash -s <<'DEBIAN'
+"$PD" login debian -- env TERMUX_HOME="$TERMUX_HOME" CONTROL_ARCHIVE_NAME="$CONTROL_ARCHIVE_NAME" CONTROL_DIST_NAME="$CONTROL_DIST_NAME" /bin/bash -s <<'DEBIAN'
 set -Eeuo pipefail
 ARCHIVE="$TERMUX_HOME/.cache/asf-control-suite/$CONTROL_ARCHIVE_NAME"
 [[ -r "$ARCHIVE" ]] || { echo "staged archive not visible inside Debian: $ARCHIVE" >&2; exit 30; }
