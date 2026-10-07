@@ -17,6 +17,7 @@ PROC_ROOT="${CONTROL_PROC_ROOT:-/proc}"
 MUTATION_STARTED=0
 ROLLING_BACK=0
 GLOBAL_CONFIG="$ASF_ROOT/config/ASF.json"
+ROOT_UI_INDEX="$ASF_ROOT/www/index.html"
 
 say() { printf '\n=== %s ===\n' "$1"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -78,6 +79,42 @@ os.replace(tmp, target)
 PY
 
   chmod "$mode" "$target"
+}
+
+stage_root_ui_entrypoint() {
+  local source="$ROOT_UI_INDEX"
+  local target="$STAGE/root-index.html"
+
+  [[ -f "$source" ]] || die "ASF-ui index missing: $source"
+  cp -a "$source" "$target"
+
+  python3 - "$target" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+marker = 'data-asf-control-suite-root="1"'
+
+if marker in text:
+    raise SystemExit(0)
+
+needle = "<head>"
+if needle not in text:
+    raise SystemExit(f"cannot patch ASF-ui entrypoint without <head>: {path}")
+
+injected = """<head>
+<script data-asf-control-suite-root="1">
+if (window.location.pathname === '/') {
+  window.location.replace('/Control/' + window.location.search + window.location.hash);
+}
+</script>"""
+
+path.write_text(
+    text.replace(needle, injected, 1),
+    encoding="utf-8",
+)
+PY
 }
 
 asf_pids() {
@@ -210,6 +247,13 @@ restore_backup_files() {
   elif [[ -f "$BACKUP/ACCOUNT_DEFAULTS_ABSENT" ]]; then
     rm -f "$ASF_ROOT/config/AccountManager.defaults.json"
   fi
+
+  if [[ -f "$BACKUP/www/index.html" ]]; then
+    mkdir -p "$ASF_ROOT/www"
+    cp -a "$BACKUP/www/index.html" "$ROOT_UI_INDEX"
+  elif [[ -f "$BACKUP/WWW_INDEX_ABSENT" ]]; then
+    rm -f "$ROOT_UI_INDEX"
+  fi
 }
 
 rollback_now() {
@@ -259,6 +303,7 @@ say "VALIDATE TARGET"
 [[ -x "$ASF_ROOT/ArchiSteamFarm" ]] || die "ASF executable missing: $ASF_ROOT/ArchiSteamFarm"
 [[ -d "$PLUGIN_ROOT" ]] || die "ASF plugins directory missing: $PLUGIN_ROOT"
 [[ -d "$ASF_ROOT/config" ]] || die "ASF config directory missing: $ASF_ROOT/config"
+[[ -f "$ROOT_UI_INDEX" ]] || die "ASF-ui index missing: $ROOT_UI_INDEX"
 command -v python3 >/dev/null 2>&1 || die "python3 is required to enforce the phone Headless=true invariant"
 if [[ -f "$GLOBAL_CONFIG" ]]; then
   python3 -m json.tool "$GLOBAL_CONFIG" >/dev/null || die "ASF global config is not valid JSON: $GLOBAL_CONFIG"
@@ -271,6 +316,7 @@ mkdir -p "$STAGE/plugins" "$META_STAGE"
 cp "$DIST/ArchiSteamFarm" "$STAGE/ArchiSteamFarm"
 cp -a "$DIST/plugins/." "$STAGE/plugins/"
 stage_phone_headless_config
+stage_root_ui_entrypoint
 find "$STAGE" -type d -exec chmod 0755 {} +
 find "$STAGE" -type f ! -name ASF.json -exec chmod 0644 {} +
 chmod 0755 "$STAGE/ArchiSteamFarm"
@@ -290,7 +336,7 @@ while IFS= read -r line; do
 done < "$DIST/SHA256SUMS"
 
 say "BACKUP CURRENT INSTALL"
-mkdir -p "$BACKUP/plugins"
+mkdir -p "$BACKUP/plugins" "$BACKUP/www"
 cp -a "$ASF_ROOT/ArchiSteamFarm" "$BACKUP/ArchiSteamFarm"
 for plugin in "${PLUGINS[@]}"; do
   if [[ -d "$PLUGIN_ROOT/$plugin" ]]; then
@@ -314,6 +360,11 @@ if [[ -f "$ASF_ROOT/config/AccountManager.defaults.json" ]]; then
 else
   : > "$BACKUP/ACCOUNT_DEFAULTS_ABSENT"
 fi
+if [[ -f "$ROOT_UI_INDEX" ]]; then
+  cp -a "$ROOT_UI_INDEX" "$BACKUP/www/index.html"
+else
+  : > "$BACKUP/WWW_INDEX_ABSENT"
+fi
 (
   cd "$BACKUP"
   find . -type f ! -name PREINSTALL.sha256 -print0 | sort -z | xargs -0 -r sha256sum > PREINSTALL.sha256
@@ -331,6 +382,10 @@ assert_phone_headless_config
 # runtime/plugin swap with the old interactive global config.
 say "STOP ASF CHILD"
 stop_asf_child || die "could not stop ArchiSteamFarm child safely"
+
+say "COMMIT DEFAULT WEB UI ENTRYPOINT"
+mv "$STAGE/root-index.html" "$ROOT_UI_INDEX"
+grep -Fq 'data-asf-control-suite-root="1"' "$ROOT_UI_INDEX" || die "default Control Suite entrypoint marker missing"
 
 say "COMMIT RUNTIME + PLUGIN SWAP"
 mv "$STAGE/ArchiSteamFarm" "$ASF_ROOT/ArchiSteamFarm"
@@ -369,4 +424,4 @@ trap - ERR
 say "INSTALL PASSED"
 printf 'Backup: %s\n' "$BACKUP"
 printf 'Installed metadata: %s\n' "$META_ROOT/installed"
-printf 'Control UI: /Control/\n'
+printf 'Control UI: / (default) -> /Control/\n'
