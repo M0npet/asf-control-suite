@@ -193,7 +193,7 @@ require('src/ControlWeb/www/app.js','Emergency legacy ASF-ui','legacy UI only as
 require('src/ControlWeb/www/app.js','data-native-jump="bot-config"','account config routes into Control Suite')
 require('src/ControlWeb/www/app.js','data-native-jump="2fa"','account 2FA routes into Control Suite')
 require('src/ControlWeb/www/app.js','data-native-jump="bgr"','account BGR routes into Control Suite')
-forbid('src/ControlWeb/www/app.js','legacyAsfHref(\`/bot/','no per-account legacy ASF-ui links')
+forbid('src/ControlWeb/www/app.js',"legacyAsfHref(`/bot/",'no per-account legacy ASF-ui links')
 
 
 
