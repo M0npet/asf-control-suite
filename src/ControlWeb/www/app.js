@@ -529,8 +529,6 @@
     const status = Number(value);
     if (!Number.isInteger(status) || status < 0 || status > 7) throw new Error('Invalid Steam persona status');
     await updateBotConfig(botName, (next) => { next.OnlineStatus = status; });
-    await sleep(350);
-    await loadAccounts();
     toast('Steam status saved', `${botName} · ${PERSONA_STATES.find(([id]) => id === status)?.[1] || status}`);
     await render();
   }
