@@ -81,11 +81,11 @@ No second daemon. No arbitrary shell API. No separate credential database.
 
 ## Installation
 
-A public release is intentionally withheld while repository hardening
-and final verification are in progress.
+ASF Control Suite **v1.0.0** is published as the first stable release.
 
-For pinned-source builds, native ZIP packaging and installation
-instructions, see the [installation guide](docs/installation/manual.md).
+Download the verified release from [GitHub Releases](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
+For installation, checksum verification, pinned-source builds and rollback,
+see the [installation guide](docs/installation/manual.md).
 
 ## Highlights
 
@@ -118,12 +118,13 @@ Pinned revisions:
 
 ## Release policy
 
-Public release publication is intentionally deferred until repository
-hardening and final verification are complete.
+Stable releases are published only from provenance-verified artifacts tied
+to an exact Control Suite commit and the canonical dependency pins.
 
-The release pipeline still builds and provenance-verifies Control Suite
-artifacts and the pinned external PlaytimeGoals build. Standalone
-PlaytimeGoals release ownership remains separate.
+Release **v1.0.0** is pinned to commit
+`15314163bfccd26207fe9c1e3a8504727fea2910`. The release pipeline verifies
+checksums and byte identity before publication. Standalone PlaytimeGoals
+release ownership remains separate.
 
 ## Security
 

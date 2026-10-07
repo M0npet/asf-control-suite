@@ -14,7 +14,7 @@
 
 ## Überblick
 
-ASF Control Suite erweitert ArchiSteamFarm um eine einheitliche `/Control/`-Oberfläche. Authentifizierung, Bot-Lebenszyklus und Konfiguration bleiben dabei unter der Kontrolle von ASF selbst.
+ASF Control Suite erweitert ArchiSteamFarm um eine einheitliche Oberfläche mit `/` als Standard-Einstieg und `/Control/` als kanonischem internem Pfad. Authentifizierung, Bot-Lebenszyklus und Konfiguration bleiben dabei unter der Kontrolle von ASF selbst.
 
 Das Projekt besteht aus kleinen nativen ASF-Plugins und führt weder einen zweiten Daemon noch eine beliebige Shell-Schnittstelle ein.
 
@@ -22,7 +22,7 @@ Das Projekt besteht aus kleinen nativen ASF-Plugins und führt weder einen zweit
 | --- | --- |
 | **AccountManager** | Kontoübersicht, Steam-Name/Avatar, Bot-Steuerung und QR-/Passwort-Onboarding |
 | **ControlCenter** | Laufzeitstatus, Modulstatus und Kompatibilitätsinformationen |
-| **ControlWeb** | Einheitliche selbst gehostete `/Control/`-Weboberfläche |
+| **ControlWeb** | Selbst gehostete Weboberfläche; `/` ist der Standard-Einstieg, `/Control/` der kanonische interne Pfad |
 | **PlaytimeGoals** | Spielzeitziele, Warteschlangen, FREE-Lizenzen und Family-View-Wiederherstellung |
 
 ---
@@ -38,8 +38,8 @@ Die kanonische Quelle für Release-Versionen und Revisionen ist [`release/pins.e
 | ArchiSteamFarm | **6.3.10.3** |
 | ASF Commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
 | ASF-ui Commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
-| PlaytimeGoals | **0.5.1.0** |
-| PlaytimeGoals Commit | `fe7343303cb6d8a253a9622904accd4bf37895c0` |
+| PlaytimeGoals | **0.5.2.0** |
+| PlaytimeGoals Commit | `afe080fb5dae505f3b4f7537b08782dda35a260b` |
 | .NET SDK | **10.0.400** |
 
 ---
@@ -61,11 +61,11 @@ Die kanonische Quelle für Release-Versionen und Revisionen ist [`release/pins.e
 - Steam-Family-Unterstützung
 - automatische FREE-Lizenz-Verarbeitung
 - Family-View-Wiederherstellung
-- korrigierte F2P-Readiness-Logik in PlaytimeGoals 0.5.1.0
+- sekundengenaue lokale Deadlines für begrenzte Ziele in PlaytimeGoals 0.5.2
 
 ### ControlWeb
 
-- einheitliche `/Control/`-Seite
+- `/` öffnet Control Suite standardmäßig; `/Control/` bleibt der kanonische interne Pfad
 - Desktop- und Mobile-Layout
 - Sprachintegration mit ASF-ui
 - lokal gehostete JavaScript-, CSS- und QR-Ressourcen
@@ -95,20 +95,22 @@ Der kanonische Release-Build erzeugt:
     AccountManager-v1.0.0.zip
     ControlCenter-v1.0.0.zip
     ControlWeb-v1.0.0.zip
-    PlaytimeGoals-v0.5.1.zip
+    PlaytimeGoals-v0.5.2.zip
     CONTROL-SUITE-METADATA.json
     SHA256SUMS
 
 Die ZIP-Dateien enthalten bereits das native ASF-Plugin-Layout.
 
-Installation:
+Installation des vollständigen Bundles:
 
 1. ASF stoppen.
-2. Das gewünschte ZIP direkt nach `<ASF>/plugins/` entpacken.
+2. `ASF-Control-Suite-v1.0.0.zip` direkt in `<ASF>/` entpacken.
 3. ASF starten.
-4. `/Control/` öffnen und die benötigten Module prüfen.
+4. `/` öffnen und Control Suite sowie `/Control/` prüfen.
 
-Das Bundle enthält alle vier Plugins.
+Einzelne Plugin-ZIPs werden direkt nach `<ASF>/plugins/` entpackt.
+
+Stabiler Release: [v1.0.0](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
 
 ---
 
