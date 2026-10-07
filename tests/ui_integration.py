@@ -82,7 +82,7 @@ mock=r'''(() => {
    if(method==='POST'&&act==='Input'){window.__m.inputs.push([bot,body]);const a=window.__m.accounts.find(a=>a.BotName===bot);if(body.Type===8&&body.Value==='Y'){window.__m.qrInputCounts[bot]=(window.__m.qrInputCounts[bot]||0)+1;a.RequiredInput=8;a.QrChallengeUrl=window.__m.qrInputCounts[bot]===1?'https://s.team/q/TEST-ONE':'https://s.team/q/TEST-RETRY';}else a.RequiredInput=0;return resp(env(null));}
    if(method==='POST'&&act==='Rename'){const next=body.NewName; const a=window.__m.accounts.find(x=>x.BotName===bot); if(a)a.BotName=next; window.__m.configs[next]=window.__m.configs[bot]; delete window.__m.configs[bot]; return resp(env(null));}
    if(method==='POST'&&act){window.__m.actions.push([bot,act]);const a=window.__m.accounts.find(x=>x.BotName===bot); if(a){if(act==='Start')a.KeepRunning=true;if(act==='Stop')a.KeepRunning=false;if(act==='Pause')a.FarmerPaused=true;if(act==='Resume')a.FarmerPaused=false;}return resp(env(null));}
-   if(method==='POST'&&!act){let cfg=structuredClone(body.BotConfig),old=window.__m.configs[bot]||{};for(const key of ['SteamLogin','SteamPassword','SteamParentalCode','WebProxyPassword'])if(!(key in cfg)&&key in old)cfg[key]=old[key];window.__m.configs[bot]=cfg;let a=window.__m.accounts.find(x=>x.BotName===bot); if(!a){window.__m.accounts.push({BotName:bot,Nickname:'',SteamId:'0',AvatarHash:null,QrChallengeUrl:null,Enabled:!!cfg.Enabled,KeepRunning:true,Connected:false,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:false,RequiredInput:(!cfg.SteamLogin&&!cfg.SteamPassword)?8:0});} else a.Enabled=!!cfg.Enabled;return resp(env({[bot]:true}));}
+   if(method==='POST'&&!act){let cfg=structuredClone(body.BotConfig),old=window.__m.configs[bot]||{};for(const key of ['SteamLogin','SteamPassword','SteamParentalCode','WebProxyPassword'])if(!(key in cfg)&&key in old)cfg[key]=old[key];if(!('SteamPassword' in body.BotConfig)&&'PasswordFormat' in old)cfg.PasswordFormat=old.PasswordFormat;window.__m.configs[bot]=cfg;let a=window.__m.accounts.find(x=>x.BotName===bot); if(!a){window.__m.accounts.push({BotName:bot,Nickname:'',SteamId:'0',AvatarHash:null,QrChallengeUrl:null,Enabled:!!cfg.Enabled,KeepRunning:true,Connected:false,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:false,RequiredInput:(!cfg.SteamLogin&&!cfg.SteamPassword)?8:0});} else a.Enabled=!!cfg.Enabled;return resp(env({[bot]:true}));}
    if(method==='DELETE'){window.__m.accounts=window.__m.accounts.filter(x=>x.BotName!==bot);delete window.__m.configs[bot];return resp(env(null));}
   }
   return resp(env(null,false,'not found'),404);
@@ -307,6 +307,7 @@ with sync_playwright() as pw:
     page.fill('#modalConfirmText','SAVE ASF'); page.click('#modalConfirm'); page.wait_for_timeout(650)
     assert page.evaluate('window.__m.globalConfig.CommandPrefix') == '#'
     assert page.evaluate('window.__m.globalConfig.IPCPassword') == 'stored-scrypt-hash'
+    assert page.evaluate('window.__m.globalConfig.IPCPasswordFormat') == 1
     assert page.evaluate('window.__m.globalConfig.LicenseID') == 'protected-license'
 
     page.click('[data-native-section="commands"]'); page.wait_for_selector('#nativeCommandForm')
