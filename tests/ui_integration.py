@@ -222,6 +222,11 @@ with sync_playwright() as pw:
     assert native_command_output == 'OK status'
     assert page.evaluate('window.__m.commands.at(-1)') == 'status'
 
+    command_count=page.evaluate('window.__m.commands.length')
+    page.fill('#nativeCommand','UPDATEPLUGINS'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(120)
+    assert 'UPDATEPLUGINS is disabled' in page.locator('#nativeCommandOutput').input_value()
+    assert page.evaluate('window.__m.commands.length') == command_count
+
     page.fill('#nativeBgrKeys','AAAAA-BBBBB-CCCCC | Test key'); page.click('#queueNativeBgr'); page.wait_for_timeout(320)
     assert page.evaluate('window.__m.bgr.main.UnusedKeys["AAAAA-BBBBB-CCCCC"]') == 'Test key'
 
