@@ -188,3 +188,9 @@ The suite covers:
 ASF-native APIs · explicit security boundaries · reproducible releases
 
 </div>
+
+## Native ASF compatibility
+
+Control Suite keeps the complete stock ASF-ui reachable for native bot configuration, commands, logs, mass editing, plugin/release management and other upstream ASF functions. Common settings such as Steam persona status (including Invisible) are also exposed directly in the account workspace.
+
+PlaytimeGoals 0.5.2 uses second-precision local deadlines for finite targets while retaining Steam's minute-granularity historical playtime as the authoritative starting baseline.
