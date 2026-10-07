@@ -324,6 +324,11 @@ for process_file in ('installer/phone-transaction.sh','installer/phone-rollback-
     forbid(process_file,'pgrep -x ArchiSteamFarm','truncated comm process detection')
 require('scripts/phone/phone-install-via-adb.sh','phone-preflight-via-adb.sh','preflight before install')
 require('scripts/phone/phone-install-via-adb.sh','phone-verify-via-adb.sh','verify after install')
+require('scripts/phone/phone-install-via-adb.sh','. "$SUITE_ROOT/scripts/build/pins.sh"','phone installer loads canonical release pins')
+require('scripts/phone/phone-install-via-adb.sh','DIST_NAME="asf-control-suite-v${CONTROL_SUITE_VERSION}-dist"','phone installer derives distribution name from pins')
+require('scripts/phone/phone-install-via-adb.sh','ARCHIVE_NAME="$DIST_NAME.tar.gz"','phone installer derives archive name from distribution')
+require('scripts/phone/phone-install-via-adb.sh','env TERMUX_HOME="$TERMUX_HOME" CONTROL_ARCHIVE_NAME="$CONTROL_ARCHIVE_NAME" CONTROL_DIST_NAME="$CONTROL_DIST_NAME"','phone installer forwards Termux home and derived names into Debian')
+forbid('scripts/phone/phone-install-via-adb.sh','asf-control-suite-v1.0-dist','phone installer must not pin transitional v1.0 distribution name')
 require('scripts/phone/phone-rollback-via-adb.sh','phone-rollback-core.sh','manual rollback core')
 require('src/ControlCenter/ControlCenterController.cs','ArbitraryHostCommands = false','host command safety')
 
