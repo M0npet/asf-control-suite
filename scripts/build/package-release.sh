@@ -53,6 +53,7 @@ for asset in \
     index.html \
     i18n.js \
     core.js \
+    native.js \
     qrcode.min.js \
     qrcode.LICENSE.txt \
     app.js \
@@ -128,6 +129,7 @@ EXPECTED_STAGE_FILES=(
     "ControlWeb/www/app.css"
     "ControlWeb/www/app.js"
     "ControlWeb/www/core.js"
+    "ControlWeb/www/native.js"
     "ControlWeb/www/i18n.js"
     "ControlWeb/www/index.html"
     "ControlWeb/www/qrcode.LICENSE.txt"
