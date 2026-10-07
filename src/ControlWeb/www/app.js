@@ -19,12 +19,15 @@
   ]);
   const STEAM_AVATAR_ORIGIN = 'https://avatars.akamai.steamstatic.com';
   const Core = window.ControlCore;
+  const Native = window.NativeASF;
   if (!Core) throw new Error('ControlCore failed to load');
+  if (!Native) throw new Error('NativeASF failed to load');
 
   const VIEW_META = {
     dashboard: ['Dashboard', 'Live overview of ASF, accounts and runtime health.'],
     accounts: ['Accounts', 'Create, inspect and control ASF bot accounts.'],
     playtime: ['Playtime Goals', 'Manage finite and unlimited playtime goals safely.'],
+    native: ['Native ASF', 'Full native ASF configuration, mass editing and commands without leaving Control Suite.'],
     security: ['Security', 'Session controls and the authentication boundary.'],
     system: ['System', 'Runtime health, modules and native ASF process actions.'],
     advanced: ['Advanced', 'Architecture, pinned targets and native API access.'],
@@ -44,6 +47,7 @@
     rendering: false,
     createMode: 'qr',
     goalSort: 'managed-first',
+    nativeTab: 'bot',
     qrOnboardingBot: '',
   };
 
@@ -539,6 +543,13 @@
 
   function setCreateMode(mode) {
     state.createMode = mode === 'password' ? 'password' : 'qr';
+    document.querySelectorAll('[data-native-tab]').forEach((button) => button.addEventListener('click', async () => { state.nativeTab = button.dataset.nativeTab; await render(); }));
+    Native.wireFlags(document);
+    $('saveNativeBot')?.addEventListener('click', async () => { const button = $('saveNativeBot'); button.disabled = true; try { await saveNativeBotEditor(); } catch (error) { toast('BotConfig not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('saveNativeAsf')?.addEventListener('click', async () => { const button = $('saveNativeAsf'); button.disabled = true; try { await saveNativeAsfEditor(); } catch (error) { toast('ASF config not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('applyMassEdit')?.addEventListener('click', async () => { const button = $('applyMassEdit'); button.disabled = true; try { await applyNativeMassEdit(); } catch (error) { toast('Mass edit failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('nativeCommandForm')?.addEventListener('submit', async (event) => { event.preventDefault(); const button = event.currentTarget.querySelector('button[type="submit"]'); button.disabled = true; try { await executeNativeCommand(); } catch (error) { toast('Command failed', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+    $('clearNativeCommands')?.addEventListener('click', () => { const node = $('nativeCommandOutput'); if (node) node.textContent = ''; });
     const form = $('createBotForm');
     if (!form) return;
     form.dataset.mode = state.createMode;
@@ -645,6 +656,118 @@
     else toast('Configuration written', 'ASF reload is still settling. Refresh shortly.', 'warn', 6500);
   }
 
+
+  async function saveNativeBotEditor() {
+    const container = $('nativeBotEditor');
+    if (!container || !state.selectedBot) return;
+    const fields = await Native.schema(api, 'ArchiSteamFarm.Steam.Storage.BotConfig');
+    const changes = Native.collect(container, fields);
+    if (!Object.keys(changes).length) {
+      toast('No changes', 'Bot configuration is already current.', 'warn');
+      return;
+    }
+    const record = await getBotRecord(state.selectedBot);
+    const next = JSON.parse(JSON.stringify(record.BotConfig));
+    Object.assign(next, changes);
+    await writeBotConfig(state.selectedBot, next);
+    await sleep(500);
+    await loadAccounts();
+    toast('Bot configuration saved', `${state.selectedBot} Â· ${Object.keys(changes).length} field(s)`);
+    await render();
+  }
+
+  async function saveNativeAsfEditor() {
+    const container = $('nativeAsfEditor');
+    if (!container) return;
+    const fields = await Native.schema(api, 'ArchiSteamFarm.Storage.GlobalConfig');
+    const changes = Native.collect(container, fields);
+    if (!Object.keys(changes).length) {
+      toast('No changes', 'Global ASF configuration is already current.', 'warn');
+      return;
+    }
+    const latest = await api('/Api/ASF');
+    const next = JSON.parse(JSON.stringify(latest?.GlobalConfig || {}));
+    Object.assign(next, changes);
+    await api('/Api/ASF', { method:'POST', body:JSON.stringify({ GlobalConfig:next }) });
+    toast('ASF configuration saved', `${Object.keys(changes).length} field(s) written. Restart ASF if required.`);
+    await render();
+  }
+
+  async function executeNativeCommand() {
+    const input = $('nativeCommandInput');
+    const output = $('nativeCommandOutput');
+    const command = String(input?.value || '').trim();
+    if (!command) return;
+    const result = await api('/Api/Command', { method:'POST', body:JSON.stringify({ Command:command }) });
+    if (output) output.textContent += `> ${command}\n${String(result ?? '')}\n\n`;
+    if (input) input.value = '';
+  }
+
+  async function applyNativeMassEdit() {
+    const property = String($('massProperty')?.value || '');
+    const valueText = String($('massValue')?.value || '');
+    const bots = [...document.querySelectorAll('[data-mass-bot]:checked')].map((box) => box.value);
+    if (!property || !bots.length) throw new Error('Choose at least one bot and one property.');
+    const fields = await Native.schema(api, 'ArchiSteamFarm.Steam.Storage.BotConfig');
+    const field = fields.find((item) => item.name === property);
+    if (!field) throw new Error('Unknown BotConfig property.');
+    let value;
+    if (field.kind === 'boolean') value = /^(1|true|yes|on)$/i.test(valueText.trim());
+    else if (['number','enum','flags'].includes(field.kind)) {
+      value = Number(valueText);
+      if (!Number.isFinite(value)) throw new Error('Mass-edit value must be numeric for this property.');
+    } else if (field.kind === 'json') {
+      try { value = JSON.parse(valueText); }
+      catch (_) { throw new Error('Mass-edit value must be valid JSON for this property.'); }
+    } else {
+      value = valueText;
+    }
+    for (const bot of bots) {
+      const record = await getBotRecord(bot);
+      const next = JSON.parse(JSON.stringify(record.BotConfig));
+      next[property] = value;
+      await writeBotConfig(bot, next);
+    }
+    await sleep(500);
+    await loadAccounts();
+    toast('Mass edit applied', `${property} updated on ${bots.length} bot(s).`);
+    await render();
+  }
+
+  async function renderNative() {
+    const tab = state.nativeTab || 'bot';
+    const tabs = [
+      ['bot','Bot config'],
+      ['asf','ASF config'],
+      ['mass','Mass editor'],
+      ['commands','Commands'],
+    ].map(([id,label]) => `<button type="button" data-native-tab="${id}" class="${tab === id ? 'active' : 'secondary'}">${label}</button>`).join('');
+
+    let body = '';
+    if (tab === 'bot') {
+      if (!state.selectedBot) return '<div class="card empty-state">Create or select an account first.</div>';
+      const [record, fields] = await Promise.all([
+        getBotRecord(state.selectedBot),
+        Native.schema(api, 'ArchiSteamFarm.Steam.Storage.BotConfig'),
+      ]);
+      body = `<div class="card"><div class="card-head"><div><h3>Full BotConfig Â· ${escapeHtml(state.selectedBot)}</h3><p>Generated from ASF runtime type metadata. Blank secret fields preserve their current values.</p></div><button id="saveNativeBot" type="button">Save BotConfig</button></div><div id="nativeBotEditor" class="native-editor-grid">${fields.map((field) => Native.fieldMarkup(field, record.BotConfig?.[field.name], 'botcfg', escapeHtml)).join('')}</div></div>`;
+    } else if (tab === 'asf') {
+      const [asf, fields] = await Promise.all([
+        api('/Api/ASF'),
+        Native.schema(api, 'ArchiSteamFarm.Storage.GlobalConfig'),
+      ]);
+      body = `<div class="card"><div class="card-head"><div><h3>Global ASF config</h3><p>Complete GlobalConfig generated from ASF runtime type metadata.</p></div><button id="saveNativeAsf" type="button">Save ASF config</button></div><div id="nativeAsfEditor" class="native-editor-grid">${fields.map((field) => Native.fieldMarkup(field, asf?.GlobalConfig?.[field.name], 'asfcfg', escapeHtml)).join('')}</div></div>`;
+    } else if (tab === 'mass') {
+      const fields = await Native.schema(api, 'ArchiSteamFarm.Steam.Storage.BotConfig');
+      const bots = state.accounts.map((account) => `<label class="mass-bot"><input type="checkbox" data-mass-bot value="${escapeHtml(account.BotName)}"><span>${escapeHtml(accountDisplayName(account))}</span><small>${escapeHtml(account.BotName)}</small></label>`).join('');
+      body = `<div class="card"><div class="card-head"><div><h3>Mass BotConfig editor</h3><p>Apply one native property to multiple bots while preserving every other property.</p></div></div><div class="mass-bot-grid">${bots || '<div class="empty-state">No bots.</div>'}</div><div class="settings-grid section"><label for="massProperty">Property<select id="massProperty"><option value="">Choose propertyâ¦</option>${fields.map((field) => `<option value="${escapeHtml(field.name)}">${escapeHtml(field.name)} Â· ${escapeHtml(field.fieldType)}</option>`).join('')}</select></label><label for="massValue">Value<input id="massValue" type="text" autocomplete="off" placeholder="JSON for collections/objects; number for enum/flags"></label></div><button id="applyMassEdit" type="button">Apply mass edit</button></div>`;
+    } else {
+      body = `<div class="card command-card"><div class="card-head"><div><h3>ASF command terminal</h3><p>Native /Api/Command endpoint. Structured controls remain preferred when available.</p></div><button id="clearNativeCommands" type="button" class="secondary">Clear</button></div><div id="nativeCommandOutput" class="command-output" role="log" aria-live="polite"></div><form id="nativeCommandForm" class="inline-form section"><input id="nativeCommandInput" autocomplete="off" placeholder="status ASF" required><button type="submit">Run command</button></form></div>`;
+    }
+
+    return `<div class="native-tabs section">${tabs}</div>${body}`;
+  }
+
   async function renderSecurity() {
     const options = [0,5,15,30,60].map((minutes) => `<option value="${minutes}" ${Number(state.lockMinutes) === minutes ? 'selected' : ''}>${minutes === 0 ? 'Never in this tab' : `${minutes} min`}</option>`).join('');
     return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Authentication boundary</h3><p>Defense in depth around ASF IPC.</p></div><span class="pill good">active</span></div><div class="boundary"><span class="boundary-index">1</span><div><strong>HTTPS / Tailscale</strong><small>Transport and network reachability remain outside ASF.</small></div></div><div class="boundary"><span class="boundary-index">2</span><div><strong>ASF IPCPassword</strong><small>Every /Api request from this UI carries the native Authentication header.</small></div></div><div class="boundary"><span class="boundary-index">3</span><div><strong>Tab-scoped session</strong><small>The IPC password is kept only in page memory and is lost on refresh, lock, or tab close.</small></div></div></div><div class="card"><div class="card-head"><div><h3>Session lock</h3><p>Protect an unattended browser tab.</p></div></div><label for="lockMinutes">Auto-lock after inactivity</label><select id="lockMinutes">${options}</select><span class="field-help">Activity resets the timer. “Never” applies only to this tab.</span><div class="toolbar section"><button id="lockNow" class="secondary">Lock now</button></div></div></div><div class="card section"><div class="card-head"><div><h3>Security invariants</h3><p>What Control Suite 1.0 intentionally does not expose.</p></div></div><div class="grid three"><div class="notice good">No arbitrary shell or process execution endpoint.</div><div class="notice good">Steam credentials are never persisted by AccountManager.</div><div class="notice good">Destructive actions require an explicit confirmation dialog.</div></div></div>`;
@@ -681,7 +804,7 @@
     return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Pinned compatibility</h3><p>Control Suite ${escapeHtml(suiteVersion)} is built against a fixed baseline.</p></div></div><div class="row"><div class="row-main"><strong>ASF</strong><small>${escapeHtml(asfVersion)} · ${escapeHtml(asfCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF compatibility patch</strong><small>SHA-256 · ${escapeHtml(asfPatch)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF-ui</strong><small>${escapeHtml(asfUiCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>PlaytimeGoals</strong><small>${escapeHtml(ptgVersion)} · ${escapeHtml(ptgCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>Control modules</strong><small>AccountManager · ControlCenter · ControlWeb</small></div><span class="pill good">${escapeHtml(moduleVersion)}</span></div></div><div class="card"><div class="card-head"><div><h3>Ownership boundaries</h3><p>Each module has one clear job.</p></div></div><div class="boundary"><span class="boundary-index">P</span><div><strong>PlaytimeGoals</strong><small>Managed GamesPlayed, Family availability and Family View journal.</small></div></div><div class="boundary"><span class="boundary-index">A</span><div><strong>AccountManager</strong><small>Credential-free defaults and account summary.</small></div></div><div class="boundary"><span class="boundary-index">C</span><div><strong>ControlCenter</strong><small>Read-only runtime and module health.</small></div></div><div class="boundary"><span class="boundary-index">W</span><div><strong>ControlWeb</strong><small>Presentation and orchestration through existing authenticated APIs.</small></div></div></div></div><div class="card section"><div class="card-head"><div><h3>Native API</h3><p>Use ASF Swagger when you need direct endpoint inspection.</p></div><div class="actions"><a href="/swagger" target="_blank" rel="noreferrer"><button class="secondary" type="button">Open API docs</button></a><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Open legacy Bots</button></a></div></div><div class="notice">The stock ASF-ui remains available for every native ASF function. Control Suite adds focused workflows without removing upstream functionality. Deployment, backups and rollback remain out-of-band through the ADB installer. The browser cannot execute arbitrary host commands.</div><div class="actions section"><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Bots</button></a><a href="${legacyAsfHref('/commands')}"><button class="secondary" type="button">Commands</button></a><a href="${legacyAsfHref('/log')}"><button class="secondary" type="button">Log</button></a><a href="${legacyAsfHref('/asf-config')}"><button class="secondary" type="button">ASF config</button></a><a href="${legacyAsfHref('/asf-bans')}"><button class="secondary" type="button">ASF bans</button></a><a href="${legacyAsfHref('/mass-editor')}"><button class="secondary" type="button">Mass editor</button></a><a href="${legacyAsfHref('/plugins')}"><button class="secondary" type="button">Plugins</button></a><a href="${legacyAsfHref('/releases')}"><button class="secondary" type="button">Releases</button></a><a href="${legacyAsfHref('/ui-config')}"><button class="secondary" type="button">ASF-ui settings</button></a></div></div>`;
   }
 
-  const renderers = { dashboard:renderDashboard, accounts:renderAccounts, playtime:renderPlaytime, security:renderSecurity, system:renderSystem, advanced:renderAdvanced };
+  const renderers = { dashboard:renderDashboard, accounts:renderAccounts, playtime:renderPlaytime, native:renderNative, security:renderSecurity, system:renderSystem, advanced:renderAdvanced };
 
   function renderQrCode() {
     const node = $('qrCode');
