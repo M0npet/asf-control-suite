@@ -738,7 +738,7 @@
 
       <div class="two-col section">
         <div class="card" id="native-bot-config">
-          <div class="card-head"><div><h3>Bot configuration</h3><p>Complete BotConfig editor. ASF preserves omitted security-controlled values.</p></div><span class="pill good">native</span></div>
+          <div class="card-head"><div><h3>Bot configuration</h3><p>Native BotConfig editor with security-controlled fields hidden and preserved outside the editable JSON.</p></div><span class="pill good">native</span></div>
           ${botName ? `<textarea id="nativeBotConfig" class="code-editor" rows="22" spellcheck="false" aria-label="Complete BotConfig JSON">${escapeHtml(prettyJson(visibleBotConfig))}</textarea><span class="field-help">Security-controlled fields are hidden from the editor and preserved on save.</span><div class="actions section"><button id="saveNativeBotConfig">Save bot config</button></div>` : '<div class="empty-state"><strong>No account selected</strong>Add an ASF account first.</div>'}
         </div>
 
