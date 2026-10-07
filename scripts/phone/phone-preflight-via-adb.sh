@@ -30,6 +30,10 @@ set -Eeuo pipefail
 ASF=/opt/asf
 [[ -x "$ASF/ArchiSteamFarm" ]] || { echo "missing $ASF/ArchiSteamFarm" >&2; exit 11; }
 [[ -d "$ASF/plugins" && -d "$ASF/config" ]] || { echo "ASF layout incomplete" >&2; exit 12; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 missing in Debian; required for transactional ASF.json update" >&2; exit 14; }
+if [[ -f "$ASF/config/ASF.json" ]]; then
+  python3 -m json.tool "$ASF/config/ASF.json" >/dev/null || { echo "ASF.json is invalid JSON" >&2; exit 15; }
+fi
 echo "ASF process:"; pgrep -af ArchiSteamFarm || true
 echo "Filesystem:"; df -h "$ASF" | tail -n 1
 echo "PlaytimeGoals:"; if [[ -f "$ASF/plugins/PlaytimeGoals/PlaytimeGoals.dll" ]]; then sha256sum "$ASF/plugins/PlaytimeGoals/PlaytimeGoals.dll"; else echo "missing (will be installed by release bundle)"; fi
