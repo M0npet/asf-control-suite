@@ -173,7 +173,6 @@ require('src/ControlWeb/www/app.js','QrChallengeUrl','native QR challenge render
 require('src/ControlWeb/www/app.js',"Type:QR_INPUT_TYPE, Value:'Y'",'native QR prompt acceptance')
 require('src/ControlWeb/www/app.js','goalSort','playtime sort control')
 require('src/ControlWeb/www/app.js','localeCompare','natural game-name sorting')
-require('src/ControlWeb/www/app.js','legacyAsfHref','explicit legacy ASF-ui fallback helper')
 require('src/ControlWeb/www/app.js','PERSONA_STATES','native Steam persona status options')
 require('src/ControlWeb/www/app.js','next.OnlineStatus = status','native OnlineStatus persistence')
 require('src/ControlWeb/www/app.js','id="onlineStatus"','per-account Steam persona selector')
@@ -189,11 +188,9 @@ require('src/ControlWeb/www/app.js',"'/Api/WWW/GitHub/Release/'",'native release
 require('src/ControlWeb/www/app.js','GamesToRedeemInBackground','background redeemer')
 require('src/ControlWeb/www/app.js','TwoFactorAuthentication','native 2FA tools')
 require('src/ControlWeb/www/app.js','data-mass-bot','native mass editor')
-require('src/ControlWeb/www/app.js','Emergency legacy ASF-ui','legacy UI only as emergency fallback')
 require('src/ControlWeb/www/app.js','data-native-jump="bot-config"','account config routes into Control Suite')
 require('src/ControlWeb/www/app.js','data-native-jump="2fa"','account 2FA routes into Control Suite')
 require('src/ControlWeb/www/app.js','data-native-jump="bgr"','account BGR routes into Control Suite')
-forbid('src/ControlWeb/www/app.js',"legacyAsfHref(`/bot/",'no per-account legacy ASF-ui links')
 
 
 
