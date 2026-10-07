@@ -38,6 +38,7 @@
 - Per-account native Steam persona status is editable directly from ControlWeb, including Invisible.
 - Stock ASF-ui remains only as an explicit compatibility fallback for native surfaces not yet migrated.
 - Native ASF/plugin self-update actions remain intentionally disabled because the phone runtime uses pinned compatibility patches and reproducible Control Suite releases.
+- GlobalConfig saves force `UpdateChannel=None` and `UpdatePeriod=0`; the generic command console blocks `UPDATE`, `RESTART` and `EXIT`. Restart/exit remain available only through the dedicated typed-confirmation controls.
 
 - Control Suite is the default UI at `/`; `/Control/` remains its canonical mount. The phone installer transactionally patches only `/opt/asf/www/index.html` as the default entrypoint and backs it up for exact rollback.
 - Reuses the stock ASF-ui locale preference key `asf-ui:locale`; changing English/Ukrainian from ControlWeb updates the same preference.
