@@ -90,10 +90,17 @@
   const legacyAsfHref = (path) => `${path}${path.includes('?') ? '&' : '?'}asfui=1`;
   const cloneJson = (value) => JSON.parse(JSON.stringify(value ?? null));
   const nativeType = (value) => Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
-  const isSecurityShadow = (key) => String(key).startsWith('s_');
-  const editableConfig = (config, protectedFields) => Object.fromEntries(
-    Object.entries(config || {}).filter(([key]) => !protectedFields.has(key) && !isSecurityShadow(key))
-  );
+  const compatibilityBaseKey = (key) => String(key).startsWith('s_') ? String(key).slice(2) : '';
+  const editableConfig = (config, protectedFields) => {
+    const source = config || {};
+    return Object.fromEntries(
+      Object.entries(source).filter(([key]) => {
+        if (protectedFields.has(key)) return false;
+        if (String(key).startsWith('s_')) return true;
+        return !Object.prototype.hasOwnProperty.call(source, `s_${key}`);
+      })
+    );
+  };
 
   function accountDisplayName(account) {
     const nickname = String(account?.Nickname || '').trim();
@@ -680,8 +687,11 @@
       .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }))
       .map(([key, value]) => {
         const type = nativeType(value);
-        const search = `${key} ${type}`.toLowerCase();
-        return `<div class="native-config-field" data-native-field-row data-search="${escapeHtml(search)}"><div class="native-config-field-head"><div><strong>${escapeHtml(key)}</strong><small>${escapeHtml(type)}</small></div></div>${nativeConfigControl(key, value, scope)}</div>`;
+        const baseKey = compatibilityBaseKey(key);
+        const displayKey = baseKey || key;
+        const displayType = baseKey ? 'uint64 · exact string' : type;
+        const search = `${key} ${displayKey} ${displayType}`.toLowerCase();
+        return `<div class="native-config-field" data-native-field-row data-search="${escapeHtml(search)}"><div class="native-config-field-head"><div><strong>${escapeHtml(displayKey)}</strong><small>${escapeHtml(displayType)}</small></div></div>${nativeConfigControl(key, value, scope)}</div>`;
       }).join('');
 
     const protectedList = [...protectedFields].sort().map((key) => `<code>${escapeHtml(key)}</code>`).join(', ');
@@ -691,7 +701,10 @@
   function readNativeConfigEditor(baseConfig, protectedFields, scope) {
     const next = cloneJson(baseConfig) || {};
     for (const key of protectedFields) delete next[key];
-    for (const key of Object.keys(next)) if (isSecurityShadow(key)) delete next[key];
+    for (const key of Object.keys(next)) {
+      const baseKey = compatibilityBaseKey(key);
+      if (baseKey) delete next[baseKey];
+    }
 
     const controls = [...document.querySelectorAll(`[data-native-config-scope="${scope}"][data-native-config-field]`)];
     for (const control of controls) {
