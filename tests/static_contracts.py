@@ -247,7 +247,7 @@ require('installer/phone-transaction.sh','Api/AccountManager','account health ga
 require('installer/phone-transaction.sh','Api/ControlCenter/Status','control OpenAPI gate')
 require('installer/phone-transaction.sh','/Control/healthz','functional control health gate')
 require('installer/phone-transaction.sh','control-suite-health','functional health sentinel gate')
-require('installer/phone-transaction.sh','Control Suite health gate: control=$control health=$health swagger=$code','diagnostic health codes')
+require('installer/phone-transaction.sh','Control Suite health gate: root=$root control=$control health=$health swagger=$code','diagnostic health codes')
 require('installer/phone-transaction.sh','Api/PlaytimeGoals','PTG health gate')
 require('installer/phone-transaction.sh','CONTROL_PROC_ROOT','testable /proc process detection')
 require('installer/phone-transaction.sh',"IFS= read -r -d '' argv0",'argv0-based ASF process detection')
