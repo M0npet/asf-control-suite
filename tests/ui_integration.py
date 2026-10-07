@@ -68,6 +68,7 @@ mock=r'''(() => {
   if(method==='POST'&&path==='/Api/ASF/Exit'){window.__m.exit++;return resp(env(null));}
   if(method==='GET'&&path==='/Api/Plugins')return resp(env(window.__m.plugins));
   if(method==='GET'&&path==='/Api/IPC/Bans')return resp(env(window.__m.bans));
+  if(method==='GET'&&path.startsWith('/Api/ControlWeb/LogTail'))return resp(env({Lines:['mock log line 1','mock log line 2'],Count:2}));
   if(method==='DELETE'&&path==='/Api/IPC/Bans'){window.__m.bans=[];return resp(env(null));}
   let ban=path.match(/^\/Api\/IPC\/Bans\/(.+)$/);
   if(method==='DELETE'&&ban){const ip=decodeURIComponent(ban[1]);window.__m.bans=window.__m.bans.filter(x=>x!==ip);return resp(env(null));}
@@ -175,6 +176,7 @@ with sync_playwright() as pw:
     assert page.locator('#fetchNative2faToken').count() == 1
     assert page.locator('[data-unban-ip="203.0.113.5"]').count() == 1
     assert page.locator('text=PlaytimeGoals').count() >= 1
+    assert page.locator('#nativeLogTail').input_value() == 'mock log line 1\nmock log line 2'
 
     bot_cfg=json.loads(page.locator('#nativeBotConfig').input_value())
     bot_cfg['OnlineFlags']=1
