@@ -320,14 +320,20 @@ fi
 )
 printf '%s\n' "$STAMP" > "$BACKUP_ROOT/LAST_BACKUP"
 
+say "COMMIT PHONE HEADLESS CONFIG"
+MUTATION_STARTED=1
+mv "$STAGE/ASF.json" "$GLOBAL_CONFIG"
+assert_phone_headless_config
+
+# Commit Headless=true before stopping the child. The phone supervisor may
+# respawn ASF immediately after SIGINT/SIGTERM; any such process must observe
+# the headless invariant from its first instruction rather than racing the
+# runtime/plugin swap with the old interactive global config.
 say "STOP ASF CHILD"
 stop_asf_child || die "could not stop ArchiSteamFarm child safely"
 
 say "COMMIT RUNTIME + PLUGIN SWAP"
-MUTATION_STARTED=1
 mv "$STAGE/ArchiSteamFarm" "$ASF_ROOT/ArchiSteamFarm"
-mv "$STAGE/ASF.json" "$GLOBAL_CONFIG"
-assert_phone_headless_config
 for plugin in "${PLUGINS[@]}"; do
   rm -rf "$PLUGIN_ROOT/$plugin"
   mv "$STAGE/plugins/$plugin" "$PLUGIN_ROOT/$plugin"
