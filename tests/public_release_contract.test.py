@@ -60,6 +60,11 @@ for token, reason in (
     ("accepted_phone_sha256:", "live-accepted candidate checksum input"),
     ("CONTROL-SUITE-COMMIT.txt", "exact source provenance check"),
     ("sha256sum -c SHA256SUMS", "artifact checksum verification"),
+    ("asf-control-suite-$TARGET_SHA", "artifact name bound to exact source commit"),
+    ("jq -r .expired", "expired artifact rejection"),
+    ("git/ref/tags/$RELEASE_TAG", "pre-existing tag reuse guard"),
+    ("cancel-in-progress: false", "release publication serialization"),
+    ("Live-accepted phone SHA-256", "release-note provenance record"),
     ("refusing to mutate it", "existing-release mutation guard"),
 ):
     require(
