@@ -98,6 +98,7 @@ grep -q '"Nested": "preserve-me-too"' "$ASF1/config/ASF.json"
 [[ "$(stat -c '%a' "$ASF1/config/ASF.json")" == 600 ]]
 [[ "$(sha256sum "$ASF1/backups/control-suite/test-success/ASF.json" | awk '{print $1}')" == "$ASF1_ORIGINAL_SHA" ]]
 grep -Fq 'data-asf-control-suite-root="1"' "$ASF1/www/index.html"
+grep -Fq "params.get('asfui') !== '1'" "$ASF1/www/index.html"
 grep -Fq "window.location.replace('/Control/' + window.location.search + window.location.hash)" "$ASF1/www/index.html"
 grep -Fq '<title>Stock ASF-ui</title>' "$ASF1/backups/control-suite/test-success/www/index.html"
 ! grep -Fq 'data-asf-control-suite-root="1"' "$ASF1/backups/control-suite/test-success/www/index.html"
