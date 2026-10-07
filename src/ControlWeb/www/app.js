@@ -658,6 +658,123 @@
     else toast('Configuration written', 'ASF reload is still settling. Refresh shortly.', 'warn', 6500);
   }
 
+
+  function nativeConfigControl(key, value, scope) {
+    const type = nativeType(value);
+    const common = `data-native-config-field="${escapeHtml(key)}" data-native-config-type="${escapeHtml(type)}" data-native-config-scope="${escapeHtml(scope)}"`;
+    if (type === 'boolean') {
+      return `<label class="native-boolean"><input type="checkbox" ${common} ${value ? 'checked' : ''}><span>${value ? 'true' : 'false'}</span></label>`;
+    }
+    if (type === 'number') {
+      return `<input type="number" step="any" ${common} value="${escapeHtml(value)}">`;
+    }
+    if (type === 'string') {
+      return `<input type="text" ${common} value="${escapeHtml(value)}" autocomplete="off">`;
+    }
+    return `<textarea rows="5" spellcheck="false" ${common}>${escapeHtml(JSON.stringify(value, null, 2))}</textarea>`;
+  }
+
+  function nativeConfigEditor(config, protectedFields, scope) {
+    const editable = editableConfig(config, protectedFields);
+    const fields = Object.entries(editable)
+      .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }))
+      .map(([key, value]) => {
+        const type = nativeType(value);
+        const search = `${key} ${type}`.toLowerCase();
+        return `<div class="native-config-field" data-native-field-row data-search="${escapeHtml(search)}"><div class="native-config-field-head"><div><strong>${escapeHtml(key)}</strong><small>${escapeHtml(type)}</small></div></div>${nativeConfigControl(key, value, scope)}</div>`;
+      }).join('');
+
+    const protectedList = [...protectedFields].sort().map((key) => `<code>${escapeHtml(key)}</code>`).join(', ');
+    return `<div class="notice">Protected values are not rendered or sent back by Control Suite. Native ASF keeps the existing values: ${protectedList}.</div><div class="toolbar section"><input id="nativeConfigSearch" class="grow" type="search" placeholder="Search config fields" autocomplete="off"><span class="pill neutral">${Object.keys(editable).length} fields</span></div><div id="nativeConfigFields" class="native-config-grid section">${fields || '<div class="empty-state">No editable fields returned by ASF.</div>'}</div>`;
+  }
+
+  function readNativeConfigEditor(baseConfig, protectedFields, scope) {
+    const next = cloneJson(baseConfig) || {};
+    for (const key of protectedFields) delete next[key];
+    for (const key of Object.keys(next)) if (isSecurityShadow(key)) delete next[key];
+
+    const controls = [...document.querySelectorAll(`[data-native-config-scope="${scope}"][data-native-config-field]`)];
+    for (const control of controls) {
+      const key = control.dataset.nativeConfigField;
+      const type = control.dataset.nativeConfigType;
+      let value;
+      if (type === 'boolean') value = Boolean(control.checked);
+      else if (type === 'number') {
+        value = Number(control.value);
+        if (!Number.isFinite(value)) throw new Error(`${key}: invalid number`);
+      } else if (type === 'string') value = String(control.value);
+      else {
+        try {
+          value = JSON.parse(control.value);
+        } catch (error) {
+          throw new Error(`${key}: invalid JSON (${error.message})`);
+        }
+      }
+      next[key] = value;
+    }
+    return next;
+  }
+
+  function nativeTabsMarkup() {
+    const tabs = [
+      ['bot-config', 'Bot config'],
+      ['global-config', 'Global config'],
+      ['commands', 'Commands'],
+      ['bans', 'Bans'],
+    ];
+    return `<div class="native-tabs" role="tablist" aria-label="ASF native tools">${tabs.map(([id, label]) => `<button type="button" class="${state.nativeSection === id ? 'active' : 'secondary'}" data-native-section="${id}">${label}</button>`).join('')}</div>`;
+  }
+
+  async function renderNativeBotConfig() {
+    if (!state.accounts.length) return '<div class="card empty-state"><strong>No ASF accounts.</strong>Add an account first.</div>';
+    if (!state.selectedBot || !state.accounts.some((account) => account.BotName === state.selectedBot)) state.selectedBot = state.accounts[0].BotName;
+
+    const record = await getBotRecord(state.selectedBot);
+    const config = cloneJson(record?.BotConfig);
+    if (!config || typeof config !== 'object') throw new Error(`ASF did not return BotConfig for ${state.selectedBot}`);
+    state.nativeBotConfig = config;
+
+    const options = state.accounts.map((account) => `<option value="${escapeHtml(account.BotName)}" ${account.BotName === state.selectedBot ? 'selected' : ''}>${escapeHtml(accountOptionLabel(account))}</option>`).join('');
+    return `<div class="card"><div class="card-head"><div><h3>Full BotConfig</h3><p>Complete native config returned by ASF. New ASF fields appear automatically.</p></div><span class="pill good">native API</span></div><div class="settings-grid native-config-toolbar"><label for="nativeBotSelect">Account<select id="nativeBotSelect">${options}</select></label><div><span class="field-help">Saving uses ASF's native BotConfig validation and reload path.</span><button id="saveNativeBotConfig" type="button">Save BotConfig</button></div></div>${nativeConfigEditor(config, BOT_PROTECTED_FIELDS, 'bot')}</div>`;
+  }
+
+  async function renderNativeGlobalConfig() {
+    const asf = await api('/Api/ASF');
+    const config = cloneJson(asf?.GlobalConfig);
+    if (!config || typeof config !== 'object') throw new Error('ASF did not return GlobalConfig');
+    state.nativeGlobalConfig = config;
+
+    return `<div class="card"><div class="card-head"><div><h3>Global ASF config</h3><p>Complete global configuration through the native /Api/ASF endpoint.</p></div><span class="pill warn">process-wide</span></div><div class="notice warn">Global ASF settings affect every account and some changes can restart or reinitialize ASF. Protected authentication values remain untouched.</div>${nativeConfigEditor(config, GLOBAL_PROTECTED_FIELDS, 'global')}<div class="actions section"><button id="saveNativeGlobalConfig" class="warning" type="button">Save global config</button></div></div>`;
+  }
+
+  function nativeCommandLogMarkup() {
+    if (!state.nativeCommandLog.length) return '<div class="native-terminal-empty">No commands executed in this tab.</div>';
+    return state.nativeCommandLog.map((entry) => `<div class="native-terminal-row ${escapeHtml(entry.type)}"><span class="native-terminal-sign">${entry.type === 'out' ? '>' : '<'}</span><pre>${escapeHtml(entry.message)}</pre></div>`).join('');
+  }
+
+  async function renderNativeCommands() {
+    return `<div class="card native-terminal-card"><div class="card-head"><div><h3>ASF commands</h3><p>Native owner-level command endpoint. History exists only in this browser tab.</p></div><button id="clearNativeCommandLog" class="secondary" type="button">Clear output</button></div><div id="nativeCommandLog" class="native-terminal">${nativeCommandLogMarkup()}</div><form id="nativeCommandForm" class="inline-form section"><input id="nativeCommandInput" type="text" autocomplete="off" spellcheck="false" placeholder="status ASF" aria-label="ASF command" required><button type="submit">Run</button></form></div>`;
+  }
+
+  async function renderNativeBans() {
+    const result = await api('/Api/IPC/Bans');
+    const bans = Array.isArray(result) ? result : Array.isArray(result?.BannedIPs) ? result.BannedIPs : [];
+    const rows = bans.length
+      ? bans.map((ip) => `<div class="ban-row"><code>${escapeHtml(ip)}</code><button type="button" class="danger" data-remove-ban="${escapeHtml(ip)}">Remove</button></div>`).join('')
+      : '<div class="empty-state"><strong>No IPC bans.</strong>No client IP is currently blocked by ASF IPC.</div>';
+    return `<div class="card"><div class="card-head"><div><h3>ASF IPC bans</h3><p>Native failed-authentication ban list.</p></div><div class="actions"><button id="refreshNativeBans" class="secondary" type="button">Refresh</button><button id="clearNativeBans" class="danger" type="button" ${bans.length ? '' : 'disabled'}>Remove all</button></div></div><div class="ban-grid">${rows}</div></div>`;
+  }
+
+  async function renderNative() {
+    let body;
+    if (state.nativeSection === 'global-config') body = await renderNativeGlobalConfig();
+    else if (state.nativeSection === 'commands') body = await renderNativeCommands();
+    else if (state.nativeSection === 'bans') body = await renderNativeBans();
+    else body = await renderNativeBotConfig();
+
+    return `<div class="card native-hub-head"><div class="card-head"><div><h3>Native ASF administration</h3><p>First-class Control Suite surfaces backed by the pinned ASF API.</p></div><span class="pill good">phase 1</span></div>${nativeTabsMarkup()}</div><div class="section">${body}</div><div class="notice section">Legacy ASF-ui remains available only as an emergency compatibility fallback while the remaining 2FA, BGR, mass editor, plugins and release views are migrated.</div>`;
+  }
+
   async function renderSecurity() {
     const options = [0,5,15,30,60].map((minutes) => `<option value="${minutes}" ${Number(state.lockMinutes) === minutes ? 'selected' : ''}>${minutes === 0 ? 'Never in this tab' : `${minutes} min`}</option>`).join('');
     return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Authentication boundary</h3><p>Defense in depth around ASF IPC.</p></div><span class="pill good">active</span></div><div class="boundary"><span class="boundary-index">1</span><div><strong>HTTPS / Tailscale</strong><small>Transport and network reachability remain outside ASF.</small></div></div><div class="boundary"><span class="boundary-index">2</span><div><strong>ASF IPCPassword</strong><small>Every /Api request from this UI carries the native Authentication header.</small></div></div><div class="boundary"><span class="boundary-index">3</span><div><strong>Tab-scoped session</strong><small>The IPC password is kept only in page memory and is lost on refresh, lock, or tab close.</small></div></div></div><div class="card"><div class="card-head"><div><h3>Session lock</h3><p>Protect an unattended browser tab.</p></div></div><label for="lockMinutes">Auto-lock after inactivity</label><select id="lockMinutes">${options}</select><span class="field-help">Activity resets the timer. “Never” applies only to this tab.</span><div class="toolbar section"><button id="lockNow" class="secondary">Lock now</button></div></div></div><div class="card section"><div class="card-head"><div><h3>Security invariants</h3><p>What Control Suite 1.0 intentionally does not expose.</p></div></div><div class="grid three"><div class="notice good">No arbitrary shell or process execution endpoint.</div><div class="notice good">Steam credentials are never persisted by AccountManager.</div><div class="notice good">Destructive actions require an explicit confirmation dialog.</div></div></div>`;
