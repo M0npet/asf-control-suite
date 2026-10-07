@@ -831,7 +831,15 @@
           ${botName ? `
             <div class="actions"><button id="loadNativeInventoryInfo" class="secondary" type="button">Load inventory info</button></div>
             <label for="nativeInventoryInfo">Inventory info</label>
-            <textarea id="nativeInventoryInfo" class="code-editor" rows="9" readonly placeholder="Inventory app/context summary appears here."></textarea>
+            <textarea id="nativeInventoryInfo" class="code-editor" rows="7" readonly placeholder="Inventory app/context summary appears here."></textarea>
+            <div class="settings-grid section">
+              <label for="nativeInventoryAppId">AppID<input id="nativeInventoryAppId" inputmode="numeric" autocomplete="off" placeholder="730"></label>
+              <label for="nativeInventoryContextId">ContextID<input id="nativeInventoryContextId" inputmode="numeric" autocomplete="off" placeholder="2"></label>
+              <label for="nativeInventoryLanguage">Language (optional)<input id="nativeInventoryLanguage" autocomplete="off" placeholder="english"></label>
+            </div>
+            <div class="actions section"><button id="loadNativeInventoryItems" class="secondary" type="button">Load inventory items</button></div>
+            <label for="nativeInventoryItems">Inventory items</label>
+            <textarea id="nativeInventoryItems" class="code-editor" rows="10" readonly placeholder="Native ASF inventory response appears here."></textarea>
           ` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
         </div>
 
@@ -1252,6 +1260,27 @@
       } catch (error) {
         $('nativeInventoryInfo').value = `ERROR: ${error.message}`;
         toast('Inventory unavailable', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('loadNativeInventoryItems')?.addEventListener('click', async () => {
+      const button = $('loadNativeInventoryItems');
+      const appId = Number(String($('nativeInventoryAppId').value || '').trim());
+      const contextId = Number(String($('nativeInventoryContextId').value || '').trim());
+      if (!Number.isSafeInteger(appId) || appId <= 0 || appId > 4294967295) { toast('Invalid AppID', 'Enter a positive 32-bit Steam AppID.', 'bad', 7000); return; }
+      if (!Number.isSafeInteger(contextId) || contextId <= 0) { toast('Invalid ContextID', 'Enter a positive Steam inventory ContextID.', 'bad', 7000); return; }
+      button.disabled = true;
+      try {
+        const language = String($('nativeInventoryLanguage').value || '').trim();
+        const query = language ? `?language=${encodeURIComponent(language)}` : '';
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/Inventory/${appId}/${contextId}${query}`);
+        $('nativeInventoryItems').value = prettyJson(result);
+        toast('Inventory items loaded', `AppID ${appId} · ContextID ${contextId}`);
+      } catch (error) {
+        $('nativeInventoryItems').value = `ERROR: ${error.message}`;
+        toast('Inventory items unavailable', error.message, 'bad', 7000);
       } finally {
         button.disabled = false;
       }
