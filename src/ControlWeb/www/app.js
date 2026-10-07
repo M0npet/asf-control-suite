@@ -787,6 +787,26 @@
         </div>
       </div>
 
+      <div class="two-col section">
+        <div class="card" id="native-copy">
+          <div class="card-head"><div><h3>Copy bot configuration</h3><p>Create a new ASF bot from the selected BotConfig without copying hidden credentials.</p></div></div>
+          ${botName ? `<label for="nativeCopyBotName">New ASF bot ID</label><div class="inline-form"><input id="nativeCopyBotName" autocomplete="off" placeholder="${escapeHtml(nextBotName())}"><button id="copyNativeBotConfig" type="button">Copy config</button></div><span class="field-help">Security-controlled fields omitted by ASF stay omitted; the new bot will request login/QR as needed.</span>` : '<div class="empty-state"><strong>No account selected</strong>Select an ASF account first.</div>'}
+        </div>
+
+        <div class="card" id="native-crypto">
+          <div class="card-head"><div><h3>Crypto tools</h3><p>Native ASF encryption and hashing helpers.</p></div></div>
+          <label for="nativeCryptoInput">Input</label>
+          <input id="nativeCryptoInput" type="password" autocomplete="off" placeholder="Value to encrypt or hash">
+          <div class="settings-grid section">
+            <label for="nativeCryptoMethod">Encryption<select id="nativeCryptoMethod"><option value="1">AES</option><option value="0">Plain text</option><option value="2">Protected data</option><option value="3">Environment variable</option><option value="4">File</option></select></label>
+            <label for="nativeHashMethod">Hashing<select id="nativeHashMethod"><option value="1">SCrypt</option><option value="2">PBKDF2</option><option value="0">Plain text</option></select></label>
+            <div class="actions"><button id="runNativeEncrypt" class="secondary" type="button">Encrypt</button><button id="runNativeHash" class="secondary" type="button">Hash</button></div>
+          </div>
+          <label for="nativeCryptoOutput">Result</label>
+          <textarea id="nativeCryptoOutput" class="code-editor" rows="5" readonly placeholder="Result appears here."></textarea>
+        </div>
+      </div>
+
       <div class="card section" id="native-log">
         <div class="card-head"><div><h3>ASF log</h3><p>Authenticated read-only tail of the current ASF log.</p></div><span class="pill neutral">${logTail.length} lines</span></div>
         <textarea id="nativeLogTail" class="code-editor" rows="18" readonly aria-label="ASF log tail">${escapeHtml(logTail.join('\n'))}</textarea>
@@ -1161,6 +1181,59 @@
         await render();
       } catch (error) {
         toast('Could not clear bans', error.message, 'bad', 7000);
+      }
+    });
+
+    $('copyNativeBotConfig')?.addEventListener('click', async () => {
+      const button = $('copyNativeBotConfig');
+      button.disabled = true;
+      try {
+        const source = state.selectedBot;
+        const target = String($('nativeCopyBotName').value || '').trim() || nextBotName();
+        if (!source) throw new Error('No source bot selected.');
+        if (state.accounts.some((account) => String(account.BotName).toLowerCase() === target.toLowerCase())) throw new Error(`ASF bot ID ${target} already exists.`);
+        const record = await getBotRecord(source);
+        const copy = { ...record.BotConfig, Enabled:false };
+        await writeBotConfig(target, copy);
+        await sleep(250);
+        await loadAccounts();
+        state.selectedBot = target;
+        toast('Bot config copied', `${source} → ${target}. Credentials were not copied.`);
+        await render();
+      } catch (error) {
+        toast('Bot config copy failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('runNativeEncrypt')?.addEventListener('click', async () => {
+      const button = $('runNativeEncrypt');
+      button.disabled = true;
+      try {
+        const value = String($('nativeCryptoInput').value || '');
+        if (!value) throw new Error('Input is required.');
+        const result = await api('/Api/ASF/Encrypt', { method:'POST', body:JSON.stringify({ CryptoMethod:Number($('nativeCryptoMethod').value), StringToEncrypt:value }) });
+        $('nativeCryptoOutput').value = String(result ?? '');
+      } catch (error) {
+        toast('Encryption failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('runNativeHash')?.addEventListener('click', async () => {
+      const button = $('runNativeHash');
+      button.disabled = true;
+      try {
+        const value = String($('nativeCryptoInput').value || '');
+        if (!value) throw new Error('Input is required.');
+        const result = await api('/Api/ASF/Hash', { method:'POST', body:JSON.stringify({ HashingMethod:Number($('nativeHashMethod').value), StringToHash:value }) });
+        $('nativeCryptoOutput').value = String(result ?? '');
+      } catch (error) {
+        toast('Hashing failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
       }
     });
 
