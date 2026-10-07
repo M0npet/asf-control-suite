@@ -681,12 +681,14 @@
     let asf = null;
     let plugins = [];
     let bans = [];
+    let logTail = [];
     let bgr = null;
 
     const tasks = [
       api('/Api/ASF').then((value) => { asf = value; }),
       api('/Api/Plugins').then((value) => { plugins = Array.isArray(value) ? value : []; }).catch(() => { plugins = []; }),
       api('/Api/IPC/Bans').then((value) => { bans = Array.isArray(value) ? value : []; }).catch(() => { bans = []; }),
+      api('/Api/ControlWeb/LogTail?lines=250').then((value) => { logTail = Array.isArray(value?.Lines) ? value.Lines : []; }).catch(() => { logTail = []; }),
     ];
 
     if (botName) {
@@ -769,6 +771,12 @@
           ${pluginRows}
           <div class="notice warn section">Native ASF self-update and plugin-update actions are intentionally not exposed because this installation uses a pinned compatibility patch and reproducible Control Suite releases.</div>
         </div>
+      </div>
+
+      <div class="card section">
+        <div class="card-head"><div><h3>ASF log</h3><p>Authenticated read-only tail of the current ASF log.</p></div><span class="pill neutral">${logTail.length} lines</span></div>
+        <textarea id="nativeLogTail" class="code-editor" rows="18" readonly>${escapeHtml(logTail.join('\n'))}</textarea>
+        <div class="actions section"><button id="refreshNativeLog" class="secondary" type="button">Refresh log</button></div>
       </div>
 
       <div class="card section">
@@ -1072,6 +1080,20 @@
         await render();
       } catch (error) {
         toast('Could not clear bans', error.message, 'bad', 7000);
+      }
+    });
+
+    $('refreshNativeLog')?.addEventListener('click', async () => {
+      const button = $('refreshNativeLog');
+      button.disabled = true;
+      try {
+        const result = await api('/Api/ControlWeb/LogTail?lines=250');
+        $('nativeLogTail').value = (result?.Lines || []).join('\n');
+        toast('Log refreshed', `${result?.Count ?? 0} line(s)`);
+      } catch (error) {
+        toast('Log refresh failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
       }
     });
 
