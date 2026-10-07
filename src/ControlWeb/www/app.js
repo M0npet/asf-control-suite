@@ -749,7 +749,7 @@
 
   function nativeCommandLogMarkup() {
     if (!state.nativeCommandLog.length) return '<div class="native-terminal-empty">No commands executed in this tab.</div>';
-    return state.nativeCommandLog.map((entry) => `<div class="native-terminal-row ${escapeHtml(entry.type)}"><span class="native-terminal-sign">${entry.type === 'out' ? '>' : '<'}</span><pre>${escapeHtml(entry.message)}</pre></div>`).join('');
+    return state.nativeCommandLog.map((entry) => `<div class="native-terminal-row ${escapeHtml(entry.type)}"><span class="native-terminal-sign">${entry.type === 'out' ? '>' : '<'}</span><div class="native-terminal-message">${escapeHtml(entry.message)}</div></div>`).join('');
   }
 
   async function renderNativeCommands() {
