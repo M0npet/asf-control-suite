@@ -1199,6 +1199,239 @@
     $('goalSource')?.addEventListener('change', filterGoalRows);
     $('goalSort')?.addEventListener('change', sortGoalRowsInPlace);
     $('saveGoals')?.addEventListener('click', async () => { const button = $('saveGoals'); button.disabled = true; try { await savePlaytimeGoals(); } catch (error) { toast('PlaytimeGoals not saved', error.message, 'bad', 7000); } finally { button.disabled = false; } });
+
+    document.querySelectorAll('[data-advanced-tab]').forEach((button) => button.addEventListener('click', async () => {
+      state.advancedTab = button.dataset.advancedTab || 'bot-config';
+      sessionStorage.setItem('asf.control.advancedTab', state.advancedTab);
+      await render();
+    }));
+
+    const nativeBotSelect = $('nativeBotSelect');
+    if (nativeBotSelect) nativeBotSelect.addEventListener('change', async () => {
+      state.selectedBot = nativeBotSelect.value;
+      await render();
+    });
+
+    document.querySelectorAll('[data-native-flag-option]').forEach((box) => box.addEventListener('change', () => {
+      const name = box.dataset.nativeFlagOption;
+      const raw = document.querySelector(`[data-native-field="${CSS.escape(name)}"][data-native-type="flag"]`);
+      if (!raw) return;
+      let total = 0;
+      document.querySelectorAll(`[data-native-flag-option="${CSS.escape(name)}"]`).forEach((option) => {
+        if (option.checked) total |= Number(option.value || 0);
+      });
+      raw.value = String(total);
+    }));
+
+    document.querySelectorAll('[data-native-field][data-native-type="flag"]').forEach((raw) => raw.addEventListener('input', () => {
+      const value = Number(raw.value || 0);
+      const name = raw.dataset.nativeField;
+      document.querySelectorAll(`[data-native-flag-option="${CSS.escape(name)}"]`).forEach((option) => {
+        const bit = Number(option.value || 0);
+        option.checked = bit > 0 && (value & bit) === bit;
+      });
+    }));
+
+    $('saveNativeBotConfig')?.addEventListener('click', async () => {
+      const button = $('saveNativeBotConfig');
+      button.disabled = true;
+      try {
+        const record = await getBotRecord(state.selectedBot);
+        const next = readNativeConfigEditor(record.BotConfig);
+        await writeBotConfig(state.selectedBot, next);
+        await sleep(500);
+        await loadAccounts();
+        toast('Bot config saved', state.selectedBot);
+        await render();
+      } catch (error) {
+        toast('Bot config not saved', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('saveNativeAsfConfig')?.addEventListener('click', async () => {
+      const button = $('saveNativeAsfConfig');
+      button.disabled = true;
+      try {
+        const current = await api('/Api/ASF');
+        const next = readNativeConfigEditor(current?.GlobalConfig || {});
+        await api('/Api/ASF', { method:'POST', body:JSON.stringify({ GlobalConfig:next }) });
+        toast('ASF config saved', 'ASF may restart to apply global changes.', 'warn', 7000);
+        setConnection(false, 'restarting');
+      } catch (error) {
+        toast('ASF config not saved', error.message, 'bad', 7000);
+        button.disabled = false;
+      }
+    });
+
+    const commandForm = $('nativeCommandForm');
+    if (commandForm) commandForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const input = $('nativeCommand');
+      const command = String(input?.value || '').trim();
+      if (!command) return;
+      const submit = commandForm.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      state.commandLog.push({ type:'out', text:command });
+      input.value = '';
+      try {
+        const result = await api('/Api/Command', { method:'POST', body:JSON.stringify({ Command:command }) });
+        state.commandLog.push({ type:'in', text:String(result ?? '') });
+      } catch (error) {
+        state.commandLog.push({ type:'in', text:`Error: ${error.message}` });
+      } finally {
+        submit.disabled = false;
+        await render();
+        $('nativeCommand')?.focus();
+      }
+    });
+    $('clearCommands')?.addEventListener('click', async () => {
+      state.commandLog = [];
+      await render();
+    });
+
+    $('refreshNativeLog')?.addEventListener('click', async () => render());
+    $('downloadNativeLog')?.addEventListener('click', async () => {
+      const button = $('downloadNativeLog');
+      button.disabled = true;
+      try {
+        const result = await api('/Api/NLog/File?count=2147483647');
+        const content = (result?.Content || []).join('\n') + '\n';
+        const blob = new Blob([content], { type:'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'ArchiSteamFarm.log.txt';
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        toast('Log download failed', error.message, 'bad');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.querySelectorAll('[data-remove-ban]').forEach((button) => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        await api(`/Api/IPC/Bans/${encodeURIComponent(button.dataset.removeBan)}`, { method:'DELETE' });
+        toast('Ban removed', button.dataset.removeBan);
+        await render();
+      } catch (error) {
+        toast('Ban not removed', error.message, 'bad');
+        button.disabled = false;
+      }
+    }));
+    $('clearAllBans')?.addEventListener('click', async () => {
+      const button = $('clearAllBans');
+      button.disabled = true;
+      try {
+        await api('/Api/IPC/Bans', { method:'DELETE' });
+        toast('All IPC bans removed');
+        await render();
+      } catch (error) {
+        toast('Bans not removed', error.message, 'bad');
+        button.disabled = false;
+      }
+    });
+
+    $('applyMassPatch')?.addEventListener('click', async () => {
+      const button = $('applyMassPatch');
+      const bots = [...document.querySelectorAll('[data-mass-bot]:checked')].map((box) => box.dataset.massBot);
+      if (!bots.length) {
+        toast('Mass editor', 'Select at least one bot.', 'warn');
+        return;
+      }
+      button.disabled = true;
+      try {
+        const patch = JSON.parse($('massPatch').value || '{}');
+        if (!patch || Array.isArray(patch) || typeof patch !== 'object') throw new Error('BotConfig patch must be a JSON object');
+        for (const bot of bots) {
+          const record = await getBotRecord(bot);
+          await writeBotConfig(bot, { ...record.BotConfig, ...patch });
+        }
+        await sleep(500);
+        await loadAccounts();
+        toast('Mass edit saved', `${bots.length} bot(s) updated.`);
+      } catch (error) {
+        toast('Mass edit failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    $('refresh2fa')?.addEventListener('click', async () => render());
+    $('accept2fa')?.addEventListener('click', async () => {
+      const button = $('accept2fa'); button.disabled = true;
+      try {
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication/Confirmations`, { method:'POST', body:JSON.stringify({ Accept:true }) });
+        const handled = botEnvelope(result, state.selectedBot);
+        toast('Confirmations accepted', Array.isArray(handled) ? `${handled.length} handled` : 'Native ASF completed the request.');
+      } catch (error) { toast('2FA action failed', error.message, 'bad'); }
+      finally { button.disabled = false; }
+    });
+    $('reject2fa')?.addEventListener('click', async () => {
+      const button = $('reject2fa'); button.disabled = true;
+      try {
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication/Confirmations`, { method:'POST', body:JSON.stringify({ Accept:false }) });
+        const handled = botEnvelope(result, state.selectedBot);
+        toast('Confirmations rejected', Array.isArray(handled) ? `${handled.length} handled` : 'Native ASF completed the request.');
+      } catch (error) { toast('2FA action failed', error.message, 'bad'); }
+      finally { button.disabled = false; }
+    });
+    $('delete2fa')?.addEventListener('click', async () => {
+      const values = await openModal({ title:'Delete authenticator', eyebrow:'Permanent action', body:`<p>Remove the ASF mobile authenticator from <strong>${escapeHtml(state.selectedBot)}</strong>.</p>`, confirmLabel:'Delete authenticator', tone:'danger', requireText:'DELETE 2FA' });
+      if (!values) return;
+      try {
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication`, { method:'DELETE' });
+        await sleep(350); await loadAccounts(); toast('Authenticator deleted', state.selectedBot, 'warn'); await render();
+      } catch (error) { toast('Authenticator not deleted', error.message, 'bad'); }
+    });
+    $('import2fa')?.addEventListener('click', async () => {
+      const file = $('import2faFile')?.files?.[0];
+      if (!file) { toast('Import authenticator', 'Choose a .maFile first.', 'warn'); return; }
+      const button = $('import2fa'); button.disabled = true;
+      try {
+        const parsed = JSON.parse(await file.text());
+        const result = await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/TwoFactorAuthentication`, { method:'POST', body:JSON.stringify(parsed) });
+        botEnvelope(result, state.selectedBot);
+        await sleep(350); await loadAccounts(); toast('Authenticator imported', state.selectedBot); await render();
+      } catch (error) { toast('Authenticator import failed', error.message, 'bad', 7000); }
+      finally { button.disabled = false; }
+    });
+
+    $('addBgr')?.addEventListener('click', async () => {
+      const button = $('addBgr'); button.disabled = true;
+      try {
+        const keys = parseBgrKeys($('bgrKeys')?.value || '');
+        if (!Object.keys(keys).length) throw new Error('No valid Steam keys found');
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/GamesToRedeemInBackground`, { method:'POST', body:JSON.stringify({ GamesToRedeemInBackground:keys }) });
+        toast('Keys added to BGR', `${Object.keys(keys).length} key(s)`);
+        await render();
+      } catch (error) { toast('BGR update failed', error.message, 'bad', 7000); }
+      finally { button.disabled = false; }
+    });
+    $('resetBgr')?.addEventListener('click', async () => {
+      const values = await openModal({ title:'Reset background redeemer', eyebrow:'Destructive action', body:'<p>Clear used and unused background-redeemer keys for this bot.</p>', confirmLabel:'Reset BGR', tone:'danger', requireText:'RESET BGR' });
+      if (!values) return;
+      try {
+        await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}/GamesToRedeemInBackground`, { method:'DELETE' });
+        toast('BGR reset', state.selectedBot, 'warn');
+        await render();
+      } catch (error) { toast('BGR reset failed', error.message, 'bad'); }
+    });
+
+    $('nativeAsfUpdate')?.addEventListener('click', async () => {
+      const values = await openModal({ title:'Native ASF update', eyebrow:'Compatibility warning', body:'<div class="notice bad">Control Suite is built against a pinned ASF commit. Native self-update can invalidate the compatibility patch and plugins. Prefer a new Control Suite release.</div>', confirmLabel:'Update ASF anyway', tone:'danger', requireText:'UPDATE ASF' });
+      if (!values) return;
+      try {
+        await api('/Api/ASF/Update', { method:'POST', body:'{}' });
+        setConnection(false, 'restarting');
+        toast('Native ASF update requested', 'Compatibility must be re-verified after restart.', 'warn', 9000);
+      } catch (error) { toast('ASF update failed', error.message, 'bad'); }
+    });
+
     const lockMinutes = $('lockMinutes');
     if (lockMinutes) lockMinutes.addEventListener('change', () => { state.lockMinutes = Core.normalizeLockMinutes(lockMinutes.value, DEFAULT_LOCK_MINUTES); sessionStorage.setItem(LOCK_KEY, String(state.lockMinutes)); markActivity(); startLockWatch(); toast('Auto-lock updated', state.lockMinutes ? `${state.lockMinutes} minute(s)` : 'disabled for this tab'); });
     $('lockNow')?.addEventListener('click', () => lockSession());
