@@ -356,6 +356,7 @@ with sync_playwright() as pw:
     page.fill('[data-native-field="LoginLimiterDelay"]','11')
     page.click('#saveNativeAsfConfig'); page.wait_for_timeout(180)
     assert page.evaluate('window.__m.globalConfig.LoginLimiterDelay') == 11
+    assert 'IPCPassword' not in page.evaluate('window.__m.globalConfig')
 
     # System action uses typed native modal confirmation
     page.click('#nav button[data-view="system"]'); page.wait_for_selector('#restartAsf'); page.click('#restartAsf'); page.wait_for_selector('#modal[open]')
