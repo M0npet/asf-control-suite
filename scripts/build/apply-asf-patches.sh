@@ -49,10 +49,14 @@ cd "$ROOT"
 
 git apply --check "$PATCH"
 git apply "$PATCH"
-git diff --check -- ArchiSteamFarm/Steam/Bot.cs
+git diff --check -- \
+  ArchiSteamFarm/Steam/Bot.cs \
+  ArchiSteamFarm/Steam/Storage/BotDatabase.cs
 
 grep -Fq 'Control Suite compatibility: in headless/service mode' ArchiSteamFarm/Steam/Bot.cs
 grep -Fq 'RequiredInput = ASF.EUserInputType.QrCodeLogin;' ArchiSteamFarm/Steam/Bot.cs
 grep -Fq 'QrCodeLoginInput = null;' ArchiSteamFarm/Steam/Bot.cs
+grep -Fq 'ControlSuiteQrSteamLogin' ArchiSteamFarm/Steam/Storage/BotDatabase.cs
+grep -Fq 'BotDatabase.QrSteamLogin = pollResult.AccountName;' ArchiSteamFarm/Steam/Bot.cs
 
 echo "ASF HEADLESS QR PATCH: APPLIED"
