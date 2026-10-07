@@ -345,7 +345,7 @@ dialog.modal::backdrop { background:rgba(2,5,9,.72); backdrop-filter:blur(5px); 
 .native-terminal-row.out { color:var(--accent-2); }
 .native-terminal-row.in { color:var(--text-soft); }
 .native-terminal-sign { font-weight:900; }
-.native-terminal-row pre { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; color:inherit; }
+.native-terminal-message { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; color:inherit; }
 .ban-grid { display:grid; gap:8px; }
 .ban-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 12px; border:1px solid var(--line-soft); border-radius:11px; background:#0b111a; }
 .ban-row code { overflow-wrap:anywhere; color:var(--text-soft); }
