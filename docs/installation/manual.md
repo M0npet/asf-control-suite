@@ -129,7 +129,7 @@ Do not extract the complete suite ZIP into `<ASF>/plugins/`; it is an install-ro
 
 Start ASF again and open:
 
-    /Control/
+    /  (default; redirects to /Control/)
 
 Verify that the expected accounts, modules and PlaytimeGoals state are available.
 
@@ -184,7 +184,7 @@ Recommended sequence:
 2. back up the current plugin directories;
 3. extract the complete suite ZIP into `<ASF>/`;
 4. start ASF;
-5. verify `/Control/`;
+5. verify `/` opens Control Suite and `/Control/` remains healthy;
 6. verify account actions;
 7. verify PlaytimeGoals state.
 
@@ -199,7 +199,7 @@ If an update fails:
 1. stop ASF;
 2. restore the previous `ArchiSteamFarm` and plugin directories from backup;
 4. start ASF;
-5. verify `/Control/` and PlaytimeGoals state.
+5. verify `/` opens Control Suite, `/Control/` remains healthy, and PlaytimeGoals state is correct.
 
 Because runtime configuration and databases are outside the native release ZIPs, replacing plugin binaries does not require replacing those files.
 
@@ -223,4 +223,4 @@ The normal public installation path remains:
       ↓
     start ASF
       ↓
-    verify /Control/
+    verify / -> Control Suite and /Control/ health
