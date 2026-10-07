@@ -187,11 +187,15 @@ with sync_playwright() as pw:
     assert page.locator('.full-account-row .account-meta').first.bounding_box()['width'] > 300
     # Native OnlineStatus is first-class and writes through the native BotConfig endpoint.
     assert page.locator('#onlineStatus').input_value() == '1'
-    assert page.locator('a[href="/bot/main/config?asfui=1"]').count() == 1
-    assert page.locator('a[href="/bot/main/2fa?asfui=1"]').count() == 1
+    assert page.locator('[data-native-jump="bot-config"]').count() == 1
+    assert page.locator('[data-native-jump="2fa"]').count() == 1
     page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
     assert page.locator('#onlineStatus').input_value() == '7'
+
+    page.click('[data-native-jump="bot-config"]'); page.wait_for_selector('#nativeConfigEditor')
+    assert page.locator('[data-advanced-tab="bot-config"].active').count() == 1
+    page.click('#nav button[data-view="accounts"]'); page.wait_for_selector('#requiredInputForm')
     page.fill('#requiredInputValue','12345'); page.click('#requiredInputForm button[type="submit"]'); page.wait_for_timeout(380)
     assert page.evaluate('window.__m.inputs.at(-1)')==['main',{'Type':1,'Value':'12345'}]
     assert page.locator('.toast-title',has_text='Input sent').count() >= 1
