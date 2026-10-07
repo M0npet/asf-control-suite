@@ -40,7 +40,7 @@ GlobalConfig values omitted:
 - LicenseID
 - WebProxyPassword
 
-ASF's native POST handlers preserve existing protected secret values when those properties are omitted. Coupled hashing/encryption format fields are hidden with their secret to prevent a stored secret from being reinterpreted under a different format.
+ASF's native POST handlers preserve existing protected secret values when those properties are omitted. Coupled hashing/encryption format fields are hidden from editing. BotConfig natively carries PasswordFormat forward when it inherits SteamPassword; GlobalConfig requires ControlWeb to copy the current IPCPasswordFormat into the POST while omitting IPCPassword, preventing the stored SCrypt/PBKDF2 hash from being reinterpreted as plaintext.
 
 ## UX
 
