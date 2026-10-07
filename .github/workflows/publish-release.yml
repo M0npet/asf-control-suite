@@ -24,6 +24,10 @@ permissions:
   contents: write
   actions: read
 
+concurrency:
+  group: publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: Verify accepted artifact and publish
@@ -63,6 +67,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p "$RUNNER_TEMP/release"
+
+          artifact_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")"
+          test "$(jq -r .name <<<"$artifact_json")" = "asf-control-suite-$TARGET_SHA"
+          test "$(jq -r .expired <<<"$artifact_json")" = "false"
+
           gh api \
             "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
             > "$RUNNER_TEMP/release-artifact.zip"
@@ -105,6 +114,17 @@ jobs:
 
           grep -F "ASF Control Suite ${RELEASE_TAG#v}" "$RUNNER_TEMP/release-notes.md" >/dev/null
 
+          cat >> "$RUNNER_TEMP/release-notes.md" <<EOF
+
+### Published provenance
+
+- Control Suite commit: `$TARGET_SHA`
+- Retained CI artifact ID: `$ARTIFACT_ID`
+- Live-accepted phone SHA-256: `$ACCEPTED_PHONE_SHA256`
+
+This release was published from the exact retained CI artifact used for field acceptance; it was not rebuilt after acceptance.
+EOF
+
       - name: Publish release without mutating an existing tag/release
         shell: bash
         run: |
@@ -112,6 +132,11 @@ jobs:
 
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $RELEASE_TAG already exists; refusing to mutate it." >&2
+            exit 1
+          fi
+
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists without this release; refusing to reuse it." >&2
             exit 1
           fi
 
