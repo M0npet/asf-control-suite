@@ -811,7 +811,7 @@
     return `<div class="two-col"><div class="card"><div class="card-head"><div><h3>Pinned compatibility</h3><p>Control Suite ${escapeHtml(suiteVersion)} is built against a fixed baseline.</p></div></div><div class="row"><div class="row-main"><strong>ASF</strong><small>${escapeHtml(asfVersion)} · ${escapeHtml(asfCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF compatibility patch</strong><small>SHA-256 · ${escapeHtml(asfPatch)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>ASF-ui</strong><small>${escapeHtml(asfUiCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>PlaytimeGoals</strong><small>${escapeHtml(ptgVersion)} · ${escapeHtml(ptgCommit)}</small></div><span class="pill good">pinned</span></div><div class="row"><div class="row-main"><strong>Control modules</strong><small>AccountManager · ControlCenter · ControlWeb</small></div><span class="pill good">${escapeHtml(moduleVersion)}</span></div></div><div class="card"><div class="card-head"><div><h3>Ownership boundaries</h3><p>Each module has one clear job.</p></div></div><div class="boundary"><span class="boundary-index">P</span><div><strong>PlaytimeGoals</strong><small>Managed GamesPlayed, Family availability and Family View journal.</small></div></div><div class="boundary"><span class="boundary-index">A</span><div><strong>AccountManager</strong><small>Credential-free defaults and account summary.</small></div></div><div class="boundary"><span class="boundary-index">C</span><div><strong>ControlCenter</strong><small>Read-only runtime and module health.</small></div></div><div class="boundary"><span class="boundary-index">W</span><div><strong>ControlWeb</strong><small>Presentation and orchestration through existing authenticated APIs.</small></div></div></div></div><div class="card section"><div class="card-head"><div><h3>Native API</h3><p>Use ASF Swagger when you need direct endpoint inspection.</p></div><div class="actions"><a href="/swagger" target="_blank" rel="noreferrer"><button class="secondary" type="button">Open API docs</button></a><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Open legacy Bots</button></a></div></div><div class="notice">The stock ASF-ui remains available for every native ASF function. Control Suite adds focused workflows without removing upstream functionality. Deployment, backups and rollback remain out-of-band through the ADB installer. The browser cannot execute arbitrary host commands.</div><div class="actions section"><a href="${legacyAsfHref('/bots')}"><button class="secondary" type="button">Bots</button></a><a href="${legacyAsfHref('/commands')}"><button class="secondary" type="button">Commands</button></a><a href="${legacyAsfHref('/log')}"><button class="secondary" type="button">Log</button></a><a href="${legacyAsfHref('/asf-config')}"><button class="secondary" type="button">ASF config</button></a><a href="${legacyAsfHref('/asf-bans')}"><button class="secondary" type="button">ASF bans</button></a><a href="${legacyAsfHref('/mass-editor')}"><button class="secondary" type="button">Mass editor</button></a><a href="${legacyAsfHref('/plugins')}"><button class="secondary" type="button">Plugins</button></a><a href="${legacyAsfHref('/releases')}"><button class="secondary" type="button">Releases</button></a><a href="${legacyAsfHref('/ui-config')}"><button class="secondary" type="button">ASF-ui settings</button></a></div></div>`;
   }
 
-  const renderers = { dashboard:renderDashboard, accounts:renderAccounts, playtime:renderPlaytime, security:renderSecurity, system:renderSystem, advanced:renderAdvanced };
+  const renderers = { dashboard:renderDashboard, accounts:renderAccounts, playtime:renderPlaytime, native:renderNative, security:renderSecurity, system:renderSystem, advanced:renderAdvanced };
 
   function renderQrCode() {
     const node = $('qrCode');
@@ -921,6 +921,97 @@
     }[mode] || byName;
     rows.sort(comparator).forEach((row) => container.appendChild(row));
     filterGoalRows();
+  }
+
+
+  function filterNativeConfigRows() {
+    const search = String($('nativeConfigSearch')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('[data-native-field-row]').forEach((row) => {
+      row.classList.toggle('hidden', Boolean(search) && !String(row.dataset.search || '').includes(search));
+    });
+  }
+
+  function refreshNativeBooleanLabels() {
+    document.querySelectorAll('.native-boolean input[type="checkbox"]').forEach((input) => {
+      const label = input.parentElement?.querySelector('span');
+      if (label) label.textContent = input.checked ? 'true' : 'false';
+    });
+  }
+
+  async function saveNativeBotConfig() {
+    if (!state.selectedBot || !state.nativeBotConfig) throw new Error('No BotConfig is loaded');
+    const next = readNativeConfigEditor(state.nativeBotConfig, BOT_PROTECTED_FIELDS, 'bot');
+    if (next.PlaytimeGoalsEnabled === true) {
+      next.GamesPlayedWhileIdle = [];
+      next.CustomGamePlayedWhileIdle = null;
+    }
+    await api(`/Api/Bot/${encodeURIComponent(state.selectedBot)}`, {
+      method:'POST',
+      body:JSON.stringify({ BotConfig:next }),
+    });
+    toast('BotConfig saved', `${state.selectedBot} is reloading through native ASF.`);
+    await sleep(450);
+    await loadAccounts();
+    await render();
+  }
+
+  async function saveNativeGlobalConfig() {
+    if (!state.nativeGlobalConfig) throw new Error('No GlobalConfig is loaded');
+    const confirmed = await openModal({
+      title:'Save global ASF config',
+      eyebrow:'Process-wide configuration',
+      body:'<p>This writes the complete native GlobalConfig. Some changes can restart or reinitialize ASF. Protected authentication values are preserved by ASF.</p>',
+      confirmLabel:'Save global config',
+      tone:'warning',
+      requireText:'SAVE ASF',
+    });
+    if (!confirmed) return;
+    const next = readNativeConfigEditor(state.nativeGlobalConfig, GLOBAL_PROTECTED_FIELDS, 'global');
+    await api('/Api/ASF', {
+      method:'POST',
+      body:JSON.stringify({ GlobalConfig:next }),
+    });
+    toast('Global config saved', 'ASF accepted the native configuration.', 'warn', 6500);
+    await sleep(450);
+    await render();
+  }
+
+  async function executeNativeCommand(command) {
+    const text = String(command || '').trim();
+    if (!text) return;
+    state.nativeCommandLog.push({ type:'out', message:text });
+    const logNode = $('nativeCommandLog');
+    if (logNode) logNode.innerHTML = nativeCommandLogMarkup();
+    try {
+      const result = await api('/Api/Command', {
+        method:'POST',
+        body:JSON.stringify({ Command:text }),
+      });
+      state.nativeCommandLog.push({ type:'in', message:String(result ?? '') });
+    } catch (error) {
+      state.nativeCommandLog.push({ type:'in', message:`Error: ${error.message}` });
+    }
+    if (logNode) {
+      logNode.innerHTML = nativeCommandLogMarkup();
+      logNode.scrollTop = logNode.scrollHeight;
+    }
+  }
+
+  async function removeNativeBan(ip = null) {
+    const label = ip ? `Remove IPC ban for ${ip}?` : 'Remove all ASF IPC bans?';
+    const values = await openModal({
+      title: ip ? 'Remove IPC ban' : 'Remove all IPC bans',
+      eyebrow:'Native ASF security',
+      body:`<p>${escapeHtml(label)}</p>`,
+      confirmLabel:'Remove',
+      tone:'danger',
+      requireText: ip ? 'REMOVE' : 'REMOVE ALL',
+    });
+    if (!values) return;
+    const suffix = ip ? `/${encodeURIComponent(ip)}` : '';
+    await api(`/Api/IPC/Bans${suffix}`, { method:'DELETE' });
+    toast('IPC bans updated', ip ? `${ip} was removed.` : 'All IPC bans were removed.');
+    await render();
   }
 
   async function nativeProcessAction(action, confirmation) {
