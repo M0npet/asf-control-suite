@@ -188,6 +188,7 @@ require('src/ControlWeb/www/app.js',"'/Api/WWW/GitHub/Release/'",'native release
 require('src/ControlWeb/www/app.js','GamesToRedeemInBackground','background redeemer')
 require('src/ControlWeb/www/app.js','TwoFactorAuthentication','native 2FA tools')
 require('src/ControlWeb/www/app.js','data-mass-bot','native mass editor')
+require('src/ControlWeb/www/app.js','state.commandLog = [];','native command history cleared with session state')
 require('src/ControlWeb/www/app.js','data-native-jump="bot-config"','account config routes into Control Suite')
 require('src/ControlWeb/www/app.js','data-native-jump="2fa"','account 2FA routes into Control Suite')
 require('src/ControlWeb/www/app.js','data-native-jump="bgr"','account BGR routes into Control Suite')
