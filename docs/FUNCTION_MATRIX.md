@@ -31,8 +31,9 @@
 - Native Steam Mobile QR onboarding through ASF `QrCodeLogin` and `QrChallengeURL`; QR is rendered locally with no third-party QR service.
 - Login/password onboarding remains available through native ASF encryption.
 - PlaytimeGoals sorting: managed, numeric-aware name, Steam hours, target, AppID, own/family priority; sorting is client-side and preserves unsaved edits.
-- Stock ASF-ui remains directly reachable for the complete native ASF surface; ControlWeb links per-account config/2FA/BGR plus Bots, Commands, Log, ASF config, Mass editor, Plugins, Releases and ASF-ui settings.
+- Native ASF parity workspace is first-class inside ControlWeb: schema-driven full BotConfig and GlobalConfig editors, 2FA, background redeemer, Commands, Log, IPC bans, mass BotConfig editor, plugin inventory and release/update information.
 - Per-account native Steam persona status is editable directly from ControlWeb, including Invisible.
+- Stock ASF-ui is retained only as an emergency compatibility fallback behind the explicit `?asfui=1` bypass while the parity workspace is field-tested.
 
 - Control Suite is the default UI at `/`; `/Control/` remains its canonical mount. The phone installer transactionally patches only `/opt/asf/www/index.html` as the default entrypoint and backs it up for exact rollback.
 - Reuses the stock ASF-ui locale preference key `asf-ui:locale`; changing English/Ukrainian from ControlWeb updates the same preference.
