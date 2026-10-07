@@ -36,8 +36,10 @@ require(
 require(
     "scripts/build/package-release.sh" in workflow
     and "asf-control-suite-artifacts" in workflow
-    and "CONTROL-SUITE-COMMIT.txt" in workflow,
-    "exact build must package and retain a traceable release candidate",
+    and "CONTROL-SUITE-COMMIT.txt" in workflow
+    and "scripts/phone/make-phone-dist.py" in workflow
+    and "asf-control-suite-v1.0-dist.tar.gz" in workflow,
+    "exact build must package and retain a traceable release and phone candidate",
 )
 require(
     "steps.pins.outputs.asf_commit" in workflow
