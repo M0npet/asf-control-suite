@@ -2,7 +2,9 @@
 
 This guide covers the canonical build, verification, installation and rollback process for the current ASF Control Suite **v1.1.0 candidate** on `main`.
 
-The latest published stable release remains **v1.0.0**. Do not treat a v1.1.0 build as stable until its exact phone candidate completes live acceptance.
+The latest published stable release remains **v1.0.0**. Do not treat a v1.1.0 build as stable until its exact phone candidate completes the mandatory [v1.1 live acceptance checklist](../V1_1_LIVE_ACCEPTANCE.md).
+
+Stable publication must use `.github/workflows/publish-release.yml` with the exact accepted commit, retained CI artifact ID and phone-candidate SHA-256. Do not rebuild after field acceptance.
 
 ---
 
