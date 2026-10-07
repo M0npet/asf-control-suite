@@ -14,7 +14,7 @@
 
 ## Про проєкт
 
-ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс `/Control/`, при цьому автентифікація, життєвий цикл ботів і конфігурація залишаються під контролем самого ASF.
+ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс із `/` як стандартною точкою входу та `/Control/` як канонічним внутрішнім шляхом, при цьому автентифікація, життєвий цикл ботів і конфігурація залишаються під контролем самого ASF.
 
 Проєкт побудований як набір невеликих нативних ASF-плагінів без другого демона та без довільного shell-інтерфейсу.
 
@@ -22,7 +22,7 @@ ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс
 | --- | --- |
 | **AccountManager** | Огляд кількох акаунтів, Steam-ім'я й аватар, керування ботами та QR/password onboarding |
 | **ControlCenter** | Стан системи, модулів і дані сумісності |
-| **ControlWeb** | Єдиний локальний вебінтерфейс `/Control/` |
+| **ControlWeb** | Єдиний локальний вебінтерфейс; `/` — стандартна точка входу, `/Control/` — канонічний внутрішній шлях |
 | **PlaytimeGoals** | Цілі ігрового часу, черги, FREE-ліцензії та відновлення Family View |
 
 ---
@@ -38,8 +38,8 @@ ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс
 | ArchiSteamFarm | **6.3.10.3** |
 | ASF commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
 | ASF-ui commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
-| PlaytimeGoals | **0.5.1.0** |
-| PlaytimeGoals commit | `fe7343303cb6d8a253a9622904accd4bf37895c0` |
+| PlaytimeGoals | **0.5.2.0** |
+| PlaytimeGoals commit | `afe080fb5dae505f3b4f7537b08782dda35a260b` |
 | .NET SDK | **10.0.400** |
 
 ---
@@ -61,11 +61,11 @@ ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс
 - підтримка Steam Family
 - автоматична робота з FREE-ліцензіями
 - відновлення Family View
-- виправлена логіка готовності F2P у PlaytimeGoals 0.5.1.0
+- секундна точність локальних дедлайнів для обмежених цілей у PlaytimeGoals 0.5.2
 
 ### ControlWeb
 
-- єдина сторінка `/Control/`
+- `/` відкриває Control Suite за замовчуванням; `/Control/` залишається канонічним внутрішнім шляхом
 - desktop і mobile layout
 - англійська та українська локалізація з інтеграцією ASF-ui locale
 - локальні JS, CSS і QR assets
@@ -95,20 +95,22 @@ ControlWeb не надає API для довільного запуску shell-
     AccountManager-v1.0.0.zip
     ControlCenter-v1.0.0.zip
     ControlWeb-v1.0.0.zip
-    PlaytimeGoals-v0.5.1.zip
+    PlaytimeGoals-v0.5.2.zip
     CONTROL-SUITE-METADATA.json
     SHA256SUMS
 
 ZIP-файли вже мають нативну структуру ASF plugins.
 
-Для встановлення:
+Для встановлення повного bundle:
 
 1. Зупиніть ASF.
-2. Розпакуйте потрібний ZIP прямо в `<ASF>/plugins/`.
+2. Розпакуйте `ASF-Control-Suite-v1.0.0.zip` прямо в корінь `<ASF>/`.
 3. Запустіть ASF.
-4. Відкрийте `/Control/` та перевірте потрібні модулі.
+4. Відкрийте `/` і перевірте Control Suite та `/Control/`.
 
-Bundle містить усі чотири плагіни.
+Окремі plugin ZIP-файли розпаковуються в `<ASF>/plugins/`.
+
+Стабільний реліз: [v1.0.0](https://github.com/M0npet/asf-control-suite/releases/tag/v1.0.0).
 
 ---
 
