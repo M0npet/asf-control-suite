@@ -27,7 +27,7 @@
     playtime: ['Playtime Goals', 'Manage finite and unlimited playtime goals safely.'],
     security: ['Security', 'Session controls and the authentication boundary.'],
     system: ['System', 'Runtime health, modules and native ASF process actions.'],
-    advanced: ['Advanced', 'Architecture, pinned targets and native API access.'],
+    advanced: ['ASF', 'Native ASF configuration and tools without leaving Control Suite.'],
   };
 
   // Remove credentials persisted by pre-RAM-only releases.
@@ -45,6 +45,8 @@
     createMode: 'qr',
     goalSort: 'managed-first',
     qrOnboardingBot: '',
+    advancedTab: sessionStorage.getItem('asf.control.advancedTab') || 'bot-config',
+    commandLog: [],
   };
 
   let lockTimer = null;
@@ -133,6 +135,212 @@
       'managed-first': (a, b) => Number(managed.has(Number(b.AppId))) - Number(managed.has(Number(a.AppId))) || byName(a, b),
     }[mode] || byName;
     return rows.sort(comparator);
+  }
+
+
+  const NATIVE_SECRET_FIELDS = new Set([
+    'SteamPassword',
+    'SteamParentalCode',
+    'WebProxyPassword',
+    'IPCPassword',
+    'LicenseID',
+    'SteamTradeToken',
+  ]);
+  const BOT_CONFIG_CATEGORIES = Object.freeze([
+    ['Basic', ['Name','SteamLogin','SteamPassword','Enabled','OnlineStatus','BotBehaviour']],
+    ['Security', ['PasswordFormat','UseLoginKeys']],
+    ['Access', ['SteamUserPermissions','SteamParentalCode']],
+    ['Connection', ['WebProxy','WebProxyUsername','WebProxyPassword']],
+    ['Trading', ['SteamTradeToken','AcceptGifts','TradeCheckPeriod','SendTradePeriod','CompleteTypesToSend','TradingPreferences','LootableTypes','TransferableTypes','MatchableTypes']],
+    ['Farming', ['FarmingPreferences','FarmingOrders','HoursUntilCardDrops']],
+    ['Customization', ['RemoteCommunication','SteamMasterClanID','UserInterfaceMode','GamingDeviceType','MachineName','OnlinePreferences','OnlineFlags','RedeemingPreferences','GamesPlayedWhileIdle','CustomGamePlayedWhileFarming','CustomGamePlayedWhileIdle']],
+  ]);
+  const ASF_CONFIG_CATEGORIES = Object.freeze([
+    ['Basic', ['SteamOwnerID']],
+    ['Trading', ['MaxTradeHoldDuration','FilterBadBots','LicenseID']],
+    ['Customization', ['AutoRestart','Blacklist','CommandPrefix','CurrentCulture','SteamMessagePrefix']],
+    ['Remote access', ['Headless','IPC','IPCPassword','IPCPasswordFormat']],
+    ['Connection', ['ConnectionTimeout','SteamProtocols','WebProxy','WebProxyPassword','WebProxyUsername']],
+    ['Farming', ['FarmingDelay','IdleFarmingPeriod','MaxFarmingTime','MinFarmingDelayAfterBlock','ShutdownIfPossible']],
+    ['Performance', ['OptimizationMode','ConfirmationsLimiterDelay','GiftsLimiterDelay','InventoryLimiterDelay','LoginLimiterDelay','WebLimiterDelay']],
+    ['Updates', ['UpdateChannel','UpdatePeriod']],
+    ['Plugins', ['PluginsUpdateMode','PluginsUpdateList']],
+    ['Advanced', ['Debug','DefaultBot']],
+  ]);
+  const typeDefinitionCache = new Map();
+  const structureDefinitionCache = new Map();
+  const nativeSchemaCache = new Map();
+  const subtypeRegex = /\[[^\]]+]/g;
+
+  function nativeSubtypes(type) {
+    const matches = String(type || '').match(subtypeRegex);
+    return matches ? matches.map((item) => item.slice(1, -1)) : [];
+  }
+
+  async function nativeTypeDefinition(type) {
+    if (!typeDefinitionCache.has(type)) {
+      typeDefinitionCache.set(type, api(`/Api/Type/${encodeURIComponent(type)}`));
+    }
+    return typeDefinitionCache.get(type);
+  }
+
+  async function nativeStructureDefinition(type) {
+    if (!structureDefinitionCache.has(type)) {
+      structureDefinitionCache.set(type, api(`/Api/Structure/${encodeURIComponent(type)}`));
+    }
+    return structureDefinitionCache.get(type);
+  }
+
+  function nativeEnumValues(values = {}) {
+    return Object.fromEntries(Object.entries(values).map(([name, value]) => [name, Number(value)]));
+  }
+
+  async function resolveNativeType(targetType) {
+    const subtypes = nativeSubtypes(targetType);
+    switch (String(targetType).split('`')[0]) {
+      case 'System.Boolean': return { type:'boolean' };
+      case 'System.String':
+      case 'System.Guid': return { type:'string' };
+      case 'System.Byte': return { type:'byte' };
+      case 'System.UInt16': return { type:'uint16' };
+      case 'System.UInt32': return { type:'uint32' };
+      case 'System.UInt64': return { type:'uint64' };
+      case 'System.Collections.Generic.HashSet':
+      case 'System.Collections.Immutable.ImmutableHashSet':
+        return { type:'hashSet', values:await resolveNativeType(subtypes[0]) };
+      case 'System.Collections.Immutable.ImmutableList':
+      case 'System.Collections.Generic.List':
+        return { type:'list', values:await resolveNativeType(subtypes[0]) };
+      case 'System.Collections.Generic.Dictionary':
+      case 'System.Collections.Immutable.ImmutableDictionary':
+        return { type:'dictionary', key:await resolveNativeType(subtypes[0]), value:await resolveNativeType(subtypes[1]) };
+      case 'System.Nullable': {
+        const resolved = await resolveNativeType(subtypes[0]);
+        return { ...resolved, nullable:true };
+      }
+      default: {
+        const definition = await nativeTypeDefinition(targetType);
+        const baseType = definition?.Properties?.BaseType;
+        if (baseType === 'System.Enum') {
+          const flags = (definition?.Properties?.CustomAttributes || []).includes('System.FlagsAttribute');
+          return { type:flags ? 'flag' : 'enum', values:nativeEnumValues(definition?.Body || {}) };
+        }
+        if (baseType === 'System.Object') return { type:'object' };
+        return { type:'unknown' };
+      }
+    }
+  }
+
+  async function loadNativeConfigSchema(typeName) {
+    if (nativeSchemaCache.has(typeName)) return nativeSchemaCache.get(typeName);
+    const promise = (async () => {
+      const [definition, defaults] = await Promise.all([
+        nativeTypeDefinition(typeName),
+        nativeStructureDefinition(typeName),
+      ]);
+      const body = definition?.Body || {};
+      return Promise.all(Object.keys(body).map(async (param) => {
+        const rawType = body[param];
+        const resolved = await resolveNativeType(rawType);
+        return {
+          param,
+          paramName: rawType === 'System.UInt64' ? `s_${param}` : param,
+          defaultValue: defaults?.[param],
+          rawType,
+          ...resolved,
+        };
+      }));
+    })();
+    nativeSchemaCache.set(typeName, promise);
+    return promise;
+  }
+
+  function fieldValue(model, field) {
+    if (Object.prototype.hasOwnProperty.call(model || {}, field.paramName)) return model[field.paramName];
+    if (Object.prototype.hasOwnProperty.call(model || {}, field.param)) return model[field.param];
+    return field.defaultValue;
+  }
+
+  function renderNativeField(field, model) {
+    const value = fieldValue(model, field);
+    const name = field.paramName;
+    const secret = NATIVE_SECRET_FIELDS.has(field.param);
+    const id = `native-${name.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+    const meta = `<small class="field-help">${escapeHtml(field.rawType || field.type)}</small>`;
+    if (field.type === 'boolean') {
+      return `<label class="native-field checkline"><input id="${id}" type="checkbox" data-native-field="${escapeHtml(name)}" data-native-type="boolean" ${value ? 'checked' : ''}> <span><strong>${escapeHtml(field.param)}</strong>${meta}</span></label>`;
+    }
+    if (field.type === 'enum') {
+      const options = Object.entries(field.values || {}).sort((a,b) => a[1]-b[1]).map(([label, number]) => `<option value="${number}" ${Number(value) === Number(number) ? 'selected' : ''}>${escapeHtml(label)} · ${number}</option>`).join('');
+      return `<label class="native-field" for="${id}"><strong>${escapeHtml(field.param)}</strong><select id="${id}" data-native-field="${escapeHtml(name)}" data-native-type="enum">${options}</select>${meta}</label>`;
+    }
+    if (field.type === 'flag') {
+      const numeric = Number(value || 0);
+      const flags = Object.entries(field.values || {}).filter(([,number]) => Number(number) > 0).sort((a,b) => a[1]-b[1]).map(([label, number]) => `<label class="flag-option"><input type="checkbox" data-native-flag-option="${escapeHtml(name)}" value="${number}" ${(numeric & Number(number)) === Number(number) ? 'checked' : ''}> ${escapeHtml(label)}</label>`).join('');
+      return `<div class="native-field"><strong>${escapeHtml(field.param)}</strong><input id="${id}" type="number" step="1" data-native-field="${escapeHtml(name)}" data-native-type="flag" value="${numeric}" aria-label="${escapeHtml(field.param)} numeric flags">${meta}<div class="flag-grid">${flags}</div></div>`;
+    }
+    if (['byte','uint16','uint32'].includes(field.type)) {
+      return `<label class="native-field" for="${id}"><strong>${escapeHtml(field.param)}</strong><input id="${id}" type="number" min="0" step="1" data-native-field="${escapeHtml(name)}" data-native-type="${field.type}" value="${escapeHtml(value ?? '')}">${meta}</label>`;
+    }
+    if (field.type === 'uint64') {
+      return `<label class="native-field" for="${id}"><strong>${escapeHtml(field.param)}</strong><input id="${id}" type="text" inputmode="numeric" pattern="[0-9]*" data-native-field="${escapeHtml(name)}" data-native-type="uint64" value="${escapeHtml(value ?? '')}">${meta}</label>`;
+    }
+    if (['hashSet','list','dictionary','object','unknown'].includes(field.type)) {
+      const fallback = field.type === 'dictionary' || field.type === 'object' ? {} : [];
+      const json = JSON.stringify(value ?? fallback, null, 2);
+      return `<label class="native-field native-field-wide" for="${id}"><strong>${escapeHtml(field.param)}</strong><textarea id="${id}" rows="4" spellcheck="false" data-native-field="${escapeHtml(name)}" data-native-type="${field.type}">${escapeHtml(json)}</textarea>${meta}</label>`;
+    }
+    return `<label class="native-field" for="${id}"><strong>${escapeHtml(field.param)}</strong><input id="${id}" type="${secret ? 'password' : 'text'}" data-native-field="${escapeHtml(name)}" data-native-param="${escapeHtml(field.param)}" data-native-type="string" data-native-secret="${secret ? '1' : '0'}" value="${secret ? '' : escapeHtml(value ?? '')}" placeholder="${secret ? 'Keep unchanged unless entered' : ''}" autocomplete="off">${meta}</label>`;
+  }
+
+  function categorizedNativeFields(schema, model, categories) {
+    const byParam = new Map(schema.map((field) => [field.param, field]));
+    const used = new Set();
+    const sections = categories.map(([name, params]) => {
+      const fields = params.map((param) => byParam.get(param)).filter(Boolean);
+      fields.forEach((field) => used.add(field.param));
+      return fields.length ? `<section class="native-config-section"><h4>${escapeHtml(name)}</h4><div class="native-config-grid">${fields.map((field) => renderNativeField(field, model)).join('')}</div></section>` : '';
+    }).join('');
+    const other = schema.filter((field) => !used.has(field.param)).sort((a,b) => a.param.localeCompare(b.param));
+    return sections + (other.length ? `<section class="native-config-section"><h4>Other</h4><div class="native-config-grid">${other.map((field) => renderNativeField(field, model)).join('')}</div></section>` : '');
+  }
+
+  function readNativeConfigEditor(baseConfig) {
+    const next = JSON.parse(JSON.stringify(baseConfig || {}));
+    document.querySelectorAll('[data-native-field]').forEach((input) => {
+      const name = input.dataset.nativeField;
+      const type = input.dataset.nativeType;
+      if (input.dataset.nativeSecret === '1' && String(input.value || '') === '') return;
+      let value;
+      if (type === 'boolean') value = input.checked;
+      else if (['byte','uint16','uint32','enum','flag'].includes(type)) {
+        if (String(input.value).trim() === '') return;
+        value = Number(input.value);
+        if (!Number.isFinite(value)) throw new Error(`Invalid numeric value for ${name}`);
+      } else if (type === 'uint64') {
+        value = String(input.value || '').trim();
+        if (value && !/^\d+$/.test(value)) throw new Error(`Invalid UInt64 value for ${name}`);
+      } else if (['hashSet','list','dictionary','object','unknown'].includes(type)) {
+        value = JSON.parse(input.value || (type === 'dictionary' || type === 'object' ? '{}' : '[]'));
+      } else value = input.value;
+      next[name] = value;
+    });
+    return next;
+  }
+
+  function parseBgrKeys(text) {
+    const keyPattern = /[0-9A-Z]{4,7}(?:-[0-9A-Z]{4,7}){2,4}/;
+    const result = {};
+    for (const raw of String(text || '').split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line) continue;
+      const match = line.match(keyPattern);
+      if (!match) continue;
+      const key = match[0];
+      const label = line.replace(key, '').replace(/^\s*[:;|,\-]\s*/, '').replace(/\s*[:;|,\-]\s*$/, '').trim();
+      result[key] = label || key;
+    }
+    return result;
   }
 
   function markActivity() { state.lastActivityAt = Date.now(); }
