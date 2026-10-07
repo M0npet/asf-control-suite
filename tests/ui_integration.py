@@ -309,6 +309,48 @@ with sync_playwright() as pw:
     assert page.locator('text=1h 0m 0s').count() >= 1
     page.screenshot(path=str(SHOT/'playtime-desktop.png'),full_page=True)
 
+    # Native ASF parity workspace replaces the standard legacy pages.
+    page.click('#nav button[data-view="advanced"]'); page.wait_for_selector('#nativeConfigEditor')
+    assert page.locator('[data-advanced-tab="bot-config"].active').count()==1
+    assert page.locator('[data-native-field="OnlineStatus"]').count()==1
+    page.fill('[data-native-field="HoursUntilCardDrops"]','5')
+    page.click('#saveNativeBotConfig'); page.wait_for_timeout(750)
+    assert page.evaluate('window.__m.configs.main.HoursUntilCardDrops') == 5
+
+    page.click('[data-advanced-tab="2fa"]'); page.wait_for_selector('.token-display')
+    assert page.locator('.token-display').inner_text().strip() == '12345'
+
+    page.click('[data-advanced-tab="bgr"]'); page.wait_for_selector('#bgrKeys')
+    assert page.locator('text=Mock unused').count() >= 1
+    assert page.locator('text=Mock used').count() >= 1
+
+    page.click('[data-advanced-tab="commands"]'); page.wait_for_selector('#nativeCommandForm')
+    page.fill('#nativeCommand','status ASF'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(250)
+    assert page.evaluate('window.__m.commands.at(-1)') == 'status ASF'
+    assert page.locator('#commandTerminal',has_text='mock:status ASF').count() == 1
+
+    page.click('[data-advanced-tab="log"]'); page.wait_for_selector('#nativeLog')
+    assert 'Mock|one' in page.locator('#nativeLog').inner_text()
+
+    page.click('[data-advanced-tab="bans"]'); page.wait_for_selector('[data-remove-ban]')
+    page.click('[data-remove-ban]'); page.wait_for_timeout(180)
+    assert page.evaluate('window.__m.bans.length') == 0
+
+    page.click('[data-advanced-tab="mass-editor"]'); page.wait_for_selector('#massPatch')
+    page.check('[data-mass-bot="main"]'); page.fill('#massPatch','{"HoursUntilCardDrops":9}')
+    page.click('#applyMassPatch'); page.wait_for_timeout(260)
+    assert page.evaluate('window.__m.configs.main.HoursUntilCardDrops') == 9
+
+    page.click('[data-advanced-tab="plugins"]'); page.wait_for_selector('text=PlaytimeGoals')
+    assert page.locator('text=ControlWeb').count() >= 1
+
+    page.click('[data-advanced-tab="releases"]'); page.wait_for_selector('text=ASF 6.3.10.3')
+
+    page.click('[data-advanced-tab="asf-config"]'); page.wait_for_selector('#nativeConfigEditor')
+    page.fill('[data-native-field="LoginLimiterDelay"]','11')
+    page.click('#saveNativeAsfConfig'); page.wait_for_timeout(180)
+    assert page.evaluate('window.__m.globalConfig.LoginLimiterDelay') == 11
+
     # System action uses typed native modal confirmation
     page.click('#nav button[data-view="system"]'); page.wait_for_selector('#restartAsf'); page.click('#restartAsf'); page.wait_for_selector('#modal[open]')
     page.fill('#modalConfirmText','RESTART'); page.click('#modalConfirm'); page.wait_for_timeout(180)
