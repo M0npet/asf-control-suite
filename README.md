@@ -177,6 +177,7 @@ The suite covers:
 - [Function matrix](docs/FUNCTION_MATRIX.md)
 - [Release notes](docs/RELEASE_NOTES.md)
 - [Test report](docs/TEST_REPORT.md)
+- [v1.1 live acceptance](docs/V1_1_LIVE_ACCEPTANCE.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)
 - [License](LICENSE)
