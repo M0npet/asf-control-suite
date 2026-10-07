@@ -246,6 +246,8 @@ require('src/ControlWeb/www/app.js',"'UPDATEPLUGINS'",'generic command console b
 
 require('src/ControlWeb/www/app.css','.steam-avatar','Steam avatar styles')
 require('src/ControlWeb/www/app.css','.qr-panel','QR onboarding styles')
+require('src/ControlWeb/www/i18n.js',"'Steam licenses': 'Ліцензії Steam'",'native Steam tools Ukrainian localization')
+require('src/ControlWeb/www/i18n.js',"'Redeem points item': 'Активувати предмет за бали'",'Steam Points Ukrainian localization')
 require('src/ControlWeb/www/i18n.js',"ASF_LOCALE_KEY = 'asf-ui:locale'",'shared ASF-ui locale key')
 require('src/ControlWeb/www/i18n.js',"'uk-UA'",'Ukrainian locale')
 require('src/ControlWeb/www/i18n.js','Українська','Ukrainian catalog')
