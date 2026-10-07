@@ -108,6 +108,20 @@
     const key = SENSITIVE_BOT_CONFIG_KEYS.find((name) => Object.prototype.hasOwnProperty.call(patch || {}, name));
     if (key) throw new Error(`Mass edit cannot modify security-controlled field ${key}.`);
   };
+  const enforcePinnedGlobalConfig = (value) => {
+    const next = cloneJson(value);
+    next.UpdateChannel = 0;
+    next.UpdatePeriod = 0;
+    return next;
+  };
+  const BLOCKED_NATIVE_COMMANDS = new Set(['UPDATE','RESTART','EXIT']);
+  const assertAllowedNativeCommand = (command, prefix) => {
+    let normalized = String(command || '').trim();
+    const commandPrefix = String(prefix || '').trim();
+    if (commandPrefix && normalized.startsWith(commandPrefix)) normalized = normalized.slice(commandPrefix.length).trimStart();
+    const verb = normalized.split(/\s+/, 1)[0].toUpperCase();
+    if (BLOCKED_NATIVE_COMMANDS.has(verb)) throw new Error(`${verb} is disabled in the generic command console. Use the dedicated pinned-safe control instead.`);
+  };
   const confirmationSummary = (item) => {
     const type = item?.Type ?? item?.ConfirmationType ?? 'unknown';
     const creator = item?.CreatorID ?? item?.s_CreatorID ?? item?.CreatorId ?? '';
@@ -729,7 +743,7 @@
     await Promise.all(tasks);
 
     const globalConfig = asf?.GlobalConfig || {};
-    const visibleGlobalConfig = redactGlobalConfigForEditor(globalConfig);
+    const visibleGlobalConfig = enforcePinnedGlobalConfig(redactGlobalConfigForEditor(globalConfig));
     const botConfig = botRecord?.BotConfig || {};
     const visibleBotConfig = redactBotConfigForEditor(botConfig);
     const botOptions = state.accounts.map((account) => `<option value="${escapeHtml(account.BotName)}" ${account.BotName === botName ? 'selected' : ''}>${escapeHtml(accountOptionLabel(account))}</option>`).join('');
@@ -750,7 +764,7 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><div><h3>Global ASF configuration</h3><p>Native GlobalConfig editor with IPC/license/proxy secrets omitted; ASF preserves those omitted security-controlled values on save.</p></div><span class="pill warn">global</span></div>
+          <div class="card-head"><div><h3>Global ASF configuration</h3><p>Native GlobalConfig editor with IPC/license/proxy secrets omitted. UpdateChannel and UpdatePeriod are pinned to disabled values for reproducible deployments.</p></div><span class="pill warn">global</span></div>
           <textarea id="nativeGlobalConfig" class="code-editor" rows="22" spellcheck="false" aria-label="GlobalConfig JSON without security-controlled values">${escapeHtml(prettyJson(visibleGlobalConfig))}</textarea>
           <div class="actions section"><button id="saveNativeGlobalConfig">Save global config</button></div>
         </div>
@@ -1062,7 +1076,8 @@
         const parsed = JSON.parse($('nativeGlobalConfig').value);
         const forbidden = SENSITIVE_GLOBAL_CONFIG_KEYS.find((key) => Object.prototype.hasOwnProperty.call(parsed, key));
         if (forbidden) throw new Error(`Global editor cannot modify security-controlled field ${forbidden}.`);
-        await api('/Api/ASF', { method:'POST', body:JSON.stringify({ GlobalConfig:parsed }) });
+        const pinned = enforcePinnedGlobalConfig(parsed);
+        await api('/Api/ASF', { method:'POST', body:JSON.stringify({ GlobalConfig:pinned }) });
         toast('Global ASF config saved', 'ASF validated and wrote the configuration.');
         await render();
       } catch (error) {
@@ -1079,6 +1094,7 @@
       const submit = event.currentTarget.querySelector('button[type="submit"]');
       submit.disabled = true;
       try {
+        assertAllowedNativeCommand(command, globalConfig.CommandPrefix);
         const result = await api('/Api/Command', { method:'POST', body:JSON.stringify({ Command:command }) });
         $('nativeCommandOutput').value = typeof result === 'string' ? result : prettyJson(result);
       } catch (error) {
