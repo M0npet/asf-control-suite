@@ -85,10 +85,16 @@
   const legacyAsfHref = (path) => `${path}${path.includes('?') ? '&' : '?'}asfui=1`;
   const prettyJson = (value) => JSON.stringify(value ?? {}, null, 2);
   const SENSITIVE_BOT_CONFIG_KEYS = Object.freeze(['SteamLogin','SteamPassword','SteamParentalCode','WebProxyPassword','SteamTradeToken']);
+  const SENSITIVE_GLOBAL_CONFIG_KEYS = Object.freeze(['IPCPassword','LicenseID','WebProxyPassword']);
   const cloneJson = (value) => JSON.parse(JSON.stringify(value ?? {}));
   const redactBotConfigForEditor = (value) => {
     const next = cloneJson(value);
     SENSITIVE_BOT_CONFIG_KEYS.forEach((key) => { delete next[key]; });
+    return next;
+  };
+  const redactGlobalConfigForEditor = (value) => {
+    const next = cloneJson(value);
+    SENSITIVE_GLOBAL_CONFIG_KEYS.forEach((key) => { delete next[key]; });
     return next;
   };
   const restoreSensitiveBotConfig = (edited, baseline) => {
@@ -723,6 +729,7 @@
     await Promise.all(tasks);
 
     const globalConfig = asf?.GlobalConfig || {};
+    const visibleGlobalConfig = redactGlobalConfigForEditor(globalConfig);
     const botConfig = botRecord?.BotConfig || {};
     const visibleBotConfig = redactBotConfigForEditor(botConfig);
     const botOptions = state.accounts.map((account) => `<option value="${escapeHtml(account.BotName)}" ${account.BotName === botName ? 'selected' : ''}>${escapeHtml(accountOptionLabel(account))}</option>`).join('');
@@ -743,8 +750,8 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><div><h3>Global ASF configuration</h3><p>Complete GlobalConfig editor through ASF's native validated endpoint.</p></div><span class="pill warn">global</span></div>
-          <textarea id="nativeGlobalConfig" class="code-editor" rows="22" spellcheck="false" aria-label="Complete GlobalConfig JSON">${escapeHtml(prettyJson(globalConfig))}</textarea>
+          <div class="card-head"><div><h3>Global ASF configuration</h3><p>Native GlobalConfig editor with IPC/license/proxy secrets omitted; ASF preserves those omitted security-controlled values on save.</p></div><span class="pill warn">global</span></div>
+          <textarea id="nativeGlobalConfig" class="code-editor" rows="22" spellcheck="false" aria-label="GlobalConfig JSON without security-controlled values">${escapeHtml(prettyJson(visibleGlobalConfig))}</textarea>
           <div class="actions section"><button id="saveNativeGlobalConfig">Save global config</button></div>
         </div>
       </div>
@@ -1053,6 +1060,8 @@
       button.disabled = true;
       try {
         const parsed = JSON.parse($('nativeGlobalConfig').value);
+        const forbidden = SENSITIVE_GLOBAL_CONFIG_KEYS.find((key) => Object.prototype.hasOwnProperty.call(parsed, key));
+        if (forbidden) throw new Error(`Global editor cannot modify security-controlled field ${forbidden}.`);
         await api('/Api/ASF', { method:'POST', body:JSON.stringify({ GlobalConfig:parsed }) });
         toast('Global ASF config saved', 'ASF validated and wrote the configuration.');
         await render();
