@@ -137,8 +137,15 @@
   }
 
 
-  const NATIVE_SECRET_FIELDS = new Set([
+  const NATIVE_WRITE_ONLY_FIELDS = new Set([
     'SteamLogin',
+    'SteamPassword',
+    'SteamParentalCode',
+    'WebProxyPassword',
+    'IPCPassword',
+    'LicenseID',
+  ]);
+  const NATIVE_MASKED_FIELDS = new Set([
     'SteamPassword',
     'SteamParentalCode',
     'WebProxyPassword',
@@ -264,7 +271,9 @@
   function renderNativeField(field, model) {
     const value = fieldValue(model, field);
     const name = field.paramName;
-    const secret = NATIVE_SECRET_FIELDS.has(field.param);
+    const writeOnly = NATIVE_WRITE_ONLY_FIELDS.has(field.param);
+    const masked = NATIVE_MASKED_FIELDS.has(field.param);
+    const nullOnEmpty = field.defaultValue == null;
     const id = `native-${name.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
     const meta = `<small class="field-help">${escapeHtml(field.rawType || field.type)}</small>`;
     if (field.type === 'boolean') {
@@ -290,7 +299,7 @@
       const json = JSON.stringify(value ?? fallback, null, 2);
       return `<label class="native-field native-field-wide" for="${id}"><strong>${escapeHtml(field.param)}</strong><textarea id="${id}" rows="4" spellcheck="false" data-native-field="${escapeHtml(name)}" data-native-type="${field.type}">${escapeHtml(json)}</textarea>${meta}</label>`;
     }
-    return `<label class="native-field" for="${id}"><strong>${escapeHtml(field.param)}</strong><input id="${id}" type="${secret ? 'password' : 'text'}" data-native-field="${escapeHtml(name)}" data-native-param="${escapeHtml(field.param)}" data-native-type="string" data-native-secret="${secret ? '1' : '0'}" value="${secret ? '' : escapeHtml(value ?? '')}" placeholder="${secret ? 'Keep unchanged unless entered' : ''}" autocomplete="off">${meta}</label>`;
+    return `<label class="native-field" for="${id}"><strong>${escapeHtml(field.param)}</strong><input id="${id}" type="${masked ? 'password' : 'text'}" data-native-field="${escapeHtml(name)}" data-native-param="${escapeHtml(field.param)}" data-native-type="string" data-native-write-only="${writeOnly ? '1' : '0'}" data-native-null-on-empty="${nullOnEmpty ? '1' : '0'}" value="${writeOnly ? '' : escapeHtml(value ?? '')}" placeholder="${writeOnly ? 'Keep unchanged unless entered' : ''}" autocomplete="off">${meta}</label>`;
   }
 
   function categorizedNativeFields(schema, model, categories) {
@@ -310,7 +319,7 @@
     document.querySelectorAll('[data-native-field]').forEach((input) => {
       const name = input.dataset.nativeField;
       const type = input.dataset.nativeType;
-      if (input.dataset.nativeSecret === '1' && String(input.value || '') === '') return;
+      if (input.dataset.nativeWriteOnly === '1' && String(input.value || '') === '') return;
       if (name.startsWith('s_')) delete next[name.slice(2)];
       let value;
       if (type === 'boolean') value = input.checked;
@@ -323,7 +332,10 @@
         if (value && !/^\d+$/.test(value)) throw new Error(`Invalid UInt64 value for ${name}`);
       } else if (['hashSet','list','dictionary','object','unknown'].includes(type)) {
         value = JSON.parse(input.value || (type === 'dictionary' || type === 'object' ? '{}' : '[]'));
-      } else value = input.value;
+      } else {
+        const raw = input.value;
+        value = raw === '' && input.dataset.nativeNullOnEmpty === '1' ? null : raw;
+      }
       next[name] = value;
     });
     return next;
