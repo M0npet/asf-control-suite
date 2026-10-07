@@ -92,4 +92,4 @@ if [[ "$RESTORE_CONFIG" == "1" ]]; then
 fi
 
 wait_base || { echo "rollback files restored but ASF base health did not recover" >&2; exit 5; }
-printf 'ROLLBACK PASSED\nBackup: %s\nConfig restored: %s\n' "$BACKUP" "$RESTORE_CONFIG"
+printf 'ROLLBACK PASSED\nBackup: %s\nASF global config restored: yes\nAccountManager defaults restored: %s\n' "$BACKUP" "$RESTORE_CONFIG"
