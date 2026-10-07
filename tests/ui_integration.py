@@ -48,7 +48,8 @@ mock=r'''(() => {
   plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'ControlWeb',Version:'1.0.0.0'}],
   bans:['203.0.113.5'],
   bgr:{main:{UsedKeys:{},UnusedKeys:{}}},
-  commands:[],confirmations:{main:[{Type:2,s_CreatorID:'42',s_ID:'7'}]},authenticatorOps:[],bgrReads:0
+  commands:[],confirmations:{main:[{Type:2,s_CreatorID:'42',s_ID:'7'}]},authenticatorOps:[],bgrReads:0,
+  licenseOps:[],redeemOps:[],inventoryReads:0,pointsOps:[]
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -74,6 +75,16 @@ mock=r'''(() => {
   let ban=path.match(/^\/Api\/IPC\/Bans\/(.+)$/);
   if(method==='DELETE'&&ban){const ip=decodeURIComponent(ban[1]);window.__m.bans=window.__m.bans.filter(x=>x!==ip);return resp(env(null));}
   if(method==='POST'&&path==='/Api/Command'){window.__m.commands.push(body.Command);return resp(env('OK '+body.Command));}
+  let addLicense=path.match(/^\/Api\/Bot\/([^/]+)\/AddLicense$/);
+  if(method==='POST'&&addLicense){const bot=decodeURIComponent(addLicense[1]);window.__m.licenseOps.push(['add',bot,body]);return resp(env({[bot]:env({Apps:body.Apps||[],Packages:body.Packages||[]})}));}
+  let removeLicense=path.match(/^\/Api\/Bot\/([^/]+)\/RemoveLicense$/);
+  if(method==='POST'&&removeLicense){const bot=decodeURIComponent(removeLicense[1]);window.__m.licenseOps.push(['remove',bot,body]);return resp(env({[bot]:env(null)}));}
+  let redeem=path.match(/^\/Api\/Bot\/([^/]+)\/Redeem$/);
+  if(method==='POST'&&redeem){const bot=decodeURIComponent(redeem[1]);window.__m.redeemOps.push([bot,body]);return resp(env({[bot]:env({Results:Object.fromEntries((body.KeysToRedeem||[]).map(key=>[key,'OK']))})}));}
+  let inventory=path.match(/^\/Api\/Bot\/([^/]+)\/Inventory$/);
+  if(method==='GET'&&inventory){const bot=decodeURIComponent(inventory[1]);window.__m.inventoryReads++;return resp(env({[bot]:env({730:[2,6],753:[6]})}));}
+  let redeemPoints=path.match(/^\/Api\/Bot\/([^/]+)\/RedeemPoints\/(\d+)$/);
+  if(method==='POST'&&redeemPoints){const bot=decodeURIComponent(redeemPoints[1]);const definition=Number(redeemPoints[2]);window.__m.pointsOps.push([bot,definition,path.includes('forced=true')]);return resp(env({[bot]:env(true)}));}
   let nativeBgr=path.match(/^\/Api\/Bot\/([^/]+)\/GamesToRedeemInBackground$/);
   if(nativeBgr){const bot=decodeURIComponent(nativeBgr[1]);window.__m.bgr[bot]??={UsedKeys:{},UnusedKeys:{}};if(method==='GET'){window.__m.bgrReads++;return resp(env({[bot]:window.__m.bgr[bot]}));}if(method==='POST'){window.__m.bgr[bot].UnusedKeys={...window.__m.bgr[bot].UnusedKeys,...body.GamesToRedeemInBackground};return resp(env({[bot]:body.GamesToRedeemInBackground}));}}
   let tokenPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication\/Token$/);
@@ -179,6 +190,11 @@ with sync_playwright() as pw:
     assert page.locator('#nativeGlobalConfig').count() == 1
     assert page.locator('#nativeCommandForm').count() == 1
     assert page.locator('#nativeBgrKeys').count() == 1
+    assert page.locator('#nativeAddLicenseApps').count() == 1
+    assert page.locator('#nativeRemoveLicenseApps').count() == 1
+    assert page.locator('#nativeRedeemKeys').count() == 1
+    assert page.locator('#nativeInventoryInfo').count() == 1
+    assert page.locator('#nativeRedeemPointsDefinition').count() == 1
     assert page.locator('#fetchNative2faToken').count() == 1
     assert page.locator('[data-unban-ip="203.0.113.5"]').count() == 1
     assert page.locator('text=PlaytimeGoals').count() >= 1
@@ -232,6 +248,31 @@ with sync_playwright() as pw:
 
     page.fill('#nativeBgrKeys','AAAAA-BBBBB-CCCCC | Test key'); page.click('#queueNativeBgr'); page.wait_for_timeout(320)
     assert page.evaluate('window.__m.bgr.main.UnusedKeys["AAAAA-BBBBB-CCCCC"]') == 'Test key'
+
+    page.fill('#nativeAddLicenseApps','10, 20')
+    page.fill('#nativeAddLicensePackages','123')
+    page.click('#addNativeLicenses'); page.wait_for_timeout(160)
+    assert page.evaluate('window.__m.licenseOps.at(-1)') == ['add','main',{'Apps':[10,20],'Packages':[123]}]
+
+    page.fill('#nativeRemoveLicenseApps','10')
+    page.fill('#nativeRemoveLicensePackages','456')
+    page.click('#removeNativeLicenses'); page.wait_for_selector('#modal[open]')
+    page.fill('#modalConfirmText','REMOVE LICENSES'); page.click('#modalConfirm'); page.wait_for_timeout(180)
+    assert page.evaluate('window.__m.licenseOps.at(-1)') == ['remove','main',{'Apps':[10],'Packages':[456]}]
+
+    page.fill('#nativeRedeemKeys','AAAAA-BBBBB-CCCCC\nDDDDD-EEEEE-FFFFF')
+    page.click('#redeemNativeKeys'); page.wait_for_timeout(180)
+    assert page.evaluate('window.__m.redeemOps.at(-1)') == ['main',{'KeysToRedeem':['AAAAA-BBBBB-CCCCC','DDDDD-EEEEE-FFFFF']}]
+    assert 'Results' in page.locator('#nativeRedeemOutput').input_value()
+
+    page.click('#loadNativeInventoryInfo'); page.wait_for_timeout(160)
+    assert page.evaluate('window.__m.inventoryReads') == 1
+    assert '730' in page.locator('#nativeInventoryInfo').input_value()
+
+    page.fill('#nativeRedeemPointsDefinition','42')
+    page.click('#redeemNativePoints'); page.wait_for_selector('#modal[open]')
+    page.fill('#modalConfirmText','REDEEM POINTS'); page.click('#modalConfirm'); page.wait_for_timeout(180)
+    assert page.evaluate('window.__m.pointsOps.at(-1)') == ['main',42,False]
 
     page.click('#fetchNative2faToken'); page.wait_for_timeout(120)
     assert page.locator('#native2faToken').input_value() == '12345'
