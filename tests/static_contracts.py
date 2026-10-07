@@ -178,6 +178,19 @@ require('src/ControlWeb/www/app.js','PERSONA_STATES','native Steam persona statu
 require('src/ControlWeb/www/app.js','next.OnlineStatus = status','native OnlineStatus persistence')
 require('src/ControlWeb/www/app.js','id="onlineStatus"','per-account Steam persona selector')
 
+require('src/ControlWeb/www/app.js','loadNativeConfigSchema','schema-driven native config editor')
+require('src/ControlWeb/www/app.js',"ArchiSteamFarm.Steam.Storage.BotConfig",'full native BotConfig schema')
+require('src/ControlWeb/www/app.js',"ArchiSteamFarm.Storage.GlobalConfig",'full native GlobalConfig schema')
+require('src/ControlWeb/www/app.js',"'/Api/Command'",'native ASF command console')
+require('src/ControlWeb/www/app.js',"'/Api/NLog/File?count=200'",'native ASF log viewer')
+require('src/ControlWeb/www/app.js',"'/Api/IPC/Bans'",'native ASF bans')
+require('src/ControlWeb/www/app.js',"'/Api/Plugins?official=true&custom=false'",'native plugin inventory')
+require('src/ControlWeb/www/app.js',"'/Api/WWW/GitHub/Release/'",'native release information')
+require('src/ControlWeb/www/app.js','GamesToRedeemInBackground','background redeemer')
+require('src/ControlWeb/www/app.js','TwoFactorAuthentication','native 2FA tools')
+require('src/ControlWeb/www/app.js','data-mass-bot','native mass editor')
+require('src/ControlWeb/www/app.js','Emergency legacy ASF-ui','legacy UI only as emergency fallback')
+
 
 
 
