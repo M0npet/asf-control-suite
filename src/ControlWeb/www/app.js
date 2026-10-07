@@ -17,8 +17,8 @@
     [6, 'Looking to play'],
     [7, 'Invisible'],
   ]);
-  const BOT_PROTECTED_FIELDS = new Set(['SteamLogin','SteamPassword','SteamParentalCode','WebProxyPassword']);
-  const GLOBAL_PROTECTED_FIELDS = new Set(['IPCPassword','LicenseID','WebProxyPassword']);
+  const BOT_PROTECTED_FIELDS = new Set(['SteamLogin','SteamPassword','PasswordFormat','SteamParentalCode','WebProxyPassword']);
+  const GLOBAL_PROTECTED_FIELDS = new Set(['IPCPassword','IPCPasswordFormat','LicenseID','WebProxyPassword']);
   const STEAM_AVATAR_ORIGIN = 'https://avatars.akamai.steamstatic.com';
   const Core = window.ControlCore;
   if (!Core) throw new Error('ControlCore failed to load');
