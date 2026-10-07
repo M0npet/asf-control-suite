@@ -28,6 +28,7 @@ CONTROLWEB_ASSETS = (
     "app.css",
     "app.js",
     "core.js",
+    "native.js",
     "i18n.js",
     "index.html",
     "qrcode.LICENSE.txt",
