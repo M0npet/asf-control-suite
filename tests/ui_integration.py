@@ -42,7 +42,7 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,OnlineStatus:1,SteamLogin:'private-login',SteamPassword:'private-password',SteamParentalCode:'1234',WebProxyPassword:'proxy-secret',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  configs:{main:{Enabled:true,OnlineStatus:1,SteamLogin:'private-login',SteamPassword:'private-password',PasswordFormat:1,SteamParentalCode:'1234',WebProxyPassword:'proxy-secret',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
   globalConfig:{IPC:true,IPCPassword:'stored-scrypt-hash',IPCPasswordFormat:1,LicenseID:'protected-license',WebProxyPassword:'global-proxy-secret',CommandPrefix:'!',Headless:true},
   bans:['203.0.113.7','198.51.100.9'],commands:[],
   inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
@@ -285,6 +285,7 @@ with sync_playwright() as pw:
     assert page.locator('[data-native-config-field="OnlineStatus"]').count() == 1
     assert page.locator('[data-native-config-field="SteamPassword"]').count() == 0
     assert page.locator('[data-native-config-field="SteamLogin"]').count() == 0
+    assert page.locator('[data-native-config-field="PasswordFormat"]').count() == 0
     assert page.locator('[data-native-config-field="SteamParentalCode"]').count() == 0
     assert page.locator('[data-native-config-field="WebProxyPassword"]').count() == 0
     page.fill('[data-native-config-field="OnlineStatus"]','6')
@@ -292,11 +293,13 @@ with sync_playwright() as pw:
     native_cfg=page.evaluate('window.__m.configs.main')
     assert native_cfg['OnlineStatus'] == 6
     assert native_cfg['SteamPassword'] == 'private-password'
+    assert native_cfg['PasswordFormat'] == 1
     assert native_cfg['SteamLogin'] == 'private-login'
     assert native_cfg['GamesPlayedWhileIdle'] == [] and native_cfg['CustomGamePlayedWhileIdle'] is None
 
     page.click('[data-native-section="global-config"]'); page.wait_for_selector('#saveNativeGlobalConfig')
     assert page.locator('[data-native-config-field="IPCPassword"]').count() == 0
+    assert page.locator('[data-native-config-field="IPCPasswordFormat"]').count() == 0
     assert page.locator('[data-native-config-field="LicenseID"]').count() == 0
     assert page.locator('[data-native-config-field="WebProxyPassword"]').count() == 0
     page.fill('[data-native-config-field="CommandPrefix"]','#')
