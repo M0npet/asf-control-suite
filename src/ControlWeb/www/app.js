@@ -773,7 +773,7 @@
       <div class="two-col section">
         <div class="card" id="native-commands">
           <div class="card-head"><div><h3>Commands</h3><p>Run standard ASF commands through /Api/Command.</p></div></div>
-          <form id="nativeCommandForm">
+          <form id="nativeCommandForm" data-command-prefix="${escapeHtml(String(globalConfig.CommandPrefix ?? '!'))}">
             <label for="nativeCommand">ASF command</label>
             <div class="inline-form"><input id="nativeCommand" autocomplete="off" placeholder="status"><button type="submit">Run</button></div>
           </form>
@@ -1094,7 +1094,7 @@
       const submit = event.currentTarget.querySelector('button[type="submit"]');
       submit.disabled = true;
       try {
-        assertAllowedNativeCommand(command, globalConfig.CommandPrefix);
+        assertAllowedNativeCommand(command, event.currentTarget.dataset.commandPrefix || '');
         const result = await api('/Api/Command', { method:'POST', body:JSON.stringify({ Command:command }) });
         $('nativeCommandOutput').value = typeof result === 'string' ? result : prettyJson(result);
       } catch (error) {
