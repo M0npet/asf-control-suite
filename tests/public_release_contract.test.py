@@ -51,8 +51,28 @@ for relative in (
     "docs/installation/manual.md",
     "docs/architecture/README.md",
     "docs/development/README.md",
+    ".github/workflows/publish-release.yml",
 ):
     read(relative)
+
+for token, reason in (
+    ("workflow_dispatch:", "manual publication gate"),
+    ("accepted_phone_sha256:", "live-accepted candidate checksum input"),
+    ("CONTROL-SUITE-COMMIT.txt", "exact source provenance check"),
+    ("sha256sum -c SHA256SUMS", "artifact checksum verification"),
+    ("refusing to mutate it", "existing-release mutation guard"),
+):
+    require(
+        ".github/workflows/publish-release.yml",
+        token,
+        reason,
+    )
+
+require(
+    ".github/workflows/ci.yml",
+    "retention-days: 30",
+    "live-acceptance artifact retention",
+)
 
 
 # README must describe both the published stable state and the current main candidate.
