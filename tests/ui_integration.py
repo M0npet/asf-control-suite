@@ -42,8 +42,8 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,OnlineStatus:1,SteamLogin:'private-login',SteamPassword:'private-password',PasswordFormat:1,SteamParentalCode:'1234',WebProxyPassword:'proxy-secret',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  globalConfig:{IPC:true,IPCPassword:'stored-scrypt-hash',IPCPasswordFormat:1,LicenseID:'protected-license',WebProxyPassword:'global-proxy-secret',CommandPrefix:'!',Headless:true},
+  configs:{main:{Enabled:true,OnlineStatus:1,SteamLogin:'private-login',SteamPassword:'private-password',PasswordFormat:1,SteamParentalCode:'1234',WebProxyPassword:'proxy-secret',SteamMasterClanID:76561198000000000,s_SteamMasterClanID:'103582791429521412',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  globalConfig:{IPC:true,IPCPassword:'stored-scrypt-hash',IPCPasswordFormat:1,LicenseID:'protected-license',WebProxyPassword:'global-proxy-secret',SteamOwnerID:76561198000000000,s_SteamOwnerID:'76561198012345678',CommandPrefix:'!',Headless:true},
   bans:['203.0.113.7','198.51.100.9'],commands:[],
   inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
  };
@@ -288,6 +288,8 @@ with sync_playwright() as pw:
     assert page.locator('[data-native-config-field="PasswordFormat"]').count() == 0
     assert page.locator('[data-native-config-field="SteamParentalCode"]').count() == 0
     assert page.locator('[data-native-config-field="WebProxyPassword"]').count() == 0
+    assert page.locator('[data-native-config-field="SteamMasterClanID"]').count() == 0
+    assert page.locator('[data-native-config-field="s_SteamMasterClanID"]').input_value() == '103582791429521412'
     page.fill('[data-native-config-field="OnlineStatus"]','6')
     page.click('#saveNativeBotConfig'); page.wait_for_timeout(700)
     native_cfg=page.evaluate('window.__m.configs.main')
@@ -302,12 +304,16 @@ with sync_playwright() as pw:
     assert page.locator('[data-native-config-field="IPCPasswordFormat"]').count() == 0
     assert page.locator('[data-native-config-field="LicenseID"]').count() == 0
     assert page.locator('[data-native-config-field="WebProxyPassword"]').count() == 0
+    assert page.locator('[data-native-config-field="SteamOwnerID"]').count() == 0
+    assert page.locator('[data-native-config-field="s_SteamOwnerID"]').input_value() == '76561198012345678'
     page.fill('[data-native-config-field="CommandPrefix"]','#')
     page.click('#saveNativeGlobalConfig'); page.wait_for_selector('#modal[open]')
     page.fill('#modalConfirmText','SAVE ASF'); page.click('#modalConfirm'); page.wait_for_timeout(650)
     assert page.evaluate('window.__m.globalConfig.CommandPrefix') == '#'
     assert page.evaluate('window.__m.globalConfig.IPCPassword') == 'stored-scrypt-hash'
     assert page.evaluate('window.__m.globalConfig.IPCPasswordFormat') == 1
+    assert page.evaluate("'SteamOwnerID' in window.__m.globalConfig") is False
+    assert page.evaluate('window.__m.globalConfig.s_SteamOwnerID') == '76561198012345678'
     assert page.evaluate('window.__m.globalConfig.LicenseID') == 'protected-license'
 
     page.click('[data-native-section="commands"]'); page.wait_for_selector('#nativeCommandForm')
