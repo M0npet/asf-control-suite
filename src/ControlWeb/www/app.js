@@ -1070,6 +1070,55 @@
     $('lockNow')?.addEventListener('click', () => lockSession());
     $('restartAsf')?.addEventListener('click', async () => { try { await nativeProcessAction('Restart', 'RESTART'); } catch (error) { toast('Restart failed', error.message, 'bad'); } });
     $('exitAsf')?.addEventListener('click', async () => { try { await nativeProcessAction('Exit', 'EXIT'); } catch (error) { toast('Exit failed', error.message, 'bad'); } });
+
+    document.querySelectorAll('[data-native-section]').forEach((button) => button.addEventListener('click', async () => {
+      state.nativeSection = button.dataset.nativeSection || 'bot-config';
+      await render();
+    }));
+    const nativeBotSelect = $('nativeBotSelect');
+    if (nativeBotSelect) nativeBotSelect.addEventListener('change', async () => {
+      state.selectedBot = nativeBotSelect.value;
+      await render();
+    });
+    $('nativeConfigSearch')?.addEventListener('input', filterNativeConfigRows);
+    document.querySelectorAll('.native-boolean input[type="checkbox"]').forEach((input) => input.addEventListener('change', refreshNativeBooleanLabels));
+    $('saveNativeBotConfig')?.addEventListener('click', async () => {
+      const button = $('saveNativeBotConfig');
+      button.disabled = true;
+      try { await saveNativeBotConfig(); }
+      catch (error) { toast('BotConfig not saved', error.message, 'bad', 8000); }
+      finally { button.disabled = false; }
+    });
+    $('saveNativeGlobalConfig')?.addEventListener('click', async () => {
+      const button = $('saveNativeGlobalConfig');
+      button.disabled = true;
+      try { await saveNativeGlobalConfig(); }
+      catch (error) { toast('Global config not saved', error.message, 'bad', 8000); }
+      finally { button.disabled = false; }
+    });
+    const nativeCommandForm = $('nativeCommandForm');
+    if (nativeCommandForm) nativeCommandForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const input = $('nativeCommandInput');
+      const value = String(input?.value || '');
+      if (input) input.value = '';
+      await executeNativeCommand(value);
+      input?.focus();
+    });
+    $('clearNativeCommandLog')?.addEventListener('click', () => {
+      state.nativeCommandLog = [];
+      const node = $('nativeCommandLog');
+      if (node) node.innerHTML = nativeCommandLogMarkup();
+    });
+    $('refreshNativeBans')?.addEventListener('click', () => render());
+    document.querySelectorAll('[data-remove-ban]').forEach((button) => button.addEventListener('click', async () => {
+      try { await removeNativeBan(button.dataset.removeBan || ''); }
+      catch (error) { toast('IPC ban not removed', error.message, 'bad', 7000); }
+    }));
+    $('clearNativeBans')?.addEventListener('click', async () => {
+      try { await removeNativeBan(null); }
+      catch (error) { toast('IPC bans not cleared', error.message, 'bad', 7000); }
+    });
   }
 
   function updateNav() {
