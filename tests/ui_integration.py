@@ -43,8 +43,8 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,OnlineStatus:1,s_SteamMasterClanID:'76561198000000000',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},commands:[],globalConfig:{Headless:true,IPC:true,s_SteamOwnerID:'76561198000000001'},bans:['10.0.0.8'],plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'SamplePlugin',Version:'1.2.3'}],pluginUpdates:[],bgr:{main:{UsedKeys:{},UnusedKeys:{}}},twofa:{token:'MOCK2FA',confirmations:[{Type:'Trade',s_CreatorID:'42'}]}
+  configs:{main:{Enabled:true,OnlineStatus:1,s_SteamMasterClanID:'9007199254740993',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},commands:[],globalConfig:{Headless:true,IPC:true,s_SteamOwnerID:'9007199254740995'},bans:['192.0.2.8'],plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'SamplePlugin',Version:'1.2.3'}],pluginUpdates:[],bgr:{main:{UsedKeys:{},UnusedKeys:{}}},twofa:{token:'MOCK2FA',confirmations:[{Type:'Trade',s_CreatorID:'42'}]}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -84,6 +84,7 @@ mock=r'''(() => {
   if(path.startsWith('/Api/IPC/Bans/')&&method==='DELETE'){const ip=decodeURIComponent(path.slice('/Api/IPC/Bans/'.length));window.__m.bans=window.__m.bans.filter(x=>x!==ip);return resp(env(null));}
   if(method==='GET'&&path==='/Api/Plugins?official=true&custom=true')return resp(env(window.__m.plugins));
   if(method==='POST'&&path==='/Api/Plugins/Update'){window.__m.pluginUpdates.push(body.Plugins||[]);return resp(env('plugins updated'));}
+  if(method==='GET'&&path==='/Api/WWW/GitHub/Release')return resp(env({Version:'6.3.11.0',Stable:true,ReleasedAt:'2026-10-01T00:00:00Z',ChangelogHTML:'<p>Mock release</p>'}));
   let nativeBot=path.match(/^\/Api\/Bot\/([^/]+)\/(TwoFactorAuthentication(?:\/(Token|Confirmations))?|GamesToRedeemInBackground)$/);
   if(nativeBot){
     const bot=decodeURIComponent(nativeBot[1]), route=nativeBot[2];
@@ -181,23 +182,24 @@ with sync_playwright() as pw:
     assert page.locator('.full-account-row .account-meta').first.bounding_box()['width'] > 300
     # Native OnlineStatus is first-class and writes through the native BotConfig endpoint.
     assert page.locator('#onlineStatus').input_value() == '1'
-    assert page.locator('a[href="/bot/main/config?asfui=1"]').count() == 1
-    assert page.locator('a[href="/bot/main/2fa?asfui=1"]').count() == 1
+    assert page.locator('[data-view-native="bot"]').count() >= 1
+    assert page.locator('[data-view-native="2fa"]').count() >= 1
+    assert page.locator('a[href="/bot/main/config?asfui=1"]').count() == 0
     page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
     assert page.locator('#onlineStatus').input_value() == '7'
 
     # Schema-driven native workspace covers full BotConfig, lossless UInt64, ASF config and commands.
     page.click('#nav button[data-view="native"]'); page.wait_for_selector('#nativeBotEditor')
-    assert page.locator('[data-native-source-field="SteamMasterClanID"]').input_value() == '76561198000000000'
+    assert page.locator('[data-native-source-field="SteamMasterClanID"]').input_value() == '9007199254740993'
     assert page.locator('[data-native-source-field="SteamPassword"]').input_value() == ''
     page.select_option('[data-native-source-field="OnlineStatus"]','1')
     page.click('#saveNativeBot'); page.wait_for_timeout(620)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 1
-    assert page.evaluate('window.__m.configs.main.s_SteamMasterClanID') == '76561198000000000'
+    assert page.evaluate('window.__m.configs.main.s_SteamMasterClanID') == '9007199254740993'
 
     page.click('[data-native-tab="asf"]'); page.wait_for_selector('#nativeAsfEditor')
-    assert page.locator('[data-native-source-field="SteamOwnerID"]').input_value() == '76561198000000001'
+    assert page.locator('[data-native-source-field="SteamOwnerID"]').input_value() == '9007199254740995'
     assert page.locator('[data-native-source-field="IPCPassword"]').input_value() == ''
 
     page.click('[data-native-tab="commands"]'); page.wait_for_selector('#nativeCommandForm')
@@ -217,13 +219,24 @@ with sync_playwright() as pw:
     page.click('#addNativeBgrKeys'); page.wait_for_timeout(150)
     assert page.evaluate("window.__m.bgr.main.UnusedKeys['TEST-KEY']") == 'Mock game'
 
-    page.click('[data-native-tab="bans"]'); page.wait_for_selector('[data-unban-ip="10.0.0.8"]')
-    page.click('[data-unban-ip="10.0.0.8"]'); page.wait_for_timeout(100)
+    page.click('[data-native-tab="bans"]'); page.wait_for_selector('[data-unban-ip="192.0.2.8"]')
+    page.click('[data-unban-ip="192.0.2.8"]'); page.wait_for_timeout(100)
     assert page.evaluate('window.__m.bans.length') == 0
 
     page.click('[data-native-tab="plugins"]'); page.wait_for_selector('[data-plugin-update]')
     assert page.locator('[data-plugin-update][value="PlaytimeGoals"]').is_disabled()
     assert not page.locator('[data-plugin-update][value="SamplePlugin"]').is_disabled()
+
+    page.click('[data-native-tab="updates"]'); page.wait_for_selector('text=Latest upstream ASF')
+    assert '6.3.11.0' in page.locator('#content').inner_text()
+    assert 'Native ASF self-update is intentionally disabled' in page.locator('#content').inner_text()
+
+    page.click('[data-native-tab="settings"]'); page.wait_for_selector('#nativeDefaultView')
+    page.select_option('#nativeDefaultView','native')
+    page.select_option('#nativeUiLockMinutes','30')
+    page.click('#saveNativeUiSettings'); page.wait_for_timeout(80)
+    assert page.evaluate("localStorage.getItem('asf.control.defaultView')") == 'native'
+    assert page.evaluate("sessionStorage.getItem('asf.control.lockMinutes')") == '30'
 
     page.click('#nav button[data-view="accounts"]'); page.wait_for_selector('#requiredInputForm')
     page.fill('#requiredInputValue','12345'); page.click('#requiredInputForm button[type="submit"]'); page.wait_for_timeout(380)
@@ -397,12 +410,12 @@ with sync_playwright() as pw:
     ua.click('#nav button[data-view="system"]'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Дії з процесом ASF').count() == 1
     ua.click('#nav button[data-view="advanced"]'); ua.wait_for_timeout(80)
-    assert ua.locator('a[href="/bots?asfui=1"]').count() >= 1
+    assert ua.locator('a[href="/bots?asfui=1"]').count() == 1
     assert ua.locator('h3',has_text='Зафіксована сумісність').count() == 1
     assert ua.locator('h3',has_text='Межі відповідальності').count() == 1
     assert ua.locator('#localeSelect').input_value() == 'uk-UA'
     body=ua.locator('body').inner_text()
-    for phrase in ['Registered accounts','Add account','Authentication boundary','ASF process actions','Pinned compatibility','Ownership boundaries','Native API']:
+    for phrase in ['Registered accounts','Add account','Authentication boundary','ASF process actions','Pinned compatibility','Ownership boundaries']:
         assert phrase not in body, phrase
     assert_no_horizontal_overflow(ua); assert_accessible_controls(ua)
     ua.screenshot(path=str(SHOT/'dashboard-uk-desktop.png'),full_page=True)
