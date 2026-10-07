@@ -60,8 +60,9 @@ The generic config editor supports:
 - string -> text input
 - array/object -> JSON textarea with validation
 - null/unknown -> JSON textarea
+- ASF `s_*` uint64 compatibility properties -> exact decimal string inputs; the lossy numeric twin is omitted on save
 
-Fields are searchable and sorted alphabetically.
+Fields are searchable and sorted alphabetically. When ASF exposes both a numeric uint64 property and its `s_` JavaScript-compatibility string twin, ControlWeb edits and posts only the exact string form so Steam IDs are never rounded by JavaScript.
 
 ## Save semantics
 
