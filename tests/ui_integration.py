@@ -44,7 +44,7 @@ mock=r'''(() => {
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
   configs:{main:{Enabled:true,OnlineStatus:1,s_SteamMasterClanID:'76561198000000000',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},commands:[],globalConfig:{Headless:true,IPC:true,s_SteamOwnerID:'76561198000000001'}
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},commands:[],globalConfig:{Headless:true,IPC:true,s_SteamOwnerID:'76561198000000001'},bans:['10.0.0.8'],plugins:[{Name:'PlaytimeGoals',Version:'0.5.2.0'},{Name:'SamplePlugin',Version:'1.2.3'}],pluginUpdates:[],bgr:{main:{UsedKeys:{},UnusedKeys:{}}},twofa:{token:'MOCK2FA',confirmations:[{Type:'Trade',s_CreatorID:'42'}]}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
