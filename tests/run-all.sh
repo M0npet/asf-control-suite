@@ -28,6 +28,7 @@ bash tests/pins_parser.test.sh
 "$PYTHON" tests/static_contracts.py
 node tests/control_core.test.js
 "$PYTHON" tests/ui_integration.py
+"$PYTHON" tests/phone_dist.test.py
 bash tests/phone_transaction.test.sh
 node --check src/ControlWeb/www/i18n.js
 node --check src/ControlWeb/www/core.js
