@@ -73,8 +73,10 @@
     if (field.kind === 'boolean') {
       control = `<label class="switch-row"><input id="${escapeHtml(id)}" type="checkbox" ${value ?? field.defaultValue ? 'checked' : ''} ${common}><span>Enabled</span></label>`;
     } else if (field.kind === 'enum') {
-      const selected = Number(value ?? field.defaultValue ?? 0);
-      control = `<select id="${escapeHtml(id)}" ${common}>${field.values.map(([name,v]) => `<option value="${v}" ${v === selected ? 'selected' : ''}>${escapeHtml(name)} (${v})</option>`).join('')}</select>`;
+      const raw = value === undefined ? field.defaultValue : value;
+      const selected = raw == null ? null : Number(raw);
+      const blank = field.nullable ? `<option value="" ${selected == null ? 'selected' : ''}>null / unspecified</option>` : '';
+      control = `<select id="${escapeHtml(id)}" ${common}>${blank}${field.values.map(([name,v]) => `<option value="${v}" ${v === selected ? 'selected' : ''}>${escapeHtml(name)} (${v})</option>`).join('')}</select>`;
     } else if (field.kind === 'flags') {
       const selected = Number(value ?? field.defaultValue ?? 0);
       control = `<div id="${escapeHtml(id)}" class="native-flags" ${common} data-native-flags="1">${field.values.filter(([,v]) => v !== 0).map(([name,v]) => `<label><input type="checkbox" data-native-flag-value="${v}" ${(selected & v) === v ? 'checked' : ''}><span>${escapeHtml(name)}</span></label>`).join('')}<small>numeric value: <span data-native-flag-total>${selected}</span></div>`;
@@ -99,7 +101,7 @@
       if (!Number.isFinite(n)) throw new Error(`${node.dataset.nativeField}: invalid number`);
       return n;
     }
-    if (kind === 'enum') return Number(node.value);
+    if (kind === 'enum') return node.value === '' ? null : Number(node.value);
     if (kind === 'flags') return [...node.querySelectorAll('[data-native-flag-value]:checked')].reduce((sum, box) => sum | Number(box.dataset.nativeFlagValue || 0), 0);
     if (kind === 'json') {
       try { return JSON.parse(node.value); } catch (_) { throw new Error(`${node.dataset.nativeField}: invalid JSON`); }
