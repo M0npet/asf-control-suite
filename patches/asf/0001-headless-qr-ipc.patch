@@ -1,7 +1,53 @@
 diff --git a/ArchiSteamFarm/Steam/Bot.cs b/ArchiSteamFarm/Steam/Bot.cs
 --- a/ArchiSteamFarm/Steam/Bot.cs
 +++ b/ArchiSteamFarm/Steam/Bot.cs
-@@ -4319,12 +4319,33 @@
+@@ -180,6 +180,7 @@
+ 	private readonly ConcurrentDictionary<UserNotificationsCallback.EUserNotification, uint> PastNotifications = new();
+ 	private readonly SemaphoreSlim RefreshWebSessionSemaphore = new(1, 1);
++	private bool QrLoginIdentityNeedsPersist;
+ 	private readonly SemaphoreSlim SendCompleteTypesSemaphore = new(1, 1);
+ 	private readonly SteamClient SteamClient;
+ 	private readonly ConcurrentHashSet<ulong> SteamFamilySharingIDs = [];
+@@ -2787,6 +2788,8 @@
+ 				ArchiLogger.LogGenericError(Strings.FormatErrorIsInvalid(nameof(pollResult.AccountName)));
+ 
+ 				return false;
++			} else {
++				QrLoginIdentityNeedsPersist = true;
+ 			}
+ 
+ 			return TryApplyAuthPollResult(pollResult);
+@@ -3594,6 +3597,27 @@
+ 		SteamPICSChanges.OnBotLoggedOn();
+ 
+ 		await PluginsCore.OnBotLoggedOn(this).ConfigureAwait(false);
++
++		if (QrLoginIdentityNeedsPersist && BotConfig.UseLoginKeys && !string.IsNullOrEmpty(BotConfig.SteamLogin)) {
++			string configFile = GetFilePath(EFileType.Config);
++
++			if (string.IsNullOrEmpty(configFile)) {
++				throw new InvalidOperationException(nameof(configFile));
++			}
++
++			// Control Suite compatibility: QR auth learns the Steam account name at runtime,
++			// while ASF intentionally marks it as non-persistable. A persistent refresh token
++			// still requires the username on later bot reloads, so persist only that identity
++			// after the first successful logon. No Steam password is introduced or stored.
++			BotConfig.IsSteamLoginSet = true;
++			BotConfig.Saving = true;
++
++			try {
++				if (await ArchiSteamFarm.Steam.Storage.BotConfig.Write(configFile, BotConfig).ConfigureAwait(false)) {
++					QrLoginIdentityNeedsPersist = false;
++				}
++			} finally {
++				BotConfig.Saving = false;
++			}
++		}
+ 	}
+ 
+ 	private async void OnPersonaState(SteamFriends.PersonaStateCallback callback) {
+@@ -4319,12 +4343,33 @@
  	private async Task<bool> WantsQrCodeLogin() {
 -		if (Program.Service || (ASF.GlobalConfig?.Headless ?? GlobalConfig.DefaultHeadless)) {
 -			// In headless/service mode, we always fallback to the other inputs instead, as we never want to wait in blocked call
