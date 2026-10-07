@@ -43,8 +43,8 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,OnlineStatus:1,s_SteamMasterClanID:'76561198000000000',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
-  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},commands:[],globalConfig:{Headless:true,IPC:true,s_SteamOwnerID:'76561198000000001'}
+  configs:{main:{Enabled:true,OnlineStatus:1,s_SteamMasterClanID:'9007199254740993',GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{},commands:[],globalConfig:{Headless:true,IPC:true,s_SteamOwnerID:'9007199254740995'}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -169,15 +169,15 @@ with sync_playwright() as pw:
 
     # Schema-driven native workspace covers full BotConfig, lossless UInt64, ASF config and commands.
     page.click('#nav button[data-view="native"]'); page.wait_for_selector('#nativeBotEditor')
-    assert page.locator('[data-native-source-field="SteamMasterClanID"]').input_value() == '76561198000000000'
+    assert page.locator('[data-native-source-field="SteamMasterClanID"]').input_value() == '9007199254740993'
     assert page.locator('[data-native-source-field="SteamPassword"]').input_value() == ''
     page.select_option('[data-native-source-field="OnlineStatus"]','1')
     page.click('#saveNativeBot'); page.wait_for_timeout(620)
     assert page.evaluate('window.__m.configs.main.OnlineStatus') == 1
-    assert page.evaluate('window.__m.configs.main.s_SteamMasterClanID') == '76561198000000000'
+    assert page.evaluate('window.__m.configs.main.s_SteamMasterClanID') == '9007199254740993'
 
     page.click('[data-native-tab="asf"]'); page.wait_for_selector('#nativeAsfEditor')
-    assert page.locator('[data-native-source-field="SteamOwnerID"]').input_value() == '76561198000000001'
+    assert page.locator('[data-native-source-field="SteamOwnerID"]').input_value() == '9007199254740995'
     assert page.locator('[data-native-source-field="IPCPassword"]').input_value() == ''
 
     page.click('[data-native-tab="commands"]'); page.wait_for_selector('#nativeCommandForm')
