@@ -416,7 +416,7 @@ with sync_playwright() as pw:
     assert ua.locator('a[href="/bots?asfui=1"]').count() == 0
     ua.click('[data-advanced-tab="diagnostics"]'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Зафіксована сумісність').count() == 1
-    assert ua.locator('a[href="/bots?asfui=1"]').count() == 1
+    assert ua.locator('a[href="/bots?asfui=1"]').count() == 0
     assert ua.locator('#localeSelect').input_value() == 'uk-UA'
     body=ua.locator('body').inner_text()
     for phrase in ['Registered accounts','Add account','Authentication boundary','ASF process actions','Full bot configuration','Compatibility fallback']:
