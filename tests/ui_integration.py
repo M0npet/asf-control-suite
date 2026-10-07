@@ -280,6 +280,44 @@ with sync_playwright() as pw:
     assert page.locator('text=1h 0m 0s').count() >= 1
     page.screenshot(path=str(SHOT/'playtime-desktop.png'),full_page=True)
 
+    # Native ASF parity phase 1: full BotConfig/global config, commands and bans.
+    page.click('#nav button[data-view="native"]'); page.wait_for_selector('#saveNativeBotConfig')
+    assert page.locator('[data-native-config-field="OnlineStatus"]').count() == 1
+    assert page.locator('[data-native-config-field="SteamPassword"]').count() == 0
+    assert page.locator('[data-native-config-field="SteamLogin"]').count() == 0
+    assert page.locator('[data-native-config-field="SteamParentalCode"]').count() == 0
+    assert page.locator('[data-native-config-field="WebProxyPassword"]').count() == 0
+    page.fill('[data-native-config-field="OnlineStatus"]','6')
+    page.click('#saveNativeBotConfig'); page.wait_for_timeout(700)
+    native_cfg=page.evaluate('window.__m.configs.main')
+    assert native_cfg['OnlineStatus'] == 6
+    assert native_cfg['SteamPassword'] == 'private-password'
+    assert native_cfg['SteamLogin'] == 'private-login'
+    assert native_cfg['GamesPlayedWhileIdle'] == [] and native_cfg['CustomGamePlayedWhileIdle'] is None
+
+    page.click('[data-native-section="global-config"]'); page.wait_for_selector('#saveNativeGlobalConfig')
+    assert page.locator('[data-native-config-field="IPCPassword"]').count() == 0
+    assert page.locator('[data-native-config-field="LicenseID"]').count() == 0
+    assert page.locator('[data-native-config-field="WebProxyPassword"]').count() == 0
+    page.fill('[data-native-config-field="CommandPrefix"]','#')
+    page.click('#saveNativeGlobalConfig'); page.wait_for_selector('#modal[open]')
+    page.fill('#modalConfirmText','SAVE ASF'); page.click('#modalConfirm'); page.wait_for_timeout(650)
+    assert page.evaluate('window.__m.globalConfig.CommandPrefix') == '#'
+    assert page.evaluate('window.__m.globalConfig.IPCPassword') == 'stored-scrypt-hash'
+    assert page.evaluate('window.__m.globalConfig.LicenseID') == 'protected-license'
+
+    page.click('[data-native-section="commands"]'); page.wait_for_selector('#nativeCommandForm')
+    page.fill('#nativeCommandInput','status ASF'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(180)
+    assert page.evaluate('window.__m.commands.at(-1)') == 'status ASF'
+    assert page.locator('#nativeCommandLog',has_text='mock response: status ASF').count() == 1
+
+    page.click('[data-native-section="bans"]'); page.wait_for_selector('[data-remove-ban="203.0.113.7"]')
+    page.click('[data-remove-ban="203.0.113.7"]'); page.wait_for_selector('#modal[open]')
+    page.fill('#modalConfirmText','REMOVE'); page.click('#modalConfirm'); page.wait_for_timeout(220)
+    assert not page.evaluate("window.__m.bans.includes('203.0.113.7')")
+    assert page.locator('[data-remove-ban="198.51.100.9"]').count() == 1
+    assert_no_horizontal_overflow(page); assert_accessible_controls(page)
+
     # System action uses typed native modal confirmation
     page.click('#nav button[data-view="system"]'); page.wait_for_selector('#restartAsf'); page.click('#restartAsf'); page.wait_for_selector('#modal[open]')
     page.fill('#modalConfirmText','RESTART'); page.click('#modalConfirm'); page.wait_for_timeout(180)
