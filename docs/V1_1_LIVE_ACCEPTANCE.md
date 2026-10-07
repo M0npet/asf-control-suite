@@ -64,7 +64,7 @@ Test against real ASF state, not mocks:
 - Background Redeemer accepts a disposable test key or a safely invalid key without reading existing stored key material into the browser.
 - Steam license add accepts a harmless/free app or package ID on a disposable account; removal is tested only on a disposable license and requires the `REMOVE LICENSES` typed confirmation.
 - direct key redeem accepts a safely invalid/disposable key and renders ASF's native result without persisting it in browser storage.
-- inventory summary loads through native `/Api/Bot/.../Inventory` without adding a filesystem proxy.
+- inventory summary loads through native `/Api/Bot/.../Inventory`; a known AppID/ContextID can also load item data through the native detailed inventory endpoint without adding a filesystem proxy.
 - Steam Points redemption is tested only on a disposable/test account and requires the `REDEEM POINTS` typed confirmation.
 - 2FA token display works on an account with an authenticator.
 - confirmation listing works; accept/decline is tested only if a safe disposable confirmation exists.
