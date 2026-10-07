@@ -166,6 +166,8 @@ label { display:block; color: var(--muted); font-size:12px; margin:11px 0 6px; }
 .qr-placeholder-box, .qr-status-mark { display:grid; place-items:center; width:224px; min-height:224px; border-radius:12px; border:1px dashed #3b5274; background:#0a111b; color:var(--muted); font-size:34px; font-weight:900; letter-spacing:.08em; }
 .qr-status-mark { border-style:solid; color:var(--accent-2); font-size:72px; }
 .qr-success { border-color:#2b6b55; background:#0d211b; }
+.qr-error { border-color:#6d4427; background:#24170d; }
+.qr-error .qr-status-mark { border-color:#6d4427; color:#f2b76f; }
 .account-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:center; padding:13px; border:1px solid var(--line-soft); background:#0d141e; border-radius:13px; }
 .account-row:hover { border-color:#2f405b; }
 .full-account-row { grid-template-columns:1fr; align-items:start; }
