@@ -210,7 +210,7 @@ require('src/ControlWeb/www/app.js','redactGlobalConfigForEditor','GlobalConfig 
 require('src/ControlWeb/www/app.js','Global editor cannot modify security-controlled field','GlobalConfig sensitive-field write guard')
 require('src/ControlWeb/www/app.js','next.UpdateChannel = 0;','pinned ASF update channel disabled')
 require('src/ControlWeb/www/app.js','next.UpdatePeriod = 0;','pinned ASF auto-update period disabled')
-require('src/ControlWeb/www/app.js',"BLOCKED_NATIVE_COMMANDS = new Set(['UPDATE','RESTART','EXIT'])",'generic command console process/update guard')
+require('src/ControlWeb/www/app.js',"BLOCKED_NATIVE_COMMANDS = new Set(['UPDATE','UPDATEPLUGINS','RESTART','EXIT'])",'generic command console process/update guard')
 require('src/ControlWeb/www/app.js','assertAllowedNativeCommand(command, globalConfig.CommandPrefix);','generic command policy enforcement')
 require('src/ControlWeb/www/app.js','SteamTradeToken','Steam trade token protection')
 require('src/ControlWeb/www/app.js','redactBotConfigForEditor','BotConfig sensitive-field redaction')
