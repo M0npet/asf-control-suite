@@ -48,6 +48,23 @@ done < "$META/SHA256SUMS"
 
 [[ -x "$ASF/ArchiSteamFarm" ]] || { echo "installed ASF runtime is not executable" >&2; exit 29; }
 
+python3 - "$ASF/config/ASF.json" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception as exc:
+    raise SystemExit(f"invalid ASF global config {path}: {exc}")
+
+if not isinstance(data, dict) or data.get("Headless") is not True:
+    raise SystemExit(f"phone ASF global config must contain Headless=true: {path}")
+
+print("headless=true")
+PY
+
 root="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/ 2>/dev/null || true)"
 api="$(curl -sS -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Api/ASF 2>/dev/null || true)"
 control="$(curl -sSL -o /dev/null -w '%{http_code}' --connect-timeout 3 http://127.0.0.1:1242/Control/ 2>/dev/null || true)"
