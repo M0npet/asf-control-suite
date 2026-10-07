@@ -322,8 +322,14 @@
       return false;
     }
     if (qrPromptReady.get(account.BotName) === false) return false;
-    await acceptQrPrompt(account.BotName);
-    return true;
+    qrPromptReady.set(account.BotName, false);
+    try {
+      await acceptQrPrompt(account.BotName);
+      return true;
+    } catch (error) {
+      qrPromptReady.set(account.BotName, true);
+      throw error;
+    }
   }
 
   async function waitForQrChallenge(botName, timeoutMs = 30000) {
