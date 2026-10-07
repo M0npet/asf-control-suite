@@ -17,20 +17,6 @@ def project_files(extensions=None):
         yield p
 
 
-IGNORED_DIR_NAMES = {'.git', '.venv', '__pycache__', 'artifacts', 'bin', 'obj', 'node_modules'}
-
-def project_files(extensions=None):
-    for p in ROOT.rglob('*'):
-        if not p.is_file():
-            continue
-        rel = p.relative_to(ROOT)
-        if any(part in IGNORED_DIR_NAMES for part in rel.parts[:-1]):
-            continue
-        if extensions is not None and p.suffix.lower() not in extensions:
-            continue
-        yield p
-
-
 def text(path):
     return (ROOT/path).read_text(encoding='utf-8')
 
@@ -53,12 +39,26 @@ def forbid_tree(needle,label=None,extensions={'.cs','.js','.html'}):
         except UnicodeDecodeError:continue
         if needle in t:errors.append(f'forbidden {label or needle!r} in {p.relative_to(ROOT)}')
 
-for project in ('AccountManager','ControlWeb'):
-   require(f'src/{project}/{project}.csproj','<Version>1.0.0.0</Version>',f'{project} v1.0')
-   require(f'src/{project}/{project}Plugin.cs','[Export(typeof(IPlugin))]',f'{project} export')
-   require(f'src/{project}/{project}Plugin.cs','new Version(1, 0, 0, 0)',f'{project} fallback version')
+pins = {}
+for raw in (ROOT / 'release' / 'pins.env').read_text(encoding='utf-8').splitlines():
+    line = raw.strip()
+    if not line or line.startswith('#') or '=' not in line:
+        continue
+    key, value = line.split('=', 1)
+    pins[key] = value
 
-require('src/ControlCenter/ControlCenter.csproj','<Version>1.0.0.0</Version>','ControlCenter v1.0')
+module_version = pins.get('CONTROL_MODULE_VERSION', '')
+module_parts = [int(part) for part in module_version.split('.')] if module_version else []
+if len(module_parts) != 4:
+    errors.append('release/pins.env: invalid CONTROL_MODULE_VERSION')
+fallback_version = ', '.join(str(part) for part in module_parts) if len(module_parts) == 4 else ''
+
+for project in ('AccountManager','ControlWeb'):
+   require(f'src/{project}/{project}.csproj',f'<Version>{module_version}</Version>',f'{project} canonical module version')
+   require(f'src/{project}/{project}Plugin.cs','[Export(typeof(IPlugin))]',f'{project} export')
+   require(f'src/{project}/{project}Plugin.cs',f'new Version({fallback_version})',f'{project} fallback version')
+
+require('src/ControlCenter/ControlCenter.csproj',f'<Version>{module_version}</Version>','ControlCenter canonical module version')
 require('src/ControlCenter/ControlCenterPlugin.cs','[Export(typeof(IPlugin))]','ControlCenter export')
 require('src/ControlCenter/ControlCenterPlugin.cs','new Version(ControlModuleVersion)','ControlCenter canonical fallback version')
 
@@ -105,7 +105,7 @@ require('src/ControlWeb/www/index.html','https://avatars.akamai.steamstatic.com'
 require('src/ControlWeb/www/index.html','no-referrer','referrer policy')
 require('src/ControlWeb/www/index.html','aria-live="polite"','live region')
 require('src/ControlWeb/www/index.html','<dialog id="modal"','native modal')
-require('src/ControlWeb/www/index.html','Control Suite 1.0','release branding')
+require('src/ControlWeb/www/index.html','Control Suite 1.1 candidate','candidate branding')
 require_re('src/ControlWeb/www/app.js',r"cache\s*:\s*'no-store'",'API no-store')
 require('src/ControlWeb/www/app.js','function toast(','toast system')
 require('src/ControlWeb/www/app.js','function openModal(','modal system')
