@@ -17,6 +17,8 @@
     [6, 'Looking to play'],
     [7, 'Invisible'],
   ]);
+  const BOT_PROTECTED_FIELDS = new Set(['SteamLogin','SteamPassword','SteamParentalCode','WebProxyPassword']);
+  const GLOBAL_PROTECTED_FIELDS = new Set(['IPCPassword','LicenseID','WebProxyPassword']);
   const STEAM_AVATAR_ORIGIN = 'https://avatars.akamai.steamstatic.com';
   const Core = window.ControlCore;
   if (!Core) throw new Error('ControlCore failed to load');
@@ -25,6 +27,7 @@
     dashboard: ['Dashboard', 'Live overview of ASF, accounts and runtime health.'],
     accounts: ['Accounts', 'Create, inspect and control ASF bot accounts.'],
     playtime: ['Playtime Goals', 'Manage finite and unlimited playtime goals safely.'],
+    native: ['ASF Native', 'Use the complete native ASF configuration and administration surface without leaving Control Suite.'],
     security: ['Security', 'Session controls and the authentication boundary.'],
     system: ['System', 'Runtime health, modules and native ASF process actions.'],
     advanced: ['Advanced', 'Architecture, pinned targets and native API access.'],
@@ -44,6 +47,10 @@
     rendering: false,
     createMode: 'qr',
     goalSort: 'managed-first',
+    nativeSection: 'bot-config',
+    nativeBotConfig: null,
+    nativeGlobalConfig: null,
+    nativeCommandLog: [],
     qrOnboardingBot: '',
   };
 
@@ -81,6 +88,12 @@
   };
   const yesNo = (value) => value ? 'yes' : 'no';
   const legacyAsfHref = (path) => `${path}${path.includes('?') ? '&' : '?'}asfui=1`;
+  const cloneJson = (value) => JSON.parse(JSON.stringify(value ?? null));
+  const nativeType = (value) => Array.isArray(value) ? 'array' : value === null ? 'null' : typeof value;
+  const isSecurityShadow = (key) => String(key).startsWith('s_');
+  const editableConfig = (config, protectedFields) => Object.fromEntries(
+    Object.entries(config || {}).filter(([key]) => !protectedFields.has(key) && !isSecurityShadow(key))
+  );
 
   function accountDisplayName(account) {
     const nickname = String(account?.Nickname || '').trim();
