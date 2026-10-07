@@ -156,7 +156,7 @@ require('src/ControlWeb/www/app.css','@media (prefers-reduced-motion: reduce)','
 require('src/ControlWeb/www/app.css','.toast-region','toast styles')
 require('src/ControlWeb/www/app.css','.full-account-row','desktop account action layout')
 require('src/ControlWeb/www/app.css','dialog.modal','dialog styles')
-require('src/ControlWeb/ControlWebPlugin.cs','public string WebPath => "/";','root web override')
+require('src/ControlWeb/ControlWebPlugin.cs','public string WebPath => "/Control";','web path')
 require('src/ControlWeb/www/index.html','href="/app.css"','root stylesheet loaded')
 require('src/ControlWeb/www/index.html','src="/i18n.js"','root i18n loaded')
 require('src/ControlWeb/www/index.html','src="/core.js"','root core loaded')
