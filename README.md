@@ -114,7 +114,7 @@ Pinned revisions:
 - ASF: `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
 - ASF compatibility patch SHA-256: `42026758d985ea54b635bc42b72b5f715369b01e9d19bbed61d576cd57020fcf`
 - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
-- PlaytimeGoals: `aa8b808c9d68c6629ce4871ba337159f38898a1b`
+- PlaytimeGoals: `afe080fb5dae505f3b4f7537b08782dda35a260b`
 
 ## Release policy
 
