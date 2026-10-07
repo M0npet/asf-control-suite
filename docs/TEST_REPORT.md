@@ -1,4 +1,4 @@
-# ASF Control Suite 1.0 — verification report
+# ASF Control Suite verification report — v1.0 stable / v1.1 candidate
 
 Updated: 2026-10-07
 
@@ -77,5 +77,8 @@ RC4 regression: a real-phone RC3 deployment correctly rolled back when IPC start
 - Storage fields remain in the API contract but report unavailable/null, so the existing UI unavailable-storage path is exercised without risking JIT-time missing-method failures.
 
 ## Post-v1.0.0 live gate
+
+The exact v1.1 field procedure is defined in [`V1_1_LIVE_ACCEPTANCE.md`](V1_1_LIVE_ACCEPTANCE.md). A green CI run is necessary but not sufficient for a stable v1.1 release.
+
 
 The v1.0.0 Accounts/QR path has completed live acceptance. New native-administration surfaces introduced after v1.0.0 remain gated from the next stable release until their exact phone candidate passes the same transactional install and live smoke process.
