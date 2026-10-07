@@ -36,12 +36,12 @@ def require(
 
 
 # ------------------------------------------------------------
-# Phase 10 scope:
-# public source/documentation readiness only.
+# Public source/documentation release contract.
 #
-# CI, tags, GitHub Releases and publication automation belong
-# to the later GitHub publication phase after security + live
-# field verification.
+# v1.0.0 has passed final live verification and is published.
+# Public docs must describe the released state and point users
+# at the verified GitHub release, rather than carrying old
+# pre-publication wording.
 # ------------------------------------------------------------
 
 for relative in (
@@ -55,11 +55,11 @@ for relative in (
     read(relative)
 
 
-# README must describe the current unpublished development state.
+# README must describe the current published stable state.
 for token, reason in (
     (
-        "A public release is intentionally withheld",
-        "deferred public release notice",
+        "releases/tag/v1.0.0",
+        "published v1.0.0 release link",
     ),
     (
         "| PlaytimeGoals | **0.5.2.0** |",
@@ -76,6 +76,10 @@ for token, reason in (
     (
         "page memory",
         "RAM-only IPC password model",
+    ),
+    (
+        "15314163bfccd26207fe9c1e3a8504727fea2910",
+        "published v1.0.0 provenance commit",
     ),
 ):
     require(
