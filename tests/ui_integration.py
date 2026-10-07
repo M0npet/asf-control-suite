@@ -42,12 +42,12 @@ mock=r'''(() => {
  window.__m={
   accounts:[{BotName:'main',Nickname:'Mock Main',SteamId:'mock',AvatarHash:'abc123',QrChallengeUrl:null,Enabled:true,KeepRunning:true,Connected:true,IsPlayingPossible:true,Farming:false,FarmerPaused:false,HasMobileAuthenticator:true,RequiredInput:1}],
   defaults:{OnlineStatus:1},
-  configs:{main:{Enabled:true,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
+  configs:{main:{Enabled:true,OnlineStatus:1,GamesPlayedWhileIdle:[999],CustomGamePlayedWhileIdle:'legacy',OtherPluginSetting:{KeepMe:true},PlaytimeGoalsEnabled:true,PlaytimeGoalsBatchSize:2,PlaytimeGoalsParentalWritesEnabled:false,PlaytimeGoals:{'10':2,'30':5}}},
   inputs:[],actions:[],restart:0,exit:0,libraryReads:0,accountReads:0,qrInputCounts:{}
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
- const ptg=bot=>{const c=window.__m.configs[bot],goals=c.PlaytimeGoals||{},by=Object.fromEntries(lib.map(g=>[String(g.AppId),g])); return {Bot:bot,Enabled:!!c.PlaytimeGoalsEnabled,ParentalWritesEnabled:!!c.PlaytimeGoalsParentalWritesEnabled,BatchSize:c.PlaytimeGoalsBatchSize||5,Connected:true,Farming:false,FarmerPaused:false,PlayingPossible:true,RecoveryReady:true,CurrentBatch:Object.keys(goals).slice(0,1).map(Number),Games:Object.entries(goals).map(([id,t],i)=>({AppId:Number(id),Name:by[id]?.Name||id,TargetHours:t,CurrentHours:by[id]?.CurrentHours||0,EffectiveHours:by[id]?.CurrentHours||0,RemainingHours:t==null?null:Math.max(0,t-(by[id]?.CurrentHours||0)),State:'queued',QueuePosition:i+1}))}};
+ const ptg=bot=>{const c=window.__m.configs[bot],goals=c.PlaytimeGoals||{},by=Object.fromEntries(lib.map(g=>[String(g.AppId),g])); return {Bot:bot,Enabled:!!c.PlaytimeGoalsEnabled,ParentalWritesEnabled:!!c.PlaytimeGoalsParentalWritesEnabled,BatchSize:c.PlaytimeGoalsBatchSize||5,Connected:true,Farming:false,FarmerPaused:false,PlayingPossible:true,RecoveryReady:true,CurrentBatch:Object.keys(goals).slice(0,1).map(Number),Games:Object.entries(goals).map(([id,t],i)=>{const currentHours=by[id]?.CurrentHours||0,currentSeconds=Math.round(currentHours*3600),targetSeconds=t==null?null:Math.ceil(t*3600),remainingSeconds=targetSeconds==null?null:Math.max(0,targetSeconds-currentSeconds);return {AppId:Number(id),Name:by[id]?.Name||id,TargetHours:t,TargetSeconds:targetSeconds,CurrentHours:currentHours,CurrentSeconds:currentSeconds,EffectiveHours:currentHours,EffectiveSeconds:currentSeconds,RemainingHours:remainingSeconds==null?null:remainingSeconds/3600,RemainingSeconds:remainingSeconds,State:'queued',QueuePosition:i+1};})}};
  window.fetch=async(path,opt={})=>{
   path=String(path); const method=String(opt.method||'GET').toUpperCase(),auth=opt.headers?.get?.('Authentication');
   if(path.startsWith('/Api/')&&auth!=='secret')return resp(env(null,false,'unauthorized'),401);
@@ -143,6 +143,13 @@ with sync_playwright() as pw:
     assert page.locator('.account-bot-id',has_text='main').count() >= 1
     assert page.locator('.steam-avatar').count() >= 1
     assert page.locator('.full-account-row .account-meta').first.bounding_box()['width'] > 300
+    # Native OnlineStatus is first-class and writes through the native BotConfig endpoint.
+    assert page.locator('#onlineStatus').input_value() == '1'
+    assert page.locator('a[href="/bot/main/config"]').count() == 1
+    assert page.locator('a[href="/bot/main/2fa"]').count() == 1
+    page.select_option('#onlineStatus','7'); page.click('#saveOnlineStatus'); page.wait_for_timeout(520)
+    assert page.evaluate('window.__m.configs.main.OnlineStatus') == 7
+    assert page.locator('#onlineStatus').input_value() == '7'
     page.fill('#requiredInputValue','12345'); page.click('#requiredInputForm button[type="submit"]'); page.wait_for_timeout(380)
     assert page.evaluate('window.__m.inputs.at(-1)')==['main',{'Type':1,'Value':'12345'}]
     assert page.locator('.toast-title',has_text='Input sent').count() >= 1
@@ -256,6 +263,8 @@ with sync_playwright() as pw:
     assert cfg['GamesPlayedWhileIdle']==[] and cfg['CustomGamePlayedWhileIdle'] is None and cfg['OtherPluginSetting']=={'KeepMe':True}
     assert page.locator('pre').count()==0
     assert page.locator('text=Managed status').count()>=1 and page.locator('text=Family View').count()>=1
+    assert page.locator('[data-goal-target][data-appid="10"]').get_attribute('step') == 'any'
+    assert page.locator('text=1h 0m 0s').count() >= 1
     page.screenshot(path=str(SHOT/'playtime-desktop.png'),full_page=True)
 
     # System action uses typed native modal confirmation
