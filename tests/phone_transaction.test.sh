@@ -39,7 +39,7 @@ TXT
 
 make_asf() {
   local asf="$1"
-  mkdir -p "$asf/plugins"/{PlaytimeGoals,AccountManager,ControlCenter,ControlWeb/www} "$asf/config"
+  mkdir -p "$asf/plugins"/{PlaytimeGoals,AccountManager,ControlCenter,ControlWeb/www} "$asf/config" "$asf/www"
   printf '#!/bin/sh\n# old-core\nexit 0\n' > "$asf/ArchiSteamFarm"
   chmod 0755 "$asf/ArchiSteamFarm"
   printf 'old-ptg\n' > "$asf/plugins/PlaytimeGoals/PlaytimeGoals.dll"
@@ -47,6 +47,10 @@ make_asf() {
   printf 'old-control\n' > "$asf/plugins/ControlCenter/ControlCenter.dll"
   printf 'old-web\n' > "$asf/plugins/ControlWeb/ControlWeb.dll"
   printf 'old-asset\n' > "$asf/plugins/ControlWeb/www/index.html"
+  cat > "$asf/www/index.html" <<'HTML'
+<!doctype html>
+<html><head><title>Stock ASF-ui</title></head><body><div id="app"></div></body></html>
+HTML
   printf '{"safe":true}\n' > "$asf/config/AccountManager.defaults.json"
   cat > "$asf/config/ASF.json" <<'JSON'
 {
@@ -93,6 +97,10 @@ grep -q '"IPCPassword": "preserve-me"' "$ASF1/config/ASF.json"
 grep -q '"Nested": "preserve-me-too"' "$ASF1/config/ASF.json"
 [[ "$(stat -c '%a' "$ASF1/config/ASF.json")" == 600 ]]
 [[ "$(sha256sum "$ASF1/backups/control-suite/test-success/ASF.json" | awk '{print $1}')" == "$ASF1_ORIGINAL_SHA" ]]
+grep -Fq 'data-asf-control-suite-root="1"' "$ASF1/www/index.html"
+grep -Fq "window.location.replace('/Control/' + window.location.search + window.location.hash)" "$ASF1/www/index.html"
+grep -Fq '<title>Stock ASF-ui</title>' "$ASF1/backups/control-suite/test-success/www/index.html"
+! grep -Fq 'data-asf-control-suite-root="1"' "$ASF1/backups/control-suite/test-success/www/index.html"
 
 # Manual rollback restores runtime-managed ASF.json byte-for-byte, but keeps
 # AccountManager defaults unless explicitly requested.
@@ -102,6 +110,8 @@ grep -q '# old-core' "$ASF1/ArchiSteamFarm"
 grep -qx 'old-ptg' "$ASF1/plugins/PlaytimeGoals/PlaytimeGoals.dll"
 grep -q 'after_install' "$ASF1/config/AccountManager.defaults.json"
 [[ "$(sha256sum "$ASF1/config/ASF.json" | awk '{print $1}')" == "$ASF1_ORIGINAL_SHA" ]]
+grep -Fq '<title>Stock ASF-ui</title>' "$ASF1/www/index.html"
+! grep -Fq 'data-asf-control-suite-root="1"' "$ASF1/www/index.html"
 
 # Forced post-swap failure must automatically restore plugin bytes, defaults,
 # and the original ASF global config byte-for-byte.
@@ -117,6 +127,8 @@ grep -qx 'old-ptg' "$ASF2/plugins/PlaytimeGoals/PlaytimeGoals.dll"
 grep -qx 'old-account' "$ASF2/plugins/AccountManager/AccountManager.dll"
 grep -q '"safe":true' "$ASF2/config/AccountManager.defaults.json"
 [[ "$(sha256sum "$ASF2/config/ASF.json" | awk '{print $1}')" == "$ASF2_ORIGINAL_SHA" ]]
+grep -Fq '<title>Stock ASF-ui</title>' "$ASF2/www/index.html"
+! grep -Fq 'data-asf-control-suite-root="1"' "$ASF2/www/index.html"
 [[ ! -d "$ASF2/control-suite/installed" ]]
 
 # An installation with no pre-existing ASF.json creates the minimum headless
