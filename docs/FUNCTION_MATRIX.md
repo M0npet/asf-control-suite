@@ -34,7 +34,7 @@
 - Stock ASF-ui remains directly reachable for the complete native ASF surface; ControlWeb links per-account config/2FA/BGR plus Bots, Commands, Log, ASF config, Mass editor, Plugins, Releases and ASF-ui settings.
 - Per-account native Steam persona status is editable directly from ControlWeb, including Invisible.
 
-- Independent UI at `/Control/`; stock `/opt/asf/www` is not modified.
+- Control Suite is the default UI at `/`; `/Control/` remains its canonical mount. The phone installer transactionally patches only `/opt/asf/www/index.html` as the default entrypoint and backs it up for exact rollback.
 - Reuses the stock ASF-ui locale preference key `asf-ui:locale`; changing English/Ukrainian from ControlWeb updates the same preference.
 - Full Ukrainian (`uk-UA`) localization for ControlWeb with English fallback; no separate localization plugin.
 - Dashboard and multi-account workspace.
