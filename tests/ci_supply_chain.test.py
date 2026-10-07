@@ -45,6 +45,11 @@ require(
     and "steps.pins.outputs.dotnet_sdk_version" in workflow,
     "exact build inputs must come from canonical release pins",
 )
+require(
+    "scripts/phone/make-phone-candidate.sh" in workflow
+    and "asf-control-suite-artifacts" in workflow,
+    "exact build must retain deterministic phone candidate",
+)
 require("persist-credentials: false" in workflow, "checkout credentials must not persist")
 require(
     "python -m pip install --disable-pip-version-check -r requirements-ci.txt" in workflow,

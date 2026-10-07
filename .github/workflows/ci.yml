@@ -109,6 +109,12 @@ jobs:
             "$RUNNER_TEMP/asf-control-suite-build" \
             "$RUNNER_TEMP/asf-control-suite-artifacts"
 
+      - name: Build deterministic phone candidate
+        run: |
+          bash scripts/phone/make-phone-candidate.sh \
+            "$RUNNER_TEMP/asf-control-suite-artifacts" \
+            "$RUNNER_TEMP/asf-control-suite-artifacts"
+
       - name: Record Control Suite source revision
         run: printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/asf-control-suite-artifacts/CONTROL-SUITE-COMMIT.txt"
 
