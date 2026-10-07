@@ -1,0 +1,98 @@
+name: Publish ASF Control Suite v1.0.0
+
+on:
+  push:
+    branches:
+      - release/v1.0.0-publish
+    paths:
+      - .github/workflows/publish-v1.0.0.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: 15314163bfccd26207fe9c1e3a8504727fea2910
+      ARTIFACT_ID: "11501511908"
+      PHONE_SHA256: a73e46783e4327f5d6e98422da24f3625e5189ce4ed540faef0adb002cef4481
+      BUNDLE_SHA256: df4864040603460985c95dba90545ec197056c4335d591ac385088beece06e35
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Download verified CI artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/release"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > "$RUNNER_TEMP/release.zip"
+          unzip -q "$RUNNER_TEMP/release.zip" -d "$RUNNER_TEMP/release"
+
+      - name: Verify exact accepted candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/release"
+          test "$(tr -d '\r\n' < CONTROL-SUITE-COMMIT.txt)" = "$TARGET_SHA"
+          sha256sum -c SHA256SUMS
+          printf '%s  %s\n' "$PHONE_SHA256" "asf-control-suite-v1.0-dist.tar.gz" | sha256sum -c -
+          printf '%s  %s\n' "$BUNDLE_SHA256" "ASF-Control-Suite-v1.0.0.zip" | sha256sum -c -
+
+      - name: Write release notes
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          First stable release of ASF Control Suite.
+
+          This release is pinned to the exact commit and binary candidate that passed final live acceptance on the Mi Max 2.
+
+          ### Highlights
+
+          - Unified Control Suite web UI at `/` with `/Control/` kept as the canonical internal path.
+          - Native ASF account lifecycle and configuration controls, with stock ASF-ui still reachable for full upstream functionality.
+          - QR/password account onboarding and persistent native ASF session handling.
+          - PlaytimeGoals 0.5.2 integration with OWN/FAMILY/FREE/EXCLUDED library handling and second-precision finite goals.
+          - Transactional phone deployment with validation, backup, health verification and rollback.
+          - RAM-only IPC password handling in the browser.
+          - Ukrainian localization, responsive desktop/mobile UI and explicit error/retry states.
+
+          ### Final live acceptance
+
+          Confirmed on the Mi Max 2 deployment:
+
+          - 72-second scheduler target: PASS
+          - PlaytimeGoals cleanup: PASS
+          - Invisible persona persistence: PASS
+          - cold restart persistence/autologin: PASS
+          - Control Suite as the default root UI: PASS
+          - transactional install/backup/rollback path: PASS
+          - QR onboarding path: PASS
+
+          ### Exact provenance
+
+          - Control Suite commit: `15314163bfccd26207fe9c1e3a8504727fea2910`
+          - ArchiSteamFarm: `6.3.10.3` @ `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
+          - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
+          - PlaytimeGoals: `0.5.2.0` @ `afe080fb5dae505f3b4f7537b08782dda35a260b`
+          - .NET SDK: `10.0.400`
+          - Canonical bundle SHA-256: `df4864040603460985c95dba90545ec197056c4335d591ac385088beece06e35`
+          - Ready-to-install phone candidate SHA-256: `a73e46783e4327f5d6e98422da24f3625e5189ce4ed540faef0adb002cef4481`
+
+          `SHA256SUMS` and `CONTROL-SUITE-METADATA.json` are attached for verification. The Android/phone archive is the same deterministic candidate used for final field acceptance.
+
+          Standalone PlaytimeGoals release ownership remains separate; the complete Control Suite bundle contains the pinned integrated build.
+          EOF
+
+      - name: Publish v1.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v1.0.0 already exists"
+            exit 0
+          fi
+
+          cd "$RUNNER_TEMP/release"
+          gh release create v1.0.0             --repo "$GITHUB_REPOSITORY"             --target "$TARGET_SHA"             --title "ASF Control Suite v1.0.0"             --notes-file "$RUNNER_TEMP/release-notes.md"             ASF-Control-Suite-v1.0.0.zip             AccountManager-v1.0.0.zip             ControlCenter-v1.0.0.zip             ControlWeb-v1.0.0.zip             CONTROL-SUITE-METADATA.json             SHA256SUMS             asf-control-suite-v1.0-dist.tar.gz
