@@ -70,3 +70,23 @@ snapshot deletion, and absence of Boot dependencies.
 4. Fresh code and safety review, tests, and separate operator approval before
    any planned live maintenance. Do not remove the guarded rollback hard stop
    before those gates have passed.
+
+## Device launch stanza inventory (read-only, sanitized)
+
+A second on-device audit confirmed the boot file passes Bash syntax validation and
+reported the following **structure only**, without extracting configuration values:
+
+- Lines 5, 7, 10, 13: variable references in the setup prelude. Their roles and
+  whether they are used by the ASF stanza are **not yet established**.
+- Line 23: tmux session check; line 26: ASF tmux session creation.
+- Line 27: supervisor loop; line 28: `proot-distro login debian` with a
+  shell command; line 29: change working directory; line 30: ASF executable;
+  line 32: pause before another iteration.
+- Earlier safe inspection separately confirmed that lines 68–74 recreate the
+  HTTPS proxy tmux session. Whole-file Boot replay remains prohibited.
+
+The next safe step is a **read-only def-use analysis on the phone**: report only
+line numbers, coarse statement types and whether variables assigned in the
+setup prelude are referenced by the ASF stanza. Do not expose variable
+values, shell arguments, IP addresses, credentials, or script source. Do not
+provision the adapter until that dependency review is complete.
