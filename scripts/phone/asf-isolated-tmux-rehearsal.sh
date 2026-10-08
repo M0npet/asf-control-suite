@@ -32,14 +32,26 @@ done
 BASH_BIN="$(command -v bash)"
 [[ -x "$BASH_BIN" ]] || fail 'BASH_BINARY=INVALID' 17
 
-# Read only: snapshot exact session IDs from the DEFAULT tmux server.
+# Read only: capture exact session identities from the default tmux server.
+# list-sessions is session-native; display-message -t requires target-pane.
 for name in asf asf-proxy tailscale-watch; do
   timeout 5 tmux has-session -t "=$name" >/dev/null 2>&1 || fail 'LIVE_SESSIONS=NOT_READY' 18
 done
-id_asf="$(timeout 5 tmux display-message -p -t '=asf' '#{session_id}' 2>/dev/null)" || fail 'LIVE_ID=UNAVAILABLE' 19
-id_proxy="$(timeout 5 tmux display-message -p -t '=asf-proxy' '#{session_id}' 2>/dev/null)" || fail 'LIVE_ID=UNAVAILABLE' 19
-id_tail="$(timeout 5 tmux display-message -p -t '=tailscale-watch' '#{session_id}' 2>/dev/null)" || fail 'LIVE_ID=UNAVAILABLE' 19
-[[ -n "$id_asf" && -n "$id_proxy" && -n "$id_tail" ]] || fail 'LIVE_ID=UNAVAILABLE' 19
+snapshot_live_ids() {
+  local listing name sid extra asf_id='' proxy_id='' tail_id=''
+  listing="$(timeout 5 tmux list-sessions -F $'#{session_name}\t#{session_id}' 2>/dev/null)" || return 1
+  while IFS=$'\t' read -r name sid extra; do
+    [[ -z "$extra" && "$sid" =~ ^\$[0-9]+$ ]] || continue
+    case "$name" in
+      asf) [[ -z "$asf_id" ]] || return 1; asf_id="$sid" ;;
+      asf-proxy) [[ -z "$proxy_id" ]] || return 1; proxy_id="$sid" ;;
+      tailscale-watch) [[ -z "$tail_id" ]] || return 1; tail_id="$sid" ;;
+    esac
+  done <<< "$listing"
+  [[ -n "$asf_id" && -n "$proxy_id" && -n "$tail_id" ]] || return 1
+  printf '%s|%s|%s' "$asf_id" "$proxy_id" "$tail_id"
+}
+LIVE_BEFORE="$(snapshot_live_ids)" || fail 'LIVE_ID=UNAVAILABLE' 19
 
 WORKDIR=''
 SOCKET=''
@@ -95,12 +107,9 @@ done
 [[ "$worker_ready" == YES ]] || fail 'ISOLATED_WORKER=FAIL' 23
 echo 'ISOLATED_WORKER=PASS'
 
-# Recheck actual live server; compare identities in-memory only.
-new_asf="$(timeout 5 tmux display-message -p -t '=asf' '#{session_id}' 2>/dev/null)" || fail 'LIVE_SESSION_CHECK=FAIL' 24
-new_proxy="$(timeout 5 tmux display-message -p -t '=asf-proxy' '#{session_id}' 2>/dev/null)" || fail 'LIVE_SESSION_CHECK=FAIL' 24
-new_tail="$(timeout 5 tmux display-message -p -t '=tailscale-watch' '#{session_id}' 2>/dev/null)" || fail 'LIVE_SESSION_CHECK=FAIL' 24
-[[ "$id_asf" == "$new_asf" && "$id_proxy" == "$new_proxy" && "$id_tail" == "$new_tail" ]] \
-  || fail 'LIVE_SESSIONS=CHANGED' 25
+# Recheck live session IDs through the session-native API.
+LIVE_AFTER="$(snapshot_live_ids)" || fail 'LIVE_SESSION_CHECK=FAIL' 24
+[[ "$LIVE_BEFORE" == "$LIVE_AFTER" ]] || fail 'LIVE_SESSIONS=CHANGED' 25
 
 echo 'LIVE_SESSIONS=UNCHANGED'
 echo 'PROOT_EXECUTION=NOT_ATTEMPTED'
