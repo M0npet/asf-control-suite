@@ -1,0 +1,28 @@
+# Issue #36 — guarded rollback v3 (experimental)
+
+This operator-only script is not part of the accepted v1.1.0 release archive.
+Do not deploy to the phone during development or run `--run` without a separate live-acceptance decision.
+
+## Incident
+
+The earlier v1 operator tool replaced the running `asf` tmux session with a HOLD and then incorrectly compared the tmux-formatted start command to `sleep 3600`. The guard validation failed and left the ASF process offline. Manual recovery via Termux:Boot eventually succeeded; the official phone verification passed, and the accepted v1.1.0 runtime remained unmodified.
+
+## v3 changes
+
+- HOLD ownership uses a tmux session option rather than comparing formatted start commands.
+- Never replays the original supervisor command. Recovery uses the native Termux:Boot script and checks the session and HTTP separately.
+- Records only SHA-256 fingerprints of the original startup command and working directory in Termux private cache.
+- Verifies backup files, checksum manifest and local release artifact before any service interruption.
+- On ambiguous state or a failure after mutation has started, fails closed with an explicit operator-required marker.
+- `--run` requires `ASFC_LIVE_CONFIRMATION=I_ACCEPT_ASF_DOWNTIME` as an additional barrier, **not** proof of safety.
+- Preserve the release candidate's SHA and provenance; do not rebuild/release until exact-candidate live acceptance is complete.
+
+## Offline verification
+
+`python3 tests/phone_guarded_rollback.test.py`
+
+Mocks run entirely in local temporary directories, never using a live device. They test precheck, guard ownership, Boot non-creation, failed transfer, failed restore, and normal mocked recovery. Real Termux/Android behavior is **not** validated by these tests.
+
+## Remaining release gates
+
+Independent operator review of actual Termux:Boot implementation without disclosing secrets, isolated Android/Termux rehearsal, review and approval for any live rollback, and full v1.1 checklist. Keep GitHub Actions disabled/skipped while quota is exhausted.
