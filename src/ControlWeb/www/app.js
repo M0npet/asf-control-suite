@@ -1148,7 +1148,42 @@
     const nativeBotSelect = $('nativeBotSelect');
     if (nativeBotSelect) nativeBotSelect.addEventListener('change', async () => { state.selectedBot = nativeBotSelect.value; await render(); });
 
-    $('refreshNativeActivity')?.addEventListener('click', () => render());
+    $('refreshNativeActivity')?.addEventListener('click', async () => {
+      const button = $('refreshNativeActivity');
+      button.disabled = true;
+      try {
+        await loadAccounts();
+        const botName = state.selectedBot || state.accounts[0]?.BotName || '';
+        const account = state.accounts.find((item) => item.BotName === botName);
+        const cardState = !account ? 'unknown' : account.Farming === true ? 'active' : account.Farming === false ? 'inactive' : 'unknown';
+        let ptg = null;
+        if (botName) {
+          try {
+            ptg = await api(`/Api/PlaytimeGoals/${encodeURIComponent(botName)}`);
+          } catch (error) {
+            if (!state.password) return;
+          }
+        }
+        const valid = ptg && Array.isArray(ptg.CurrentBatch) && Array.isArray(ptg.Games);
+        const batch = valid ? new Set(ptg.CurrentBatch.map(Number)) : new Set();
+        const activeGames = valid ? ptg.Games.filter((game) => batch.has(Number(game.AppId)) && ['idling','idling-unlimited'].includes(game.State)) : [];
+        const ptgState = !valid ? 'unknown' : ptg.Enabled === false ? 'disabled' : activeGames.length ? 'active' : ptg.FarmerPaused ? 'paused' : ptg.Games.some((game) => game.State === 'queued') ? 'queued' : 'inactive';
+        const overall = cardState === 'active' || ptgState === 'active' ? 'active' : cardState === 'unknown' || ptgState === 'unknown' ? 'unknown' : 'inactive';
+        const labels = {active:'Active',inactive:'Inactive',queued:'Queued',paused:'Paused',disabled:'Disabled',unknown:'Unknown'};
+        for (const [id, value, name] of [['nativeCardFarming',cardState,'CardsFarmer'],['nativePlaytimeState',ptgState,'PlaytimeGoals'],['nativeOverallActivity',overall,'Overall activity']]) {
+          const node = $(id);
+          if (!node) continue;
+          node.dataset.state = value;
+          node.textContent = `${name}: ${labels[value] || 'Unknown'}`;
+        }
+        const list = $('nativeActiveGames');
+        if (list) list.innerHTML = activeGames.length ? activeGames.map((game) => `<li>${escapeHtml(game.Name || 'Game')} (AppID ${escapeHtml(game.AppId)})</li>`).join('') : '<li>No confirmed active PlaytimeGoals games</li>';
+      } catch (error) {
+        toast('Activity refresh failed', error.message, 'bad', 7000);
+      } finally {
+        button.disabled = false;
+      }
+    });
 
     $('saveNativeBotConfig')?.addEventListener('click', async () => {
       const button = $('saveNativeBotConfig');
