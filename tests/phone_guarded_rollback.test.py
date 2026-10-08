@@ -166,6 +166,40 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertEqual(self.state()['kills'], 0)
         self.assertTrue(self.state()['asf-proxy']['exists'])
 
+    def test_invalid_backup_id_rejected_before_contacting_adb(self):
+        # These override values must not cross the local/remote shell boundary.
+        adb_marker = self.home / 'adb-was-called'
+        self._write(self.fakebin / 'adb',
+                    '#!/bin/sh\nprintf called >> "$MOCK_ADB_MARKER"\nexit 99\n')
+        values = [
+            '../backup',
+            '20261008T135623Z-1/../2',
+            '20261008T135623Z-1;touch /tmp/unsafe',
+            '20261008T135623Z-1$(true)',
+            "20261008T135623Z-1'quoted'",
+            '20261008T0000Z-23',
+            '20261008T135623Z-' + '9' * 65,
+        ]
+        for bad in values:
+            with self.subTest(value=repr(bad)):
+                adb_marker.unlink(missing_ok=True)
+                env = dict(self.env, ASFC_BACKUP_ID=bad,
+                           MOCK_ADB_MARKER=str(adb_marker))
+                p = subprocess.run(['bash', str(SOURCE), '--precheck'],
+                                   env=env, text=True, capture_output=True, timeout=5)
+                self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+                self.assertIn('INVALID_BACKUP_ID', p.stderr)
+                self.assertFalse(adb_marker.exists())
+
+    def test_valid_backup_id_passes_input_validation(self):
+        self._write(self.fakebin / 'adb', '#!/bin/sh\nexit 99\n')
+        env = dict(self.env, ASFC_BACKUP_ID='20261008T135623Z-6531')
+        p = subprocess.run(['bash', str(SOURCE), '--precheck'],
+                           env=env, text=True, capture_output=True, timeout=5)
+        self.assertNotIn('INVALID_BACKUP_ID', p.stderr)
+        # Deliberately missing artifact prevents ADB access in this isolated test.
+        self.assertIn('MISSING_CANDIDATE_OR_CORE', p.stdout)
+
     def test_precheck_does_not_modify_sessions(self):
         p=self.run_phone('--precheck')
         self.assertEqual(p.returncode,0,p.stdout+'\n'+p.stderr)
