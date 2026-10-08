@@ -14,6 +14,11 @@ fi
 ROOT="${ASFC_WORK_ROOT:-$HOME/Downloads/asf-v11-6FU4n0}"
 SOURCE="$ROOT/source"
 BACKUP_ID="${ASFC_BACKUP_ID:-20261008T135623Z-6531}"
+# Backup ID enters remote shell context: validate strictly before accessing ADB.
+if [[ ! "$BACKUP_ID" =~ ^[0-9]{8}T[0-9]{6}Z-[0-9]+$ || ${#BACKUP_ID} -gt 64 ]]; then
+  echo 'INVALID_BACKUP_ID; NOT STARTED' >&2
+  exit 2
+fi
 EXPECTED_ARCHIVE_SHA="${ASFC_EXPECTED_ARCHIVE_SHA:-1decc710627642483f437ac839390ad9052e661d82b6ba4f9973d7005f71c89c}"
 EXPECTED_COMMIT="${ASFC_EXPECTED_COMMIT:-6758b79ec17d17975e44aae3891de6a0f084b47e}"
 ARCHIVE="$ROOT/artifact/asf-control-suite-v1.1.0-dist.tar.gz"
