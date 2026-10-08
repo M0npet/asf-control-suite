@@ -27,3 +27,58 @@ The GitHub branch remains Draft PR #38; production rollback `--run` remains disa
 ## 2026-10-08 device finding and fix
 
 An on-phone attempt returned `LIVE_ID=UNAVAILABLE` before creating the test socket. The script was querying `display-message -t`, which expects a pane target. The revised read-only snapshot uses `list-sessions -F` with exact session names and internal IDs. IDs, account names, and addresses are never printed. Run a new read-only device precheck before another isolated test. The live rollback remains disabled.
+
+## Device acceptance: isolated tmux V3
+
+On the actual Mi Max 2, V1 and V2 ended with `LIVE_ID=UNAVAILABLE`
+*before test server creation*. The root cause was session output framing:
+a tab-separated `tmux list-sessions` snapshot did not parse on this
+Termux installation. A privacy-preserving device check returned exactly
+three named sessions, separator present and IDs of the `$number` form
+using literal `|` as the separator. The V3 parser introduced in
+commit `3f76156ba5b63838bca167e43a95192732e06021` uses that
+format, refuses missing/duplicate/invalid required sessions and retains
+IDs only in memory.
+
+The user independently performed V3 snapshot verification:
+`ASF_ID=PASS`, `PROXY_ID=PASS`, `TAILSCALE_ID=PASS`,
+`INVALID_ROWS=0`, `SNAPSHOT_V3=PASS`, `READ_ONLY=PASS`.
+
+The subsequent **live Android test of the isolated synthetic tmux worker**
+returned:
+
+```text
+SCRIPT_SYNTAX=PASS
+ISOLATED_TMUX_CREATE=PASS
+ISOLATED_WORKER=PASS
+LIVE_SESSIONS=UNCHANGED
+PROOT_EXECUTION=NOT_ATTEMPTED
+CANDIDATE_EXECUTION=NOT_ATTEMPTED
+ISOLATED_TMUX_CLEANUP=PASS
+SYNTHETIC_REHEARSAL=PASS
+REMOTE_SCRIPT_EXIT=PASS
+```
+
+**Accepted limited gate:** an isolated temporary tmux server and a
+harmless Bash worker succeeded on the actual phone while all three
+production tmux session IDs remained unchanged; private server cleanup
+completed. This does **not** prove the isolated adapter can run real
+ASF or Debian safely.
+
+## Next gate: real PRoot isolation policy
+
+According to the Termux proot-distro documentation, `--isolated`
+changes host bind mounts. It **does not clone the underlying distro
+root filesystem**. A second `proot-distro login debian` session on the
+same installed rootfs could access or modify live files even when the
+login uses `--isolated`. Therefore do **not** execute PRoot against
+the currently installed production Debian merely for a rehearsal.
+
+Before any new test, perform a privacy-preserving read-only inventory
+of available `proot`/ `proot-distro` binaries, help-advertised flags,
+and space required for a separate disposable rootfs. Do not print
+commands, distro paths, identities or credentials. Independently
+design, build and review a synthetic disposable rootfs (or prove that
+its equivalent is isolated) before a separate PRoot execution test.
+No production rootfs, adapter candidate, ASF, proxy, Tailscale or
+rollback is to be invoked during this phase.
