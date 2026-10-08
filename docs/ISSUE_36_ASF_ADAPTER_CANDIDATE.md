@@ -23,3 +23,32 @@ No adapter is provisioned by this tool. The live rollback `--run` remains uncond
 ## Offline testing
 
 Run `python3 tests/prepare_asf_only_adapter.test.py` against mocked Boot text and filesystem. Tests prove that the **preparer** does not execute Boot code or change sessions. No Android, ADB, Termux or live credentials are required. These are *not* live acceptance tests.
+
+
+## Field review: private candidate static dependencies
+
+The private candidate on Mi Max 2 was produced from the audited original Boot
+stanza (lines 26–33) **without execution**. The device returned:
+`CANDIDATE_FILE=PASS`, `FILE_PERMISSIONS=PASS` (0600),
+`FILE_OWNER=PASS`, `CANDIDATE_SYNTAX=PASS`,
+`CANDIDATE_HASH_READABLE=PASS`, `MATCHES_ORIGINAL_BOOT=PASS`,
+`ACTIVE_ADAPTER=NOT_INSTALLED`, `VERIFICATION_READ_ONLY=PASS`.
+
+Further device-local read-only lexical review returned:
+`ENV_VARIABLE_REFERENCES=NO`, `COMMAND_SUBSTITUTION=NO`,
+`INDIRECT_EXPANSION=NO`, `SOURCED_SCRIPTS=NO`,
+`DYNAMIC_EVAL=NO`, `AUXILIARY_REFERENCES=NO`,
+`DESTRUCTIVE_TMUX=NO`, `NESTED_BASH=YES`,
+`SINGLE_TMUX_CREATE=PASS`, `CANDIDATE_SYNTAX=PASS`,
+`ACTIVE_ADAPTER=NOT_INSTALLED` and
+`DEPENDENCY_REVIEW_READ_ONLY=PASS`.
+
+This is **lexical evidence only**, not a Bash AST review or an
+execution-safety guarantee. In particular, nested shell quoting, inherited
+Termux environment, PRoot options and hidden runtime side effects have not
+been proven safe. Do not copy candidate source outside the private device,
+do not install the adapter, and do not execute it. Keep live rollback blocked.
+
+Next check: classify the exact tmux session creation form and nested shell
+invocation using fixed yes/no labels only, without printing raw script,
+arguments, credentials, account names or addresses.
