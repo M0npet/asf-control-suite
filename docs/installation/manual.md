@@ -18,7 +18,7 @@ The current release requires:
 
 - ArchiSteamFarm 6.3.10.3
 - ASF-ui at the pinned revision
-- PlaytimeGoals 0.5.2.0
+- PlaytimeGoals 0.5.3.0
 - .NET SDK 10.0.400
 
 The build intentionally fails if the selected SDK or source revisions do not match the canonical pins.
@@ -82,7 +82,7 @@ A successful canonical build produces:
     artifacts/AccountManager-v1.1.0.zip
     artifacts/ControlCenter-v1.1.0.zip
     artifacts/ControlWeb-v1.1.0.zip
-    artifacts/PlaytimeGoals-v0.5.2.zip
+    artifacts/PlaytimeGoals-v0.5.3.zip
     artifacts/CONTROL-SUITE-METADATA.json
     artifacts/SHA256SUMS
 
@@ -146,7 +146,7 @@ The same installation rule applies to the individual archives:
     AccountManager-v1.1.0.zip
     ControlCenter-v1.1.0.zip
     ControlWeb-v1.1.0.zip
-    PlaytimeGoals-v0.5.2.zip
+    PlaytimeGoals-v0.5.3.zip
 
 For each archive:
 
