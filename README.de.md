@@ -38,8 +38,8 @@ Die kanonische Quelle für Release-Versionen und Revisionen ist [`release/pins.e
 | ArchiSteamFarm | **6.3.10.3** |
 | ASF Commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
 | ASF-ui Commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
-| PlaytimeGoals | **0.5.2.0** |
-| PlaytimeGoals Commit | `afe080fb5dae505f3b4f7537b08782dda35a260b` |
+| PlaytimeGoals | **0.5.3.0** |
+| PlaytimeGoals Commit | `f7c1bfe74c9203fe089830f1646a3d2ba54150de` |
 | .NET SDK | **10.0.400** |
 
 ---
@@ -61,7 +61,7 @@ Die kanonische Quelle für Release-Versionen und Revisionen ist [`release/pins.e
 - Steam-Family-Unterstützung
 - automatische FREE-Lizenz-Verarbeitung
 - Family-View-Wiederherstellung
-- sekundengenaue lokale Deadlines für begrenzte Ziele in PlaytimeGoals 0.5.2
+- sekundengenaue lokale Deadlines für begrenzte Ziele in PlaytimeGoals 0.5.3
 
 ### ControlWeb
 
