@@ -38,8 +38,8 @@ ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс
 | ArchiSteamFarm | **6.3.10.3** |
 | ASF commit | `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad` |
 | ASF-ui commit | `2b36125533f41e624b2fdcdec44f37ad60c7daaa` |
-| PlaytimeGoals | **0.5.2.0** |
-| PlaytimeGoals commit | `afe080fb5dae505f3b4f7537b08782dda35a260b` |
+| PlaytimeGoals | **0.5.3.0** |
+| PlaytimeGoals commit | `f7c1bfe74c9203fe089830f1646a3d2ba54150de` |
 | .NET SDK | **10.0.400** |
 
 ---
@@ -61,7 +61,7 @@ ASF Control Suite додає до ArchiSteamFarm єдиний інтерфейс
 - підтримка Steam Family
 - автоматична робота з FREE-ліцензіями
 - відновлення Family View
-- секундна точність локальних дедлайнів для обмежених цілей у PlaytimeGoals 0.5.2
+- секундна точність локальних дедлайнів для обмежених цілей у PlaytimeGoals 0.5.3
 
 ### ControlWeb
 
