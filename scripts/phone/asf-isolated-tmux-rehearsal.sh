@@ -32,16 +32,22 @@ done
 BASH_BIN="$(command -v bash)"
 [[ -x "$BASH_BIN" ]] || fail 'BASH_BINARY=INVALID' 17
 
-# Read only: capture exact session identities from the default tmux server.
-# list-sessions is session-native; display-message -t requires target-pane.
+# Snapshot session IDs via the target-session API. display-message -t expects
+# a target-pane and may fail despite tmux has-session finding a valid session.
+# Keep all session IDs in memory; never print other session names or metadata.
 for name in asf asf-proxy tailscale-watch; do
   timeout 5 tmux has-session -t "=$name" >/dev/null 2>&1 || fail 'LIVE_SESSIONS=NOT_READY' 18
 done
 snapshot_live_ids() {
-  local listing name sid extra asf_id='' proxy_id='' tail_id=''
-  listing="$(timeout 5 tmux list-sessions -F $'#{session_name}\t#{session_id}' 2>/dev/null)" || return 1
-  while IFS=$'\t' read -r name sid extra; do
-    [[ -z "$extra" && "$sid" =~ ^\$[0-9]+$ ]] || continue
+  local listing row name sid asf_id='' proxy_id='' tail_id=''
+  # Literal, non-whitespace separator: Android Termux successfully returns
+  # three sessions with this format. Avoid tab trimming/normalization.
+  listing="$(timeout 5 tmux list-sessions -F '#{session_name}|#{session_id}' 2>/dev/null)" || return 1
+  while IFS= read -r row; do
+    [[ "$row" == *'|'* ]] || continue
+    name="${row%%|*}"
+    sid="${row#*|}"
+    [[ "$sid" =~ ^\$[0-9]+$ ]] || continue
     case "$name" in
       asf) [[ -z "$asf_id" ]] || return 1; asf_id="$sid" ;;
       asf-proxy) [[ -z "$proxy_id" ]] || return 1; proxy_id="$sid" ;;
@@ -107,7 +113,7 @@ done
 [[ "$worker_ready" == YES ]] || fail 'ISOLATED_WORKER=FAIL' 23
 echo 'ISOLATED_WORKER=PASS'
 
-# Recheck live session IDs through the session-native API.
+# Compare identities via the session API; do not require pane resolution.
 LIVE_AFTER="$(snapshot_live_ids)" || fail 'LIVE_SESSION_CHECK=FAIL' 24
 [[ "$LIVE_BEFORE" == "$LIVE_AFTER" ]] || fail 'LIVE_SESSIONS=CHANGED' 25
 

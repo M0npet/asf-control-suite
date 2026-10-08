@@ -39,20 +39,20 @@ case "${1:-}" in
   display-message) exit 66 ;; # Previous implementation falsely failed here.
   list-sessions)
     [[ "${2:-}" == '-F' ]] || exit 61
-    [[ "${3:-}" == $'#{session_name}\t#{session_id}' ]] || exit 65
+    [[ "${3:-}" == '#{session_name}|#{session_id}' ]] || exit 65
     calls=0
     [[ -e "$MOCK_CALLS" ]] && read -r calls < "$MOCK_CALLS"
     calls=$((calls+1))
     printf '%s\n' "$calls" > "$MOCK_CALLS"
     [[ "${MOCK_LIST_FAIL:-0}" == 0 ]] || exit 63
     if [[ "${MOCK_MALFORMED:-0}" == 1 ]]; then
-      printf 'asf\tbad\nasf-proxy\t$2\ntailscale-watch\t$3\n'
+      printf 'asf|bad\nasf-proxy|$2\ntailscale-watch|$3\n'
     elif [[ "${MOCK_DUPLICATE:-0}" == 1 ]]; then
-      printf 'asf\t$1\nasf\t$8\nasf-proxy\t$2\ntailscale-watch\t$3\n'
+      printf 'asf|$1\nasf|$8\nasf-proxy|$2\ntailscale-watch|$3\n'
     elif [[ "${MOCK_CHANGED:-0}" == 1 && "$calls" -ge 2 ]]; then
-      printf 'asf\t$1\nasf-proxy\t$99\ntailscale-watch\t$3\n'
+      printf 'asf|$1\nasf-proxy|$99\ntailscale-watch|$3\n'
     else
-      printf 'unrelated\t$9\nasf-proxy\t$2\ntailscale-watch\t$3\nasf\t$1\n'
+      printf 'unrelated|$9\nasf-proxy|$2\ntailscale-watch|$3\nasf|$1\n'
     fi ;;
   *) exit 64 ;;
 esac
@@ -100,6 +100,14 @@ class RehearsalTests(unittest.TestCase):
         self.assertIn('list-sessions',events)
         self.assertNotIn('display-message',events)
         self.assertTrue(all(not line.startswith('kill-server') for line in events.splitlines()))
+        self.assert_no_workspace()
+
+    def test_pipe_format_is_required_not_tab(self):
+        p=self.run_it()
+        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        events=self.events.read_text()
+        self.assertIn('#{session_name}|#{session_id}',events)
+        self.assertNotIn('\t#{session_id}',events)
         self.assert_no_workspace()
 
     def test_list_sessions_unavailable_refuses_before_create(self):
