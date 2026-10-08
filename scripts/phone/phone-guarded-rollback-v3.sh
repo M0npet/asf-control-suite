@@ -11,6 +11,13 @@ if [[ "$MODE" == '--run' && "${ASFC_LIVE_CONFIRMATION:-}" != 'I_ACCEPT_ASF_DOWNT
   echo 'LIVE_CONFIRMATION_REQUIRED; NOT STARTED'
   exit 2
 fi
+# SAFETY GATE: the actual Mi Max 2 Termux:Boot script also restarts
+# asf-proxy. Never call it during ASF-only rollback until the restart
+# mechanism is isolated, reviewed and verified. No bypass is provided.
+if [[ "$MODE" == '--run' ]]; then
+  echo 'ASF_ONLY_RECOVERY_REQUIRED; LIVE_RUN_DISABLED; NOT STARTED' >&2
+  exit 40
+fi
 ROOT="${ASFC_WORK_ROOT:-$HOME/Downloads/asf-v11-6FU4n0}"
 SOURCE="$ROOT/source"
 BACKUP_ID="${ASFC_BACKUP_ID:-20261008T135623Z-6531}"

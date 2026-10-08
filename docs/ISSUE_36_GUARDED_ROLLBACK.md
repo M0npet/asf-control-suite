@@ -23,6 +23,21 @@ The earlier v1 operator tool replaced the running `asf` tmux session with a HOLD
 
 Mocks run entirely in local temporary directories, never using a live device. They test precheck, exact tmux session naming, signal interruption before and during mutation, guard ownership, Boot non-creation, failed transfer, failed restore, and normal mocked recovery. Real Termux/Android behavior is **not** validated by these tests.
 
+## Verified Termux:Boot coupling — live-blocked
+
+Sanitized, read-only review of the **actual Mi Max 2** boot script found three tmux service blocks:
+- Lines 23–26: conditional creation of `asf`.
+- Lines 42–45: conditional creation of `tailscale-watch`.
+- Lines 68–74: the `asf-proxy` block checks/terminates the proxy session and creates it again.
+
+Therefore the existing `boot_start_and_wait()` currently invokes a multi-service
+launcher and can interrupt HTTPS/Tailscale access while trying to restore ASF.
+A successful exit from the Boot script also does not guarantee ASF process health.
+Until a **separate ASF-only launcher** is designed and verified, the top-level
+`--run` mode is **unconditionally disabled before any ADB invocation** with
+`ASF_ONLY_RECOVERY_REQUIRED` (exit 40). No environment-variable bypass exists.
+The mocked rollback-body tests remain useful, but do not authorize execution.
+
 ## Remaining release gates
 
 Independent operator review of actual Termux:Boot implementation without disclosing secrets, isolated Android/Termux rehearsal, review and approval for any live rollback, and full v1.1 checklist. Keep GitHub Actions disabled/skipped while quota is exhausted.

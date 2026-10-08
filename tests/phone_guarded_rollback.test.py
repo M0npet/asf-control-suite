@@ -305,6 +305,16 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         marker=self.home/'.cache'/'asf-control-suite'/('rollback-phase-'+self.backup)
         self.assertTrue(marker.exists())
 
+    def test_live_run_blocked_until_asf_only_recovery_is_verified(self):
+        # Full Termux:Boot script restarts the HTTPS proxy: never allow real --run
+        # until ASF-only recovery is implemented and separately accepted.
+        env = dict(self.env, ASFC_LIVE_CONFIRMATION='I_ACCEPT_ASF_DOWNTIME')
+        p = subprocess.run(['bash', str(SOURCE), '--run'], env=env,
+                           text=True, capture_output=True, timeout=3)
+        self.assertEqual(p.returncode, 40, p.stdout + p.stderr)
+        self.assertIn('ASF_ONLY_RECOVERY_REQUIRED', p.stderr)
+        self.assertNotIn('VERIFIED_SOURCE_AND_CANDIDATE', p.stdout)
+
     def test_run_requires_explicit_live_confirmation_before_adb(self):
         source=SOURCE
         env=dict(os.environ, ASFC_LIVE_CONFIRMATION='', PATH=self.env['PATH'])
