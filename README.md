@@ -106,7 +106,7 @@ The canonical source of truth is [`release/pins.env`](release/pins.env).
 | ASF Control Suite | **1.1.0 candidate** |
 | Control modules | **1.1.0.0** |
 | ArchiSteamFarm | **6.3.10.3** |
-| PlaytimeGoals | **0.5.2.0** |
+| PlaytimeGoals | **0.5.3.0** |
 | .NET SDK | **10.0.400** |
 
 Pinned revisions:
@@ -114,7 +114,7 @@ Pinned revisions:
 - ASF: `27bd1d5dbdc8c4897eaaed0e3246d10ffe18b0ad`
 - ASF compatibility patch SHA-256: `42026758d985ea54b635bc42b72b5f715369b01e9d19bbed61d576cd57020fcf`
 - ASF-ui: `2b36125533f41e624b2fdcdec44f37ad60c7daaa`
-- PlaytimeGoals: `afe080fb5dae505f3b4f7537b08782dda35a260b`
+- PlaytimeGoals: `f7c1bfe74c9203fe089830f1646a3d2ba54150de`
 
 ## Release policy
 
@@ -196,4 +196,4 @@ ASF-native APIs · explicit security boundaries · reproducible releases
 
 Control Suite keeps the complete stock ASF-ui reachable for native bot configuration, commands, logs, mass editing, plugin/release management and other upstream ASF functions. Common settings such as Steam persona status (including Invisible) are also exposed directly in the account workspace.
 
-PlaytimeGoals 0.5.2 uses second-precision local deadlines for finite targets while retaining Steam's minute-granularity historical playtime as the authoritative starting baseline.
+PlaytimeGoals 0.5.3 uses second-precision local deadlines for finite targets while retaining Steam's minute-granularity historical playtime as the authoritative starting baseline.
