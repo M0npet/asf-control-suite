@@ -34,6 +34,7 @@ node tests/control_core.test.js
 "$PYTHON" tests/ui_integration.py
 bash tests/phone_transaction.test.sh
 "$PYTHON" -S tests/asf_only_launcher.test.py
+"$PYTHON" tests/prepare_asf_only_adapter.test.py
 "$PYTHON" tests/phone_guarded_rollback.test.py
 bash tests/phone_candidate.test.sh
 bash tests/phone_install_wrapper.test.sh
