@@ -14,6 +14,7 @@ The `main` branch now targets **v1.1.0**. This candidate is not a stable release
 - Toast notifications no longer intercept pointer input for underlying controls; only the toast close button is interactive.
 - Pinned deployment policy is enforced inside the native workspace: GlobalConfig saves keep ASF auto-update disabled, while generic `UPDATE`, `RESTART` and `EXIT` commands are blocked so process/update actions cannot bypass dedicated safety controls.
 - CI locks these boundaries with browser integration, static contracts, exact pinned compilation and CodeQL.
+- Field testing found and fixed long finite PlaytimeGoals deadlines exceeding `System.Threading.Timer`'s runtime due-time limit. PlaytimeGoals 0.5.3 caps each timer wake-up to a supported interval while the existing heartbeat keeps recomputing the true deadline, preventing recurring heartbeat exceptions without sacrificing second-precision completion near the target.
 
 ## Release boundary
 
