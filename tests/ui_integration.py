@@ -49,7 +49,8 @@ mock=r'''(() => {
   bans:['203.0.113.5'],
   bgr:{main:{UsedKeys:{},UnusedKeys:{}}},
   commands:[],confirmations:{main:[{Type:2,s_CreatorID:'42',s_ID:'7'}]},authenticatorOps:[],bgrReads:0,
-  licenseOps:[],redeemOps:[],inventoryReads:0,pointsOps:[]
+  licenseOps:[],redeemOps:[],inventoryReads:0,pointsOps:[],
+  ptgUnavailable:false,ptgSnapshot:null
  };
  const env=(Result=null,Success=true,Message=null)=>({Success,Message,Result});
  const resp=(p,s=200)=>({ok:s>=200&&s<300,status:s,statusText:s===200?'OK':'ERR',json:async()=>p});
@@ -96,7 +97,7 @@ mock=r'''(() => {
   let authenticatorPath=path.match(/^\/Api\/Bot\/([^/]+)\/TwoFactorAuthentication$/);
   if(authenticatorPath){const bot=decodeURIComponent(authenticatorPath[1]);if(method==='POST'){window.__m.authenticatorOps.push(['import',bot,body]);return resp(env({[bot]:env(null)}));}if(method==='DELETE'){window.__m.authenticatorOps.push(['delete',bot]);return resp(env({[bot]:env(null)}));}}
   let m=path.match(/^\/Api\/PlaytimeGoals\/([^/]+)(?:\/(Library|Parental))?$/);
-  if(method==='GET'&&m){let bot=decodeURIComponent(m[1]); if(!m[2])return resp(env(ptg(bot))); if(m[2]==='Library'){window.__m.libraryReads++;return resp(env({FamilyMemberCount:4,Games:lib}));} return resp(env({Available:true,Enabled:true,BaseListId:1,BaseEntryCount:2,CustomEntryCount:1,Apps:[{AppId:10,BaseAllowed:true,CustomAllowed:null,EffectiveAllowed:true},{AppId:30,BaseAllowed:false,CustomAllowed:true,EffectiveAllowed:true}]}));}
+  if(method==='GET'&&m){let bot=decodeURIComponent(m[1]); if(!m[2]){if(window.__m.ptgUnavailable)return resp(env(null,false,'unavailable'),503);return resp(env(window.__m.ptgSnapshot??ptg(bot)));} if(m[2]==='Library'){window.__m.libraryReads++;return resp(env({FamilyMemberCount:4,Games:lib}));} return resp(env({Available:true,Enabled:true,BaseListId:1,BaseEntryCount:2,CustomEntryCount:1,Apps:[{AppId:10,BaseAllowed:true,CustomAllowed:null,EffectiveAllowed:true},{AppId:30,BaseAllowed:false,CustomAllowed:true,EffectiveAllowed:true}]}));}
   m=path.match(/^\/Api\/Bot\/([^/]+)(?:\/(Start|Stop|Pause|Resume|Rename|Input))?$/);
   if(m){
    let bot=decodeURIComponent(m[1]),act=m[2]||null;
@@ -242,6 +243,65 @@ with sync_playwright() as pw:
         print('NATIVE COMMAND DIAGNOSTIC', native_command_output, page.evaluate('window.__m.commands'))
     assert native_command_output == 'OK status'
     assert page.evaluate('window.__m.commands.at(-1)') == 'status'
+
+    # CardsFarmer being idle must not hide live PlaytimeGoals game idling.
+    page.evaluate("""() => { window.__m.ptgSnapshot = {
+      Bot:'main', Enabled:true, Connected:true, Farming:false, FarmerPaused:false,
+      PlayingPossible:true, RecoveryReady:true, CurrentBatch:[10],
+      Games:[{AppId:10, Name:'Owned Game', State:'idling'}]
+    }; }""")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativePlaytimeState')?.dataset.state === 'active'")
+    assert page.locator('#nativeCardFarming').get_attribute('data-state') == 'inactive'
+    assert page.locator('#nativeOverallActivity').get_attribute('data-state') == 'active'
+    assert 'Owned Game' in page.locator('#nativeActiveGames').inner_text()
+    # Refresh must re-read CardsFarmer state and preserve unrelated unsaved edits.
+    original_editor = page.locator('#nativeBotConfig').input_value()
+    page.fill('#nativeBotConfig','UNSAVED DRAFT')
+    page.evaluate("window.__m.accounts[0].Farming = true")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativeCardFarming')?.dataset.state === 'active'")
+    assert page.locator('#nativeBotConfig').input_value() == 'UNSAVED DRAFT'
+    assert page.locator('#nativeOverallActivity').get_attribute('data-state') == 'active'
+    page.evaluate("window.__m.accounts[0].Farming = false")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativeCardFarming')?.dataset.state === 'inactive'")
+    page.fill('#nativeBotConfig',original_editor)
+    page.fill('#nativeCommand','status')
+    page.click('#nativeCommandForm button[type="submit"]')
+    page.wait_for_timeout(120)
+    assert page.locator('#nativeCommandOutput').input_value() == 'OK status'
+
+    # Both inactive: no overall activity.
+    page.evaluate("""() => { window.__m.ptgSnapshot = {
+      Bot:'main', Enabled:true, Connected:true, Farming:false, FarmerPaused:false,
+      PlayingPossible:true, RecoveryReady:true, CurrentBatch:[],
+      Games:[{AppId:10, Name:'Owned Game', State:'queued'}]
+    }; }""")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativePlaytimeState')?.dataset.state === 'queued'")
+    assert page.locator('#nativeOverallActivity').get_attribute('data-state') == 'inactive'
+
+    # Missing plugin endpoint is unknown, not inactive.
+    page.evaluate("window.__m.ptgUnavailable = true")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativePlaytimeState')?.dataset.state === 'unknown'")
+    assert page.locator('#nativeOverallActivity').get_attribute('data-state') == 'unknown'
+    # Untrusted game titles must be escaped, not interpreted as HTML.
+    page.evaluate("""() => {
+      window.__m.ptgUnavailable = false;
+      window.__m.ptgSnapshot = {
+        Bot:'main',Enabled:true,Connected:true,Farming:false,FarmerPaused:false,
+        PlayingPossible:true,RecoveryReady:true,CurrentBatch:[10],
+        Games:[{AppId:10,Name:'<img src=x onerror=alert(1)>',State:'idling'}]
+      };
+    }""")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativePlaytimeState')?.dataset.state === 'active'")
+    assert page.locator('#nativeActiveGames img').count() == 0
+    assert '<img src=x onerror=alert(1)>' in page.locator('#nativeActiveGames').inner_text()
+
+    page.evaluate("window.__m.ptgUnavailable = false; window.__m.ptgSnapshot = null")
 
     command_count=page.evaluate('window.__m.commands.length')
     page.fill('#nativeCommand','UPDATEPLUGINS'); page.click('#nativeCommandForm button[type="submit"]'); page.wait_for_timeout(120)
@@ -463,6 +523,9 @@ with sync_playwright() as pw:
     mobile.screenshot(path=str(SHOT/'playtime-mobile.png'),full_page=False)
     mobile.click('#nav button[data-view="accounts"]'); mobile.wait_for_selector('#createBotForm')
     assert_no_horizontal_overflow(mobile)
+    mobile.click('#nav button[data-view="native"]')
+    mobile.wait_for_selector('#native-activity')
+    assert_no_horizontal_overflow(mobile)
     assert not mobile_errors,mobile_errors
     mobile.close()
 
@@ -488,6 +551,14 @@ with sync_playwright() as pw:
     assert ua.locator('text=ВЛАСНА').count() >= 1
     ua.click('#nav button[data-view="native"]'); ua.wait_for_selector('#nativeBotConfig'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Конфігурація бота').count() == 1
+    assert ua.locator('#native-activity h3').inner_text() == 'Ігрова активність'
+    assert ua.locator('#refreshNativeActivity').inner_text() == 'Оновити активність'
+    assert ua.locator('#nativeCardFarming').inner_text() == 'Картки: неактивний'
+    assert ua.locator('#nativePlaytimeState').inner_text() == 'Ігровий час: у черзі'
+    assert ua.locator('#nativeOverallActivity').inner_text() == 'Загальна активність: неактивна'
+    ua.click('#refreshNativeActivity')
+    ua.wait_for_timeout(120)
+    assert ua.locator('#nativeOverallActivity').inner_text() == 'Загальна активність: неактивна'
     assert ua.locator('h3',has_text='Глобальна конфігурація ASF').count() == 1
     assert ua.locator('h3',has_text='Масовий редактор').count() == 1
     assert ua.locator('h3',has_text='Криптографічні інструменти').count() == 1

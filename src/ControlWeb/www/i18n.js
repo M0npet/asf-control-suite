@@ -88,6 +88,18 @@
     'possible': 'можливий',
     'blocked': 'заблокований',
     'CardsFarmer': 'CardsFarmer',
+    'Game activity': 'Ігрова активність',
+    'CardsFarmer and PlaytimeGoals are separate systems. The native status command describes CardsFarmer, not all game activity.': 'CardsFarmer і PlaytimeGoals працюють окремо. Штатна команда status описує фарм карток, а не всю ігрову активність.',
+    'Refresh activity': 'Оновити активність',
+    'No confirmed active PlaytimeGoals games': 'Немає підтверджених активних ігор PlaytimeGoals',
+    'Activity refresh failed': 'Не вдалося оновити активність',
+    'Active': 'активний',
+    'Inactive': 'неактивний',
+    'Queued': 'у черзі',
+    'Paused': 'призупинений',
+    'Disabled': 'вимкнений',
+    'Unknown': 'невідомо',
+
     'active': 'активний',
     'paused': 'призупинений',
     'idle': 'неактивний',
@@ -529,6 +541,12 @@
     if (Object.prototype.hasOwnProperty.call(UK, source)) return UK[source];
 
     let m;
+    if ((m = source.match(/^CardsFarmer: (Active|Inactive|Queued|Paused|Disabled|Unknown)$/))) return `Картки: ${exact(m[1])}`;
+    if ((m = source.match(/^PlaytimeGoals: (Active|Inactive|Queued|Paused|Disabled|Unknown)$/))) return `Ігровий час: ${exact(m[1])}`;
+    if ((m = source.match(/^Overall activity: (Active|Inactive|Queued|Paused|Disabled|Unknown)$/))) {
+      const label = m[1] === 'Active' ? 'активна' : m[1] === 'Inactive' ? 'неактивна' : m[1] === 'Paused' ? 'призупинена' : m[1] === 'Disabled' ? 'вимкнена' : exact(m[1]);
+      return `Загальна активність: ${label}`;
+    }
     if ((m = source.match(/^(\d+)\/(\d+) connected(?: · (\d+) waiting input)?$/))) { const n=Number(m[3]||0); return `${m[1]}/${m[2]} підключено${m[3] ? ` · ${m[3]} ${n===1?'очікує':'очікують'} введення` : ''}`; }
     if ((m = source.match(/^Locked after (\d+) minute\(s\) of inactivity\.$/))) return `Заблоковано після ${m[1]} хв бездіяльності.`;
     if ((m = source.match(/^(\d+) connected$/))) return `${m[1]} підключено`;
