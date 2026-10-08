@@ -71,6 +71,17 @@ jobs:
           artifact_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")"
           test "$(jq -r .name <<<"$artifact_json")" = "asf-control-suite-$TARGET_SHA"
           test "$(jq -r .expired <<<"$artifact_json")" = "false"
+          test "$(jq -r .workflow_run.head_sha <<<"$artifact_json")" = "$TARGET_SHA"
+          test "$(jq -r .workflow_run.head_branch <<<"$artifact_json")" = "main"
+
+          artifact_run_id="$(jq -r .workflow_run.id <<<"$artifact_json")"
+          [[ "$artifact_run_id" =~ ^[0-9]+$ ]]
+
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$artifact_run_id")"
+          test "$(jq -r .head_sha <<<"$run_json")" = "$TARGET_SHA"
+          test "$(jq -r .head_branch <<<"$run_json")" = "main"
+          test "$(jq -r .name <<<"$run_json")" = "CI"
+          test "$(jq -r .conclusion <<<"$run_json")" = "success"
 
           gh api \
             "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" \
