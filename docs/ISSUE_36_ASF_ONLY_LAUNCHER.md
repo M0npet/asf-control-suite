@@ -104,3 +104,29 @@ Before creating an ASF-only adapter, inspect only dependency *categories*
 for these setup statements and the ASF stanza, leaving all values/arguments
 on the device. The adapter must preserve the exact loop/PRoot runtime
 semantics and must never source or execute the multi-service Boot script.
+
+## On-device semantic audit: latest result
+
+The subsequent read-only semantic audit of the actual boot script reported:
+
+- `BOOT_SYNTAX=PASS`
+- `SETUP_LINE_010=EXEC_OR_REDIRECTION`, `SETUP_STDIO_REDIRECT=YES`
+- `SETUP_LINE_012=UNCLASSIFIED`, `SETUP_LINE_014=OTHER`
+- `SETUP_LINE_013=LOGGING`, `SETUP_LINE_015=WAKE_LOCK`
+- `SETUP_FUNCTION_REFERENCED_BY_ASF=NO`
+- `ASF_TMUX_CHECK=YES`, `ASF_TMUX_CREATE=YES`
+- `ASF_TMUX_WORKDIR_OPTION=NO`, `ASF_DIRECTORY_CHANGE=YES`
+- `ASF_PROOT_DEBIAN=YES`, `ASF_NESTED_SHELL=YES`
+- `ASF_EXEC_REFERENCE=YES`
+- `ASF_BLOCK_REFERENCES_AUXILIARIES=NO`
+- `ASF_DYNAMIC_EXPANSION=NO`
+- `ASF_ADAPTER_PROVISIONED=NO`, `SEMANTIC_AUDIT_READ_ONLY=PASS`
+
+These observations support isolating the ASF supervisor stanza but **do not
+establish that the nested shell command is fully standalone**. The launch
+path's shell quoting and environment inheritance still require review.
+Do not copy/extract the ASF snippet or enable `--start` merely on the
+basis of these token-level classifications. The follow-up must inspect
+the isolated stanza's Bash syntax, exact tmux session targets, and
+whether it requires variable expansion or setup functions, without
+printing commands or values.
