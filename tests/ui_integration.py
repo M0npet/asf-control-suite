@@ -287,6 +287,20 @@ with sync_playwright() as pw:
     page.click('#refreshNativeActivity')
     page.wait_for_function("() => document.querySelector('#nativePlaytimeState')?.dataset.state === 'unknown'")
     assert page.locator('#nativeOverallActivity').get_attribute('data-state') == 'unknown'
+    # Untrusted game titles must be escaped, not interpreted as HTML.
+    page.evaluate("""() => {
+      window.__m.ptgUnavailable = false;
+      window.__m.ptgSnapshot = {
+        Bot:'main',Enabled:true,Connected:true,Farming:false,FarmerPaused:false,
+        PlayingPossible:true,RecoveryReady:true,CurrentBatch:[10],
+        Games:[{AppId:10,Name:'<img src=x onerror=alert(1)>',State:'idling'}]
+      };
+    }""")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativePlaytimeState')?.dataset.state === 'active'")
+    assert page.locator('#nativeActiveGames img').count() == 0
+    assert '<img src=x onerror=alert(1)>' in page.locator('#nativeActiveGames').inner_text()
+
     page.evaluate("window.__m.ptgUnavailable = false; window.__m.ptgSnapshot = null")
 
     command_count=page.evaluate('window.__m.commands.length')
@@ -508,6 +522,9 @@ with sync_playwright() as pw:
     assert mobile.locator('.sidebar').evaluate('(e)=>getComputedStyle(e).position')=='fixed'
     mobile.screenshot(path=str(SHOT/'playtime-mobile.png'),full_page=False)
     mobile.click('#nav button[data-view="accounts"]'); mobile.wait_for_selector('#createBotForm')
+    assert_no_horizontal_overflow(mobile)
+    mobile.click('#nav button[data-view="native"]')
+    mobile.wait_for_selector('#native-activity')
     assert_no_horizontal_overflow(mobile)
     assert not mobile_errors,mobile_errors
     mobile.close()
