@@ -87,7 +87,7 @@ for token, reason in (
         "published v1.0.0 release link",
     ),
     (
-        "| PlaytimeGoals | **0.5.2.0** |",
+        "| PlaytimeGoals | **0.5.3.0** |",
         "current PlaytimeGoals compatibility version",
     ),
     (
