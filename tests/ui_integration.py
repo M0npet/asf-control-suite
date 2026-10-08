@@ -255,6 +255,18 @@ with sync_playwright() as pw:
     assert page.locator('#nativeCardFarming').get_attribute('data-state') == 'inactive'
     assert page.locator('#nativeOverallActivity').get_attribute('data-state') == 'active'
     assert 'Owned Game' in page.locator('#nativeActiveGames').inner_text()
+    # Refresh must re-read CardsFarmer state and preserve unrelated unsaved edits.
+    original_editor = page.locator('#nativeBotConfig').input_value()
+    page.fill('#nativeBotConfig','UNSAVED DRAFT')
+    page.evaluate("window.__m.accounts[0].Farming = true")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativeCardFarming')?.dataset.state === 'active'")
+    assert page.locator('#nativeBotConfig').input_value() == 'UNSAVED DRAFT'
+    assert page.locator('#nativeOverallActivity').get_attribute('data-state') == 'active'
+    page.evaluate("window.__m.accounts[0].Farming = false")
+    page.click('#refreshNativeActivity')
+    page.wait_for_function("() => document.querySelector('#nativeCardFarming')?.dataset.state === 'inactive'")
+    page.fill('#nativeBotConfig',original_editor)
     page.fill('#nativeCommand','status')
     page.click('#nativeCommandForm button[type="submit"]')
     page.wait_for_timeout(120)
