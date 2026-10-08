@@ -534,6 +534,14 @@ with sync_playwright() as pw:
     assert ua.locator('text=ВЛАСНА').count() >= 1
     ua.click('#nav button[data-view="native"]'); ua.wait_for_selector('#nativeBotConfig'); ua.wait_for_timeout(80)
     assert ua.locator('h3',has_text='Конфігурація бота').count() == 1
+    assert ua.locator('#native-activity h3').inner_text() == 'Ігрова активність'
+    assert ua.locator('#refreshNativeActivity').inner_text() == 'Оновити активність'
+    assert ua.locator('#nativeCardFarming').inner_text() == 'Картки: неактивний'
+    assert ua.locator('#nativePlaytimeState').inner_text() == 'Ігровий час: у черзі'
+    assert ua.locator('#nativeOverallActivity').inner_text() == 'Загальна активність: неактивна'
+    ua.click('#refreshNativeActivity')
+    ua.wait_for_timeout(120)
+    assert ua.locator('#nativeOverallActivity').inner_text() == 'Загальна активність: неактивна'
     assert ua.locator('h3',has_text='Глобальна конфігурація ASF').count() == 1
     assert ua.locator('h3',has_text='Масовий редактор').count() == 1
     assert ua.locator('h3',has_text='Криптографічні інструменти').count() == 1
