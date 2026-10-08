@@ -11,18 +11,31 @@ import unittest
 SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'scripts' / 'phone' / 'phone-guarded-rollback-v3.sh'
 
 FAKE_TMUX = r'''#!/usr/bin/env -S python3 -S
-import json, os, pathlib, sys
+import json, os, pathlib, sys, signal
 state_file = pathlib.Path(os.environ['MOCK_TMUX_STATE'])
 s = json.loads(state_file.read_text())
 a = sys.argv[1:]
 
+def resolve_session():
+    if '-t' not in a:
+        return None
+    target = a[a.index('-t')+1]
+    # Actual tmux accepts a unique prefix, unless the target starts with '='.
+    if target.startswith('='):
+        name = target[1:]
+        return name if s.get(name, {}).get('exists') else None
+    if s.get(target, {}).get('exists'):
+        return target
+    matches = [name for name, value in s.items()
+               if name.startswith(target) and value.get('exists')]
+    return matches[0] if len(matches) == 1 else None
+
 # Initial state simulates the actual Termux supervisor. No device contacted.
 if a[0] == 'has-session':
-    target = a[a.index('-t')+1]
-    sys.exit(0 if s.get(target, {}).get('exists') else 1)
+    sys.exit(0 if resolve_session() else 1)
 if a[0] == 'display-message':
     field = a[-1]
-    q = s['asf']
+    q = s[resolve_session()]
     fields = {
       '#{pane_start_command}': '/bin/sh -c ' + repr(q['start']) if q['type']=='guard' else q['start'],
       '#{pane_current_path}': os.environ['MOCK_HOME'],
@@ -32,11 +45,13 @@ if a[0] == 'display-message':
     print(fields.get(field, 'unknown'))
     sys.exit(0)
 if a[0] == 'list-panes':
+    assert resolve_session()
     print('%1')
     sys.exit(0)
 if a[0] == 'kill-session':
-    assert a[-1] == 'asf'
-    s['asf'] = {'exists':False,'type':'none','start':'','guard':''}
+    key = resolve_session()
+    assert key
+    s[key] = {'exists':False,'type':'none','start':'','guard':''}
     s['kills'] = s.get('kills', 0) + 1
 elif a[0] == 'new-session':
     assert a[a.index('-s')+1] == 'asf'
@@ -49,13 +64,15 @@ elif a[0] == 'new-session':
     s['creates'] = s.get('creates', 0) + 1
 elif a[0] == 'set-option':
     assert a[-2] == '@asfc_guard'
-    s['asf']['guard'] = a[-1]
+    s[resolve_session()]['guard'] = a[-1]
 elif a[0] == 'show-options':
-    print('corrupt' if os.environ.get('MOCK_BAD_GUARD') else s['asf'].get('guard',''))
+    print('corrupt' if os.environ.get('MOCK_BAD_GUARD') else s[resolve_session()].get('guard',''))
     sys.exit(0)
 else:
     raise Exception('unsupported tmux invocation: '+ repr(a))
 state_file.write_text(json.dumps(s))
+if a[0] == 'kill-session' and os.environ.get('MOCK_SIGNAL_AFTER_FIRST_KILL') and s['kills'] == 1:
+    os.kill(os.getppid(), signal.SIGTERM)
 '''
 
 FAKE_PD = r'''#!/usr/bin/env bash
@@ -67,6 +84,10 @@ n=$((n+1)); printf '%s\n' "$n" > "$f"
 case "$n" in
   1) if [[ "${MOCK_FAIL_PRECHECK:-0}" == 1 ]]; then echo 'BACKUP_INTEGRITY=FAIL'; exit 71; fi; echo 'BACKUP_INTEGRITY=PASS' ;;
   2)
+    if [[ "${MOCK_SIGNAL_DURING_RESTORE:-0}" == 1 ]]; then
+      kill -TERM "$PPID"
+      exit 74
+    fi
     if [[ "${MOCK_FAIL_RESTORE:-0}" == 1 ]]; then echo 'TEST_RESTORE=FAIL'; exit 73; fi
     mkdir -p "$HOME/.cache/asf-control-suite"
     echo MUTATION_ATTEMPTED > "$HOME/.cache/asf-control-suite/rollback-phase-${ASFC_BACKUP}"
@@ -127,6 +148,24 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         return subprocess.run(['bash',str(self.body)], env=env,text=True,capture_output=True,timeout=12)
     def state(self):
         return json.loads(self.s_file.read_text())
+    def test_term_during_guard_transition_recovers_original_boot(self):
+        p = self.run_phone('--run', {'MOCK_SIGNAL_AFTER_FIRST_KILL': '1'})
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('PREMUTATION_SUPERVISOR_RECOVERED=YES', p.stdout)
+        self.assertEqual(self.state()['asf']['type'], 'normal')
+        self.assertTrue(self.state()['asf-proxy']['exists'])
+        self.assertEqual(self.state()['kills'], 1)
+
+    def test_missing_asf_must_not_resolve_asf_proxy(self):
+        state = self.state()
+        state['asf']['exists'] = False
+        self.s_file.write_text(json.dumps(state))
+        p = self.run_phone('--precheck')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('MISSING_TMUX_SESSION', p.stdout)
+        self.assertEqual(self.state()['kills'], 0)
+        self.assertTrue(self.state()['asf-proxy']['exists'])
+
     def test_precheck_does_not_modify_sessions(self):
         p=self.run_phone('--precheck')
         self.assertEqual(p.returncode,0,p.stdout+'\n'+p.stderr)
@@ -162,6 +201,13 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertIn('FILES_MAY_BE_CHANGED=YES',p.stdout)
         self.assertEqual(self.state()['asf']['type'],'guard')
         self.assertEqual(self.state()['creates'],1)
+    def test_signal_during_restore_preserves_guard_and_stops(self):
+        p = self.run_phone('--run', {'MOCK_SIGNAL_DURING_RESTORE': '1'})
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('FILES_MAY_BE_CHANGED=YES', p.stdout)
+        self.assertEqual(self.state()['asf']['type'], 'guard')
+        self.assertTrue(self.state()['asf-proxy']['exists'])
+
     def test_missing_boot_refuses_before_stop(self):
         (self.home/'.termux'/'boot'/'start-asf.sh').unlink()
         p=self.run_phone('--run')

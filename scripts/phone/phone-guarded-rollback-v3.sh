@@ -54,11 +54,12 @@ umask 077
 PD="$PREFIX/bin/proot-distro"
 [[ -x "$PD" ]] || { echo 'PROOT=FAIL'; exit 10; }
 for name in asf asf-proxy tailscale-watch; do
-  tmux has-session -t "$name" || { echo 'MISSING_TMUX_SESSION'; exit 11; }
+  # Exact targets: "asf" could otherwise match the "asf-proxy" prefix.
+  tmux has-session -t "=$name" || { echo 'MISSING_TMUX_SESSION'; exit 11; }
 done
-[[ "$(tmux list-panes -t asf -F '#{pane_id}' | wc -l | tr -d ' ')" == '1' ]] || { echo 'ASF_PANE_COUNT=FAIL'; exit 12; }
-CMD="$(tmux display-message -p -t asf '#{pane_start_command}')"
-CWD="$(tmux display-message -p -t asf '#{pane_current_path}')"
+[[ "$(tmux list-panes -t '=asf' -F '#{pane_id}' | wc -l | tr -d ' ')" == '1' ]] || { echo 'ASF_PANE_COUNT=FAIL'; exit 12; }
+CMD="$(tmux display-message -p -t '=asf' '#{pane_start_command}')"
+CWD="$(tmux display-message -p -t '=asf' '#{pane_current_path}')"
 [[ -n "$CMD" && -d "$CWD" ]] || { echo 'ASF_STARTUP_CAPTURE=FAIL'; exit 13; }
 [[ "$CMD" == *while* && "$CMD" == *proot-distro* && "$CMD" == *ArchiSteamFarm* ]] || { echo 'ASF_STARTUP_EXPECTATIONS=FAIL'; exit 14; }
 # tmux can reformat the command: do not parse or replay the reported text.
@@ -116,10 +117,10 @@ STATE=0
 MUTATION_STARTED=0
 GUARD_MARK="asfc-rollback-v3-$ASFC_BACKUP"
 guard_active() {
-  tmux has-session -t asf 2>/dev/null || return 1
-  [[ "$(tmux show-options -t asf -v @asfc_guard 2>/dev/null || true)" == "$GUARD_MARK" ]] || return 1
-  [[ "$(tmux display-message -p -t asf '#{pane_dead}')" == 0 ]] || return 1
-  [[ "$(tmux list-panes -t asf -F '#{pane_id}' | wc -l | tr -d ' ')" == 1 ]] || return 1
+  tmux has-session -t '=asf' 2>/dev/null || return 1
+  [[ "$(tmux show-options -t '=asf' -v @asfc_guard 2>/dev/null || true)" == "$GUARD_MARK" ]] || return 1
+  [[ "$(tmux display-message -p -t '=asf' '#{pane_dead}')" == 0 ]] || return 1
+  [[ "$(tmux list-panes -t '=asf' -F '#{pane_id}' | wc -l | tr -d ' ')" == 1 ]] || return 1
 }
 boot_start_and_wait() {
   # Do not print the boot script or boot log: secrets may be present.
@@ -128,8 +129,8 @@ boot_start_and_wait() {
   # Termux:Boot may create tmux asynchronously. A successful exit alone
   # does not prove ASF started; allow the session time to appear.
   for i in $(seq 1 90); do
-    if tmux has-session -t asf 2>/dev/null; then
-      if [[ "$(tmux show-options -t asf -v @asfc_guard 2>/dev/null || true)" != "$GUARD_MARK" ]]; then
+    if tmux has-session -t '=asf' 2>/dev/null; then
+      if [[ "$(tmux show-options -t '=asf' -v @asfc_guard 2>/dev/null || true)" != "$GUARD_MARK" ]]; then
         return 0
       fi
     fi
@@ -138,14 +139,14 @@ boot_start_and_wait() {
   return 1
 }
 on_guard_error() {
-  local status=$?
-  trap - ERR
+  local status="${1:-$?}"
+  trap - ERR HUP INT TERM
   set +e
   if [[ $STATE == 1 && $MUTATION_STARTED == 0 ]]; then
     # Pre-mutation failure: restore original service through native bootstrap.
     if guard_active; then
-      tmux kill-session -t asf
-    elif tmux has-session -t asf 2>/dev/null; then
+      tmux kill-session -t '=asf'
+    elif tmux has-session -t '=asf' 2>/dev/null; then
       # An unidentified session may own the name: never kill or relabel it.
       echo 'PREMUTATION_UNVERIFIED_SESSION=YES; OPERATOR_REQUIRED=YES'
       exit "$status"
@@ -160,19 +161,24 @@ on_guard_error() {
   fi
   exit "$status"
 }
-trap on_guard_error ERR
+# ERR does not handle user interruption or ADB-side termination of the shell.
+# Treat these signals as failure and apply the same fail-closed guard rules.
+trap 'on_guard_error "$?"' ERR
+trap 'on_guard_error 129' HUP
+trap 'on_guard_error 130' INT
+trap 'on_guard_error 143' TERM
 
 # Hold the session name so another start-asf script cannot recreate it.
 # From this point on, any error leaves the hold session in place rather than
 # starting a potentially mismatched ASF runtime and plugins.
 STATE=1
-tmux kill-session -t asf
+tmux kill-session -t '=asf'
 # Indefinite loop: a long diagnostic pause must not accidentally expire.
 tmux new-session -d -s asf -c "$CWD" 'while :; do sleep 3600; done'
-tmux set-option -t asf @asfc_guard "$GUARD_MARK"
+tmux set-option -t '=asf' @asfc_guard "$GUARD_MARK"
 guard_active || { echo 'HOLD_SESSION_INVALID'; false; }
 # Do not inspect pane_start_command as exact text; tmux quotes it differently.
-[[ "$(tmux display-message -p -t asf '#{pane_current_command}')" == sleep || "$(tmux display-message -p -t asf '#{pane_current_command}')" == bash ]] || { echo 'HOLD_PANE_UNEXPECTED'; false; }
+[[ "$(tmux display-message -p -t '=asf' '#{pane_current_command}')" == sleep || "$(tmux display-message -p -t '=asf' '#{pane_current_command}')" == bash ]] || { echo 'HOLD_PANE_UNEXPECTED'; false; }
 echo 'SUPERVISOR_HELD=PASS'
 
 # Once the Debian restoration starts, any failure must be handled as potentially
@@ -236,7 +242,7 @@ DEBIAN_IDLE
 # All restored files are already verified. It is now safe to unhold.
 # Never replay pane_start_command: the v1 incident demonstrated this is unsafe.
 STATE=2
-tmux kill-session -t asf
+tmux kill-session -t '=asf'
 if ! boot_start_and_wait; then
   echo 'BOOT_RESTART=FAIL; OLD_FILES_VERIFIED; MANUAL_RECOVERY_REQUIRED'
   exit 32
@@ -260,7 +266,7 @@ echo 'OLD_RUNTIME_HEALTH=FAIL'; exit 34
 DEBIAN_HEALTH
 
 for name in asf asf-proxy tailscale-watch; do
-  tmux has-session -t "$name" || { echo 'SUPERVISOR_MISSING_AFTER=FAIL'; exit 35; }
+  tmux has-session -t "=$name" || { echo 'SUPERVISOR_MISSING_AFTER=FAIL'; exit 35; }
 done
 rm -f "$HOME/.cache/asf-control-suite/rollback-phase-$ASFC_BACKUP"
 STATE=3

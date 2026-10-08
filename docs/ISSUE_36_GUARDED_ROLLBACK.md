@@ -9,11 +9,11 @@ The earlier v1 operator tool replaced the running `asf` tmux session with a HOLD
 
 ## v3 changes
 
-- HOLD ownership uses a tmux session option rather than comparing formatted start commands.
+- HOLD ownership uses a tmux session option rather than comparing formatted start commands. All tmux session targets use exact `=name` matching, so an absent `asf` session cannot resolve to `asf-proxy`.
 - Never replays the original supervisor command. Recovery uses the native Termux:Boot script and checks the session and HTTP separately.
 - Records only SHA-256 fingerprints of the original startup command and working directory in Termux private cache.
 - Verifies backup files, checksum manifest and local release artifact before any service interruption.
-- On ambiguous state or a failure after mutation has started, fails closed with an explicit operator-required marker.
+- On ambiguous state or a failure after mutation has started, fails closed with an explicit operator-required marker. `HUP`, `INT`, and `TERM` are handled by the same failure path as shell errors; forced termination or power loss still require manual recovery.
 - `--run` requires `ASFC_LIVE_CONFIRMATION=I_ACCEPT_ASF_DOWNTIME` as an additional barrier, **not** proof of safety.
 - Preserve the release candidate's SHA and provenance; do not rebuild/release until exact-candidate live acceptance is complete.
 
@@ -21,7 +21,7 @@ The earlier v1 operator tool replaced the running `asf` tmux session with a HOLD
 
 `python3 tests/phone_guarded_rollback.test.py`
 
-Mocks run entirely in local temporary directories, never using a live device. They test precheck, guard ownership, Boot non-creation, failed transfer, failed restore, and normal mocked recovery. Real Termux/Android behavior is **not** validated by these tests.
+Mocks run entirely in local temporary directories, never using a live device. They test precheck, exact tmux session naming, signal interruption before and during mutation, guard ownership, Boot non-creation, failed transfer, failed restore, and normal mocked recovery. Real Termux/Android behavior is **not** validated by these tests.
 
 ## Remaining release gates
 
