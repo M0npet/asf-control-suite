@@ -90,3 +90,17 @@ line numbers, coarse statement types and whether variables assigned in the
 setup prelude are referenced by the ASF stanza. Do not expose variable
 values, shell arguments, IP addresses, credentials, or script source. Do not
 provision the adapter until that dependency review is complete.
+
+## Dependency audit follow-up (2026-10-08)
+
+A third on-device, read-only audit classified setup lines 3, 4, 5, 7, 8 as
+assignments and returned NO_DIRECT_REFERENCE in the ASF block (lines 23–36)
+for all five. Lines 10, 12, 13, and 15 remain OTHER under the audit's
+deliberately narrow classifier. This is *not proof of independence*: nested
+shell commands, special variables, indirect expansion, and environment
+inheritance are outside that analysis.
+
+Before creating an ASF-only adapter, inspect only dependency *categories*
+for these setup statements and the ASF stanza, leaving all values/arguments
+on the device. The adapter must preserve the exact loop/PRoot runtime
+semantics and must never source or execute the multi-service Boot script.
