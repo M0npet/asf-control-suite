@@ -1,308 +1,163 @@
-"""Offline mock of on-device tmux socket isolation. No Android/ASF/PRoot calls."""
-import os
+"""Mock-only regression for session snapshots + private tmux socket cleanup.
+No ADB, PRoot, real tmux, ASF, or phone candidate is ever executed.
+"""
 from pathlib import Path
+import os
+import stat
 import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / 'scripts/phone/asf-isolated-tmux-rehearsal.sh'
-TMUX = r'''#!/usr/bin/env bash
+SCRIPT = Path(__file__).resolve().parents[1] / 'scripts/phone/asf-isolated-tmux-rehearsal.sh'
+
+MOCK_TMUX = r'''#!/usr/bin/env bash
 set -euo pipefail
-SOCKET=''
-while (($#)); do
-  case "$1" in
-    -S) SOCKET="$2"; shift 2 ;;
-    -f) shift 2 ;;
-    *) break ;;
+printf '%s\n' "$*" >> "$MOCK_EVENTS"
+if [[ "${1:-}" == '-S' ]]; then
+  socket="$2"; shift 2
+  if [[ "${1:-}" == '-f' ]]; then shift 2; fi
+  cmd="${1:-}"
+  case "$cmd" in
+    has-session) [[ -e "$socket" ]] ;;
+    new-session)
+      [[ "${MOCK_PRIVATE_FAIL:-0}" == 0 ]] || exit 62
+      : > "$socket"
+      printf 'OK\n' > "$(dirname "$socket")/started" ;;
+    kill-server) rm -f -- "$socket" ;;
+    *) exit 60 ;;
   esac
-done
-COMMAND="$1"; shift
-if [[ -z "$SOCKET" ]]; then
-  if [[ "$COMMAND" == list-sessions ]]; then
-    [[ "$1" == '-F' && "$2" ==   TARGET=''
-  while (($#)); do
-    if [[ "$1" == '-t' ]]; then TARGET="$2"; break; fi
-    shift
-  done
-  case "$TARGET" in '=asf'|'=asf-proxy'|'=tailscale-watch') ;; *) exit 52;; esac
-  [[ "${MOCK_LIVE_MISSING:-}" != "${TARGET#=}" ]] || exit 53
-
   exit 0
 fi
-[[ -d "$(dirname "$SOCKET")" ]] || exit 54
-case "$COMMAND" in
+case "${1:-}" in
   has-session)
-    [[ -e "$SOCKET" ]] ;;
-  new-session)
-    [[ "${MOCK_FAIL_CREATE:-}" != 1 ]] || exit 55
-    SESSION=''
-    commandline="${*: -1}"
-    while (($#)); do
-      if [[ "$1" == '-s' ]]; then SESSION="$2"; break; fi
-      shift
-    done
-    [[ "$SESSION" == 'asfc-isolated' ]] || exit 56
-    [[ "$commandline" == exec\ * && "$commandline" == *worker.sh* ]] || exit 57
-    [[ "$commandline" != *ArchiSteamFarm* && "$commandline" != *proot-distro* ]] || exit 58
-    touch -- "$SOCKET"
-    printf 'OK\n' > "$(dirname "$SOCKET")/started"
-    if [[ "${MOCK_CHANGE_PROXY:-}" == 1 ]]; then touch "$MOCK_TMUX_STATE/changed"; fi ;;
-  kill-server)
-    rm -f -- "$SOCKET" ;;
-  *) exit 59 ;;
-esac
-'''
-
-class RehearsalTests(unittest.TestCase):
-    def setUp(self):
-        self.temp=tempfile.TemporaryDirectory(prefix='asfc-synthetic-tmux-')
-        self.addCleanup(self.temp.cleanup)
-        self.root=Path(self.temp.name)
-        self.home=self.root/'home'
-        self.home.mkdir()
-        self.tmp=self.root/'tmp'
-        self.tmp.mkdir()
-        self.bin=self.root/'bin'
-        self.bin.mkdir()
-        self.state=self.root/'state'
-        self.state.mkdir()
-        self.tmux=self.bin/'tmux'
-        self.tmux.write_text(TMUX)
-        self.tmux.chmod(0o700)
-        self.candidate=self.home/'.cache/asf-control-suite/candidates/asf-only-session.candidate.sh'
-        self.candidate.parent.mkdir(parents=True)
-        self.candidate.write_text('#!/usr/bin/env bash\ntmux new-session -d -s asf "echo forbidden"\n')
-        self.candidate.chmod(0o600)
-        self.active=self.home/'.config/asf/asf-only-session.sh'
-        self.env=dict(os.environ, HOME=str(self.home), TMPDIR=str(self.tmp), PREFIX=str(self.root), MOCK_TMUX_STATE=str(self.state), PATH=str(self.bin)+':'+os.environ['PATH'])
-    def run_it(self, *args, overrides=None):
-        env=dict(self.env)
-        env.update(overrides or {})
-        return subprocess.run(['bash',str(SCRIPT),*args],env=env,text=True,capture_output=True,timeout=20)
-    def assert_temp_clean(self):
-        self.assertEqual(list(self.tmp.iterdir()),[])
-    def test_success_isolated_socket_unchanged_sessions(self):
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
-        for marker in ('ISOLATED_TMUX_CREATE=PASS','ISOLATED_WORKER=PASS',
-                       'LIVE_SESSIONS=UNCHANGED','PROOT_EXECUTION=NOT_ATTEMPTED',
-                       'CANDIDATE_EXECUTION=NOT_ATTEMPTED','ISOLATED_TMUX_CLEANUP=PASS',
-                       'SYNTHETIC_REHEARSAL=PASS'):
-            self.assertIn(marker,p.stdout)
-        self.assert_temp_clean()
-    def test_default_mode_does_not_run(self):
-        p=self.run_it()
-        self.assertEqual(p.returncode,2)
-        self.assert_temp_clean()
-    def test_missing_private_candidate_fails_closed(self):
-        self.candidate.unlink()
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,10)
-        self.assert_temp_clean()
-    def test_existing_active_adapter_fails_closed(self):
-        self.active.parent.mkdir(parents=True)
-        self.active.write_text('do not modify\n')
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,14)
-        self.assertEqual(self.active.read_text(),'do not modify\n')
-        self.assert_temp_clean()
-    def test_missing_live_session_fails_closed(self):
-        p=self.run_it('--run-synthetic',overrides={'MOCK_LIVE_MISSING':'asf-proxy'})
-        self.assertEqual(p.returncode,18)
-        self.assert_temp_clean()
-    def test_change_live_session_refuses_success(self):
-        p=self.run_it('--run-synthetic',overrides={'MOCK_CHANGE_PROXY':'1'})
-        self.assertEqual(p.returncode,25,p.stdout+p.stderr)
-        self.assertIn('LIVE_SESSIONS=CHANGED',p.stdout)
-        self.assertNotIn('SYNTHETIC_REHEARSAL=PASS',p.stdout)
-        self.assert_temp_clean()
-    def test_isolated_launch_failure_cleans_files(self):
-        p=self.run_it('--run-synthetic',overrides={'MOCK_FAIL_CREATE':'1'})
-        self.assertEqual(p.returncode,22,p.stdout+p.stderr)
-        self.assert_temp_clean()
-    def test_non_executed_candidate_proof(self):
-        marker=self.root/'NEVER_EXECUTED'
-        self.candidate.write_text('#!/usr/bin/env bash\ntouch '+str(marker)+'\n')
-        self.candidate.chmod(0o600)
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
-        self.assertFalse(marker.exists())
-        self.assert_temp_clean()
-    def test_invalid_candidate_syntax_fails(self):
-        self.candidate.write_text('#!/usr/bin/env bash\nif true; then\n')
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,13)
-        self.assert_temp_clean()
-    def test_no_sensitive_paths_in_output(self):
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,0)
-        self.assertNotIn(str(self.root),p.stdout+p.stderr)
-        self.assertNotIn(str(self.candidate),p.stdout+p.stderr)
-    def test_only_isolated_tmux_mutation(self):
-        s=SCRIPT.read_text()
-        self.assertIn('tmux -S "$SOCKET" -f /dev/null new-session',s)
-        self.assertIn('tmux -S "$SOCKET" kill-server',s)
-        self.assertNotIn('proot-distro login',s)
-        self.assertNotIn('bash "$C"',s)
-        self.assertNotIn('start-asf.sh',s)
-
-    def test_session_native_api_regression(self):
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
-        s=SCRIPT.read_text()
-        self.assertIn('tmux list-sessions -F',s)
-        self.assertNotIn('tmux display-message -p',s)
-        self.assert_temp_clean()
-    def test_malformed_session_id_refuses(self):
-        p=self.run_it('--run-synthetic',overrides={'MOCK_LIST_INVALID':'1'})
-        self.assertEqual(p.returncode,19,p.stdout+p.stderr)
-        self.assertIn('LIVE_ID=UNAVAILABLE',p.stdout)
-        self.assert_temp_clean()
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)
-#{session_name}\t#{session_id}' ]] || exit 60
-    proxy_id='$2'
-    [[ -f "$MOCK_TMUX_STATE/changed" ]] && proxy_id='$8'
-    if [[ "${MOCK_LIST_INVALID:-}" == 1 ]]; then
-      printf 'asf\tinvalid\nasf-proxy\t%s\ntailscale-watch\t$3\n' "$proxy_id"
+    [[ "$2" == '-t' ]] || exit 61
+    case "$3" in
+      '=asf'|'=asf-proxy'|'=tailscale-watch')
+        [[ "${MOCK_MISSING:-}" != "$3" ]] ;;
+      *) exit 61 ;;
+    esac ;;
+  display-message) exit 66 ;; # Previous implementation falsely failed here.
+  list-sessions)
+    [[ "${2:-}" == '-F' ]] || exit 61
+    [[ "${3:-}" == $'#{session_name}\t#{session_id}' ]] || exit 65
+    calls=0
+    [[ -e "$MOCK_CALLS" ]] && read -r calls < "$MOCK_CALLS"
+    calls=$((calls+1))
+    printf '%s\n' "$calls" > "$MOCK_CALLS"
+    [[ "${MOCK_LIST_FAIL:-0}" == 0 ]] || exit 63
+    if [[ "${MOCK_MALFORMED:-0}" == 1 ]]; then
+      printf 'asf\tbad\nasf-proxy\t$2\ntailscale-watch\t$3\n'
+    elif [[ "${MOCK_DUPLICATE:-0}" == 1 ]]; then
+      printf 'asf\t$1\nasf\t$8\nasf-proxy\t$2\ntailscale-watch\t$3\n'
+    elif [[ "${MOCK_CHANGED:-0}" == 1 && "$calls" -ge 2 ]]; then
+      printf 'asf\t$1\nasf-proxy\t$99\ntailscale-watch\t$3\n'
     else
-      printf 'asf\t$1\nasf-proxy\t%s\ntailscale-watch\t$3\n' "$proxy_id"
-    fi
-    exit 0
-  fi
-  [[ "$COMMAND" == has-session ]] || exit 51
-  TARGET=''
-  while (($#)); do
-    if [[ "$1" == '-t' ]]; then TARGET="$2"; break; fi
-    shift
-  done
-  case "$TARGET" in '=asf'|'=asf-proxy'|'=tailscale-watch') ;; *) exit 52;; esac
-  [[ "${MOCK_LIVE_MISSING:-}" != "${TARGET#=}" ]] || exit 53
-  if [[ "$COMMAND" == display-message ]]; then
-    suffix=initial
-    if [[ "$TARGET" == '=asf-proxy' && -f "$MOCK_TMUX_STATE/changed" ]]; then suffix=changed; fi
-    printf '%s:%s\n' "$TARGET" "$suffix"
-  fi
-  exit 0
-fi
-[[ -d "$(dirname "$SOCKET")" ]] || exit 54
-case "$COMMAND" in
-  has-session)
-    [[ -e "$SOCKET" ]] ;;
-  new-session)
-    [[ "${MOCK_FAIL_CREATE:-}" != 1 ]] || exit 55
-    SESSION=''
-    commandline="${*: -1}"
-    while (($#)); do
-      if [[ "$1" == '-s' ]]; then SESSION="$2"; break; fi
-      shift
-    done
-    [[ "$SESSION" == 'asfc-isolated' ]] || exit 56
-    [[ "$commandline" == exec\ * && "$commandline" == *worker.sh* ]] || exit 57
-    [[ "$commandline" != *ArchiSteamFarm* && "$commandline" != *proot-distro* ]] || exit 58
-    touch -- "$SOCKET"
-    printf 'OK\n' > "$(dirname "$SOCKET")/started"
-    if [[ "${MOCK_CHANGE_PROXY:-}" == 1 ]]; then touch "$MOCK_TMUX_STATE/changed"; fi ;;
-  kill-server)
-    rm -f -- "$SOCKET" ;;
-  *) exit 59 ;;
+      printf 'unrelated\t$9\nasf-proxy\t$2\ntailscale-watch\t$3\nasf\t$1\n'
+    fi ;;
+  *) exit 64 ;;
 esac
 '''
 
 class RehearsalTests(unittest.TestCase):
     def setUp(self):
-        self.temp=tempfile.TemporaryDirectory(prefix='asfc-synthetic-tmux-')
-        self.addCleanup(self.temp.cleanup)
-        self.root=Path(self.temp.name)
-        self.home=self.root/'home'
+        t = tempfile.TemporaryDirectory(prefix='asfc-private-socket-')
+        self.addCleanup(t.cleanup)
+        self.root = Path(t.name)
+        self.home = self.root/'home'
         self.home.mkdir()
-        self.tmp=self.root/'tmp'
-        self.tmp.mkdir()
-        self.bin=self.root/'bin'
+        self.temp = self.root/'tmp'
+        self.temp.mkdir()
+        self.bin = self.root/'bin'
         self.bin.mkdir()
-        self.state=self.root/'state'
-        self.state.mkdir()
-        self.tmux=self.bin/'tmux'
-        self.tmux.write_text(TMUX)
-        self.tmux.chmod(0o700)
-        self.candidate=self.home/'.cache/asf-control-suite/candidates/asf-only-session.candidate.sh'
+        fake = self.bin/'tmux'
+        fake.write_text(MOCK_TMUX)
+        fake.chmod(0o700)
+        self.candidate = self.home/'.cache/asf-control-suite/candidates/asf-only-session.candidate.sh'
         self.candidate.parent.mkdir(parents=True)
-        self.candidate.write_text('#!/usr/bin/env bash\ntmux new-session -d -s asf "echo forbidden"\n')
+        self.candidate.write_text('#!/bin/bash\ntrue\n')
         self.candidate.chmod(0o600)
-        self.active=self.home/'.config/asf/asf-only-session.sh'
-        self.env=dict(os.environ, HOME=str(self.home), TMPDIR=str(self.tmp), PREFIX=str(self.root), MOCK_TMUX_STATE=str(self.state), PATH=str(self.bin)+':'+os.environ['PATH'])
-    def run_it(self, *args, overrides=None):
-        env=dict(self.env)
-        env.update(overrides or {})
-        return subprocess.run(['bash',str(SCRIPT),*args],env=env,text=True,capture_output=True,timeout=20)
-    def assert_temp_clean(self):
-        self.assertEqual(list(self.tmp.iterdir()),[])
-    def test_success_isolated_socket_unchanged_sessions(self):
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
-        for marker in ('ISOLATED_TMUX_CREATE=PASS','ISOLATED_WORKER=PASS',
-                       'LIVE_SESSIONS=UNCHANGED','PROOT_EXECUTION=NOT_ATTEMPTED',
-                       'CANDIDATE_EXECUTION=NOT_ATTEMPTED','ISOLATED_TMUX_CLEANUP=PASS',
-                       'SYNTHETIC_REHEARSAL=PASS'):
-            self.assertIn(marker,p.stdout)
-        self.assert_temp_clean()
-    def test_default_mode_does_not_run(self):
-        p=self.run_it()
-        self.assertEqual(p.returncode,2)
-        self.assert_temp_clean()
-    def test_missing_private_candidate_fails_closed(self):
-        self.candidate.unlink()
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,10)
-        self.assert_temp_clean()
-    def test_existing_active_adapter_fails_closed(self):
-        self.active.parent.mkdir(parents=True)
-        self.active.write_text('do not modify\n')
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,14)
-        self.assertEqual(self.active.read_text(),'do not modify\n')
-        self.assert_temp_clean()
-    def test_missing_live_session_fails_closed(self):
-        p=self.run_it('--run-synthetic',overrides={'MOCK_LIVE_MISSING':'asf-proxy'})
-        self.assertEqual(p.returncode,18)
-        self.assert_temp_clean()
-    def test_change_live_session_refuses_success(self):
-        p=self.run_it('--run-synthetic',overrides={'MOCK_CHANGE_PROXY':'1'})
-        self.assertEqual(p.returncode,25,p.stdout+p.stderr)
+        self.events = self.root/'events'
+        self.calls = self.root/'calls'
+        self.env = dict(os.environ, HOME=str(self.home), PREFIX=str(self.root/'prefix'),
+                        TMPDIR=str(self.temp), PATH=str(self.bin)+':'+os.environ['PATH'],
+                        MOCK_EVENTS=str(self.events), MOCK_CALLS=str(self.calls))
+
+    def run_it(self, vars=None):
+        e = dict(self.env, **(vars or {}))
+        return subprocess.run(['bash',str(SCRIPT),'--run-synthetic'],env=e,
+                              text=True,capture_output=True,timeout=12)
+
+    def assert_no_workspace(self):
+        self.assertEqual(list(self.temp.glob('asfc-isolated.*')), [])
+
+    def test_regression_list_sessions_succeeds_when_display_message_fails(self):
+        p = self.run_it()
+        self.assertEqual(p.returncode, 0, p.stdout+p.stderr)
+        self.assertIn('SYNTHETIC_REHEARSAL=PASS', p.stdout)
+        self.assertIn('LIVE_SESSIONS=UNCHANGED', p.stdout)
+        self.assertIn('ISOLATED_TMUX_CLEANUP=PASS', p.stdout)
+        events=self.events.read_text()
+        self.assertIn('list-sessions',events)
+        self.assertNotIn('display-message',events)
+        self.assertTrue(all(not line.startswith('kill-server') for line in events.splitlines()))
+        self.assert_no_workspace()
+
+    def test_list_sessions_unavailable_refuses_before_create(self):
+        p=self.run_it({'MOCK_LIST_FAIL':'1'})
+        self.assertEqual(p.returncode,19)
+        self.assertIn('LIVE_ID=UNAVAILABLE',p.stdout)
+        self.assertNotIn('new-session',self.events.read_text())
+        self.assert_no_workspace()
+
+    def test_malformed_session_id_refused(self):
+        p=self.run_it({'MOCK_MALFORMED':'1'})
+        self.assertEqual(p.returncode,19)
+        self.assert_no_workspace()
+
+    def test_duplicate_named_sessions_refused(self):
+        p=self.run_it({'MOCK_DUPLICATE':'1'})
+        self.assertEqual(p.returncode,19)
+        self.assert_no_workspace()
+
+    def test_aux_session_changed_after_creation_detected_and_cleaned(self):
+        p=self.run_it({'MOCK_CHANGED':'1'})
+        self.assertEqual(p.returncode,25)
         self.assertIn('LIVE_SESSIONS=CHANGED',p.stdout)
-        self.assertNotIn('SYNTHETIC_REHEARSAL=PASS',p.stdout)
-        self.assert_temp_clean()
-    def test_isolated_launch_failure_cleans_files(self):
-        p=self.run_it('--run-synthetic',overrides={'MOCK_FAIL_CREATE':'1'})
-        self.assertEqual(p.returncode,22,p.stdout+p.stderr)
-        self.assert_temp_clean()
-    def test_non_executed_candidate_proof(self):
-        marker=self.root/'NEVER_EXECUTED'
-        self.candidate.write_text('#!/usr/bin/env bash\ntouch '+str(marker)+'\n')
+        self.assert_no_workspace()
+
+    def test_missing_live_session_refused_before_create(self):
+        p=self.run_it({'MOCK_MISSING':'=asf-proxy'})
+        self.assertEqual(p.returncode,18)
+        self.assert_no_workspace()
+
+    def test_private_tmux_creation_failure_cleaned(self):
+        p=self.run_it({'MOCK_PRIVATE_FAIL':'1'})
+        self.assertEqual(p.returncode,22)
+        self.assert_no_workspace()
+
+    def test_active_adapter_refused(self):
+        active=self.home/'.config/asf/asf-only-session.sh'
+        active.parent.mkdir(parents=True)
+        active.write_text('true\n')
+        p=self.run_it()
+        self.assertEqual(p.returncode,14)
+        self.assert_no_workspace()
+
+    def test_candidate_permissions_refused(self):
+        self.candidate.chmod(0o644)
+        p=self.run_it()
+        self.assertEqual(p.returncode,11)
+        self.assert_no_workspace()
+
+    def test_candidate_execution_not_attempted(self):
+        marker=self.root/'ran'
+        self.candidate.write_text(f'#!/bin/bash\ntouch {marker}\n')
         self.candidate.chmod(0o600)
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
-        self.assertFalse(marker.exists())
-        self.assert_temp_clean()
-    def test_invalid_candidate_syntax_fails(self):
-        self.candidate.write_text('#!/usr/bin/env bash\nif true; then\n')
-        p=self.run_it('--run-synthetic')
-        self.assertEqual(p.returncode,13)
-        self.assert_temp_clean()
-    def test_no_sensitive_paths_in_output(self):
-        p=self.run_it('--run-synthetic')
+        p=self.run_it()
         self.assertEqual(p.returncode,0)
-        self.assertNotIn(str(self.root),p.stdout+p.stderr)
-        self.assertNotIn(str(self.candidate),p.stdout+p.stderr)
-    def test_only_isolated_tmux_mutation(self):
-        s=SCRIPT.read_text()
-        self.assertIn('tmux -S "$SOCKET" -f /dev/null new-session',s)
-        self.assertIn('tmux -S "$SOCKET" kill-server',s)
-        self.assertNotIn('proot-distro login',s)
-        self.assertNotIn('bash "$C"',s)
-        self.assertNotIn('start-asf.sh',s)
+        self.assertFalse(marker.exists())
+        self.assertIn('CANDIDATE_EXECUTION=NOT_ATTEMPTED',p.stdout)
+        self.assert_no_workspace()
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
