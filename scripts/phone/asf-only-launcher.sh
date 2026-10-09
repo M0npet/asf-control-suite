@@ -123,9 +123,12 @@ check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRE
 for (( i=0; i<RETRIES; i++ )); do
   check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRED' >&2; exit 19; }
   has asf || { echo 'ASF_ONLY_SESSION_LOST; OPERATOR_REVIEW_REQUIRED' >&2; exit 21; }
-  root="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null || true)"
-  api="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/Api/ASF 2>/dev/null || true)"
+  root="$(curl --noproxy '*' -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null || true)"
+  api="$(curl --noproxy '*' -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/Api/ASF 2>/dev/null || true)"
   if [[ "$root" == 200 && "$api" == 401 ]]; then
+    # A dependency could restart between the precheck and the HTTP response.
+    check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRED' >&2; exit 19; }
+    has asf || { echo 'ASF_ONLY_SESSION_LOST; OPERATOR_REVIEW_REQUIRED' >&2; exit 21; }
     echo 'ASF_ONLY_LAUNCH=PASS'
     exit 0
   fi
