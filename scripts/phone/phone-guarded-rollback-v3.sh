@@ -88,7 +88,7 @@ CWD="$(tmux display-message -p -t '=asf' '#{pane_current_path}')"
 # pinned ASF-only launcher is eligible for the dormant recovery path.
 BOOT="$HOME/.termux/boot/start-asf.sh"
 [[ -s "$BOOT" ]] || { echo 'BOOT_SCRIPT_MISSING'; exit 36; }
-bash -n "$BOOT" || { echo 'BOOT_SCRIPT_SYNTAX_FAIL'; exit 37; }
+bash -n "$BOOT" >/dev/null 2>&1 || { echo 'BOOT_SCRIPT_SYNTAX_FAIL'; exit 37; }
 for token in tmux proot-distro ArchiSteamFarm; do
   grep -Fq "$token" "$BOOT" || { echo 'BOOT_SCRIPT_CONTRACT_FAIL'; exit 38; }
 done
