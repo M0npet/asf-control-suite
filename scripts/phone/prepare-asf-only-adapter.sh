@@ -62,7 +62,14 @@ if [[ "$MODE" == '--audit' ]]; then
 fi
 # Candidate path intentionally differs from the executable adapter path.
 # Only a second, separately authorized deployment can install/execute it.
-[[ "$OUT" != "$HOME/.config/asf/asf-only-session.sh" ]] || {
+# Compare canonical paths, not only literal strings: a different spelling
+# (../ components or a symlinked parent) could otherwise write the active
+# executable adapter without independent approval.
+command -v realpath >/dev/null 2>&1 || { echo 'REALPATH=MISSING'; exit 19; }
+OUT_CANONICAL="$(realpath -m -- "$OUT")" || { echo 'CANDIDATE_PATH=INVALID'; exit 19; }
+ACTIVE_CANONICAL="$(realpath -m -- "$HOME/.config/asf/asf-only-session.sh")" ||
+  { echo 'ACTIVE_ADAPTER_PATH=INVALID'; exit 19; }
+[[ "$OUT_CANONICAL" != "$ACTIVE_CANONICAL" ]] || {
   echo 'CANDIDATE_PATH=EXECUTABLE_PATH_REFUSED'; exit 13
 }
 [[ ! -e "$OUT" && ! -L "$OUT" ]] || { echo 'CANDIDATE_ALREADY_EXISTS'; exit 14; }
