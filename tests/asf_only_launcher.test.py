@@ -118,6 +118,15 @@ class AsfOnlyLauncherTests(unittest.TestCase):
         p = self.run_launcher(extra={'ASFC_ONLY_START_CONFIRMATION': ''})
         self.assertEqual(p.returncode, 2)
         self.assertEqual(self.get_state(), self.initial)
+    def test_invalid_health_retries_cannot_create_session(self):
+        self.install_adapter()
+        for invalid in ('0', '-1', '121', 'abc', '9999'):
+            with self.subTest(retries=invalid):
+                p = self.run_launcher(extra={'ASFC_ONLY_HEALTH_RETRIES': invalid})
+                self.assertEqual(p.returncode, 20, p.stdout + p.stderr)
+                self.assertIn('INVALID_HEALTH_RETRIES', p.stderr)
+                self.assertEqual(self.get_state(), self.initial)
+
     def test_missing_adapter_fails_closed(self):
         p = self.run_launcher()
         self.assertEqual(p.returncode, 10)
