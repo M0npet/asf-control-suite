@@ -17,7 +17,23 @@ LOCK="$HOME/.cache/asf-control-suite/asf-only-start.lock"
 EXPECTED_SHA="${ASFC_ONLY_ADAPTER_SHA256:-}"
 
 has() { tmux has-session -t "=$1" 2>/dev/null; }
-sid() { tmux display-message -p -t "=$1" '#{session_id}' 2>/dev/null; }
+sid() {
+  # display-message -t accepts a target-pane; a session may exist without a
+  # resolvable pane. list-sessions is the authoritative session inventory.
+  local wanted="$1" listing row name found='' candidate
+  listing="$(tmux list-sessions -F '#{session_name}|#{session_id}' 2>/dev/null)" || return 1
+  while IFS= read -r row; do
+    [[ "$row" == *'|'* ]] || continue
+    name="${row%%|*}"
+    candidate="${row#*|}"
+    if [[ "$name" == "$wanted" ]]; then
+      [[ -z "$found" && "$candidate" =~ ^\$[0-9]+$ ]] || return 1
+      found="$candidate"
+    fi
+  done <<< "$listing"
+  [[ -n "$found" ]] || return 1
+  printf '%s' "$found"
+}
 
 # Adapter is deliberately not included in the repository: its exact launch
 # block must be derived from and audited against THIS phone's Termux:Boot.
@@ -58,10 +74,12 @@ TAILSCALE_ID="$(sid tailscale-watch)"
 
 # Validate health-check controls BEFORE executing the trusted adapter.
 # Malformed retry settings must not create an ASF session.
-# If the IPC is already healthy while the supervisor is absent, starting a
-# second ASF risks duplicate processes; require manual investigation instead.
-code="$(curl -sS --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null || true)"
-[[ "$code" != 200 ]] || { echo 'ORPHAN_ASF_HTTP_HEALTHY; NOT STARTED' >&2; exit 14; }
+# Any HTTP response means a listener is present on the ASF IPC port, even
+# when unauthorized, not found or unhealthy. Refuse a duplicate supervisor.
+# Only a connection failure (curl HTTP code 000) permits the start path.
+# Bypass any inherited HTTP proxy for the loopback health probe.
+code="$(curl --noproxy '*' -sS --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null || true)"
+[[ "$code" == 000 ]] || { echo 'ORPHAN_ASF_HTTP_LISTENER; NOT STARTED' >&2; exit 14; }
 
 mkdir -p "$(dirname "$LOCK")"
 if ! mkdir "$LOCK" 2>/dev/null; then
