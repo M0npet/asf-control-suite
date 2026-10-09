@@ -83,3 +83,15 @@ After the 36 independently verified launcher/preparer checks above, the experime
 **Execution limit:** these latest rollback refactor tests and the new one-command repository harness have been added but **NOT independently executed** against the complete current branch in this environment. The separately verified 36/36 checks are still valid for the two unchanged launcher/preparer source blobs only. No live change, merge, release, rootfs execution, GitHub Actions dispatch, or phone service interruption occurred.
 
 The v3 `--run` entrypoint continues to return exit 40 before ADB with no bypass. A human-approved, byte-pinned private adapter is still missing; no existing test substitutes for Android/PRoot acceptance. 
+
+## Phase 4: Exact remote rollback-body synthetic execution (2026-10-10)
+
+A further independent isolated local rehearsal reconstructed the **exact executable remote Bash body** from the current GitHub `phone-guarded-rollback-v3.sh` here-document (`<<'PHONE'`). The 11,661-character fragment matched the current GitHub body length and FNV-1a/32 fingerprint `1ae69328`, and `bash -n` passed. (Unlike the launcher/preparer checks above, this is a body-level match, not a full-file Git blob equivalence proof.)
+
+Using entirely synthetic temporary state and fakes for `tmux` and `proot-distro`, **17/17 focused inner-body scenarios passed**, including precheck without changes, successful mock rollback, no full-Boot replay, corrupted/missing launcher or adapter pins, invalid backup/core, lost ASF, failed HOLD creation, unexpected pane type, guard ownership corruption, restoration failure, failed reappearance after a nominal launcher exit, and pre-hold interruption recovery.
+
+**Independent combined local result: 53/53 PASS** — 19 launcher cases + 17 preparer cases + 17 rollback-body cases. This is **not** a successful full repository suite. It does **not** exercise real PRoot or Android or prove a real device adapter is safe. It also does not run the full outer ADB host path; the top-level live `--run` remains unconditionally blocked before ADB, as source-inspected.
+
+Current rollback GitHub blob SHA-1 at this checkpoint: `c9293bf153dc081097cda7e04c1fec133d7c0ee3`.
+
+Still mandatory before merge or real operation: run the repository-native offline modules and complete `tests/run-all.sh`, isolated disposable-rootfs PRoot acceptance, private device-specific adapter review, real on-phone smoke tests with explicit authorization, and successful controlled rollback field acceptance.
