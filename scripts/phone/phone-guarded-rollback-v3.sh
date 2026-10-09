@@ -176,7 +176,9 @@ asf_only_start_and_wait() {
   # Output stays on the device in a private diagnostic file.
   ASFC_ONLY_START_CONFIRMATION=I_APPROVE_ASF_ONLY_START \
     ASFC_ONLY_ADAPTER_SHA256="$adapter_hash" \
-    bash "$launcher" --start >"$BOOT_LOG" 2>&1
+    bash "$launcher" --start >"$BOOT_LOG" 2>&1 || return 1
+  # Do not trust a zero exit without an actual exact-named ASF session.
+  tmux has-session -t '=asf' >/dev/null 2>&1 || return 1
 }
 on_guard_error() {
   local status="${1:-$?}"
