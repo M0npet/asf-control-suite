@@ -136,6 +136,9 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
 tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- ArchiSteamFarm; sleep 2; done'
 ''')
         self.launcher_sha=hashlib.sha256(self.launcher.read_bytes()).hexdigest()
+        self.adapter=self.home/'.config'/'asf'/'asf-only-session.sh'
+        self._write(self.adapter,'#!/usr/bin/env bash\nexit 0\n')
+        self.adapter_sha=hashlib.sha256(self.adapter.read_bytes()).hexdigest()
         self._write(self.home/'core.sh', '#!/bin/bash\nexit 0\n')
         self.sha = hashlib.sha256((self.home/'core.sh').read_bytes()).hexdigest()
         self.env = dict(os.environ,
@@ -144,7 +147,7 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
             PREFIX=str(self.prefix), ASFC_BACKUP=self.backup, ASFC_REMOTE_CORE=str(self.home/'core.sh'),
             ASFC_CORE_SHA=self.sha,
             ASFC_ONLY_LAUNCHER_SHA256=self.launcher_sha,
-            ASFC_ONLY_ADAPTER_SHA256='f'*64,
+            ASFC_ONLY_ADAPTER_SHA256=self.adapter_sha,
             PATH=str(self.fakebin)+':'+os.environ['PATH'])
     @staticmethod
     def _write(path, txt):
@@ -238,12 +241,41 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertIn('PREMUTATION_UNVERIFIED_SESSION=YES',p.stdout)
         self.assertEqual(self.state()['asf']['type'],'guard')
         self.assertEqual((self.home/'pd_count').read_text().strip(),'1')
-    def test_unpinned_asf_only_launcher_requires_manual_recovery(self):
+    def test_unpinned_asf_only_launcher_fails_before_supervisor_stop(self):
         p=self.run_phone('--run', {'ASFC_ONLY_LAUNCHER_SHA256':'0'*64})
         self.assertNotEqual(p.returncode,0)
-        self.assertIn('ASF_ONLY_RESTART=FAIL',p.stdout)
+        self.assertIn('ASF_ONLY_RECOVERY_PIN_MISMATCH',p.stdout)
         self.assertNotIn('GUARDED_ROLLBACK=PASS',p.stdout)
-        self.assertTrue(self.state()['asf-proxy']['exists'])
+        self.assertEqual(self.state()['kills'],0)
+
+    def test_missing_private_adapter_fails_before_supervisor_stop(self):
+        self.adapter.unlink()
+        p=self.run_phone('--run')
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('ASF_ONLY_RECOVERY_NOT_PROVISIONED',p.stdout)
+        self.assertEqual(self.state()['kills'],0)
+
+    def test_missing_pinned_launcher_fails_before_supervisor_stop(self):
+        self.launcher.unlink()
+        p=self.run_phone('--run')
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('ASF_ONLY_RECOVERY_NOT_PROVISIONED',p.stdout)
+        self.assertEqual(self.state()['kills'],0)
+
+    def test_bad_adapter_pin_fails_before_supervisor_stop(self):
+        p=self.run_phone('--run', {'ASFC_ONLY_ADAPTER_SHA256':'0'*64})
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('ASF_ONLY_RECOVERY_PIN_MISMATCH',p.stdout)
+        self.assertEqual(self.state()['kills'],0)
+
+    def test_multi_service_boot_not_executed_during_mocked_recovery(self):
+        marker=self.home/'WRONG_BOOT_REPLAY'
+        with (self.home/'.termux/boot/start-asf.sh').open('a') as fp:
+            fp.write('touch "$HOME/WRONG_BOOT_REPLAY"\n')
+        p=self.run_phone('--run')
+        self.assertEqual(p.returncode,0,p.stdout+'\n'+p.stderr)
+        self.assertFalse(marker.exists())
+        self.assertIn('SUPERVISOR_RESTORED_VIA_ASF_ONLY=PASS',p.stdout)
 
     def test_restoration_failure_preserves_hold(self):
         p=self.run_phone('--run',{'MOCK_FAIL_RESTORE':'1'})
