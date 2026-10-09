@@ -74,12 +74,19 @@ TAILSCALE_ID="$(sid tailscale-watch)" || { echo 'DEPENDENCY_ID_MISSING; NOT STAR
 
 # Validate health-check controls BEFORE executing the trusted adapter.
 # Malformed retry settings must not create an ASF session.
-# Any HTTP response means a listener is present on the ASF IPC port, even
-# when unauthorized, not found or unhealthy. Refuse a duplicate supervisor.
-# Only a connection failure (curl HTTP code 000) permits the start path.
-# Bypass any inherited HTTP proxy for the loopback health probe.
-code="$(curl --noproxy '*' -sS --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null || true)"
-[[ "$code" == 000 ]] || { echo 'ORPHAN_ASF_HTTP_LISTENER; NOT STARTED' >&2; exit 14; }
+# HTTP 000 alone is ambiguous: curl also reports it for a listening but
+# unresponsive server. Only exit 7 (TCP connection failed) plus HTTP 000
+# permits an ASF-only start. All timeouts and other errors fail closed.
+# Bypass inherited proxies when probing 127.0.0.1.
+if code="$(curl --noproxy '*' -sS --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null)"; then
+  echo 'ORPHAN_ASF_HTTP_LISTENER; NOT STARTED' >&2
+  exit 14
+else
+  probe_rc=$?
+  [[ "$probe_rc" == 7 && "$code" == 000 ]] || {
+    echo 'ASF_IPC_PROBE_INDETERMINATE; NOT STARTED' >&2; exit 24;
+  }
+fi
 
 mkdir -p "$(dirname "$LOCK")"
 if ! mkdir "$LOCK" 2>/dev/null; then
