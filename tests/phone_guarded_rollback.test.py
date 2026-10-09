@@ -129,6 +129,13 @@ class GuardedRollback(unittest.TestCase):
 # mimic normal Termux:Boot startup without service side effects
 tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- ArchiSteamFarm; sleep 2; done'
 ''')
+        # Future-only recovery path: inject a harmless, fixed local launcher.
+        # The production --run entrypoint remains unconditionally blocked.
+        self.launcher=self.home/'.config'/'asf'/'asf-only-launcher.sh'
+        self._write(self.launcher, '''#!/usr/bin/env bash
+tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- ArchiSteamFarm; sleep 2; done'
+''')
+        self.launcher_sha=hashlib.sha256(self.launcher.read_bytes()).hexdigest()
         self._write(self.home/'core.sh', '#!/bin/bash\nexit 0\n')
         self.sha = hashlib.sha256((self.home/'core.sh').read_bytes()).hexdigest()
         self.env = dict(os.environ,
@@ -136,6 +143,8 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
             MOCK_PD_COUNT=str(self.home/'pd_count'),
             PREFIX=str(self.prefix), ASFC_BACKUP=self.backup, ASFC_REMOTE_CORE=str(self.home/'core.sh'),
             ASFC_CORE_SHA=self.sha,
+            ASFC_ONLY_LAUNCHER_SHA256=self.launcher_sha,
+            ASFC_ONLY_ADAPTER_SHA256='f'*64,
             PATH=str(self.fakebin)+':'+os.environ['PATH'])
     @staticmethod
     def _write(path, txt):
@@ -148,7 +157,7 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         return subprocess.run(['bash',str(self.body)], env=env,text=True,capture_output=True,timeout=12)
     def state(self):
         return json.loads(self.s_file.read_text())
-    def test_term_during_guard_transition_recovers_original_boot(self):
+    def test_term_during_guard_transition_recovers_via_asf_only(self):
         p = self.run_phone('--run', {'MOCK_SIGNAL_AFTER_FIRST_KILL': '1'})
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('PREMUTATION_SUPERVISOR_RECOVERED=YES', p.stdout)
@@ -206,17 +215,17 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertIn('GUARDED_ROLLBACK_PREFLIGHT=PASS',p.stdout)
         self.assertEqual(self.state()['kills'],0)
         self.assertEqual(self.state()['creates'],0)
-    def test_success_restores_via_boot_not_replayed_string(self):
+    def test_success_restores_via_isolated_launcher_not_replayed_string(self):
         p=self.run_phone('--run')
         self.assertEqual(p.returncode,0,p.stdout+'\n'+p.stderr)
         self.assertIn('SUPERVISOR_HELD=PASS',p.stdout)
         self.assertIn('RESTORED_FILES_EXACT=PASS',p.stdout)
-        self.assertIn('SUPERVISOR_RESTORED_VIA_BOOT=PASS',p.stdout)
+        self.assertIn('SUPERVISOR_RESTORED_VIA_ASF_ONLY=PASS',p.stdout)
         self.assertIn('GUARDED_ROLLBACK=PASS',p.stdout)
         self.assertEqual(self.state()['asf']['type'],'normal')
         self.assertNotIn('pane_start_command',self.state()['asf']['start'])
         self.assertFalse((self.home/'.cache'/'asf-control-suite'/('rollback-phase-'+self.backup)).exists())
-    def test_premutation_invalid_pane_recovers_boot(self):
+    def test_premutation_invalid_pane_recovers_asf_only(self):
         p=self.run_phone('--run',{'MOCK_BAD_PANE':'1'})
         self.assertNotEqual(p.returncode,0)
         self.assertIn('HOLD_PANE_UNEXPECTED',p.stdout)
@@ -229,6 +238,13 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertIn('PREMUTATION_UNVERIFIED_SESSION=YES',p.stdout)
         self.assertEqual(self.state()['asf']['type'],'guard')
         self.assertEqual((self.home/'pd_count').read_text().strip(),'1')
+    def test_unpinned_asf_only_launcher_requires_manual_recovery(self):
+        p=self.run_phone('--run', {'ASFC_ONLY_LAUNCHER_SHA256':'0'*64})
+        self.assertNotEqual(p.returncode,0)
+        self.assertIn('ASF_ONLY_RESTART=FAIL',p.stdout)
+        self.assertNotIn('GUARDED_ROLLBACK=PASS',p.stdout)
+        self.assertTrue(self.state()['asf-proxy']['exists'])
+
     def test_restoration_failure_preserves_hold(self):
         p=self.run_phone('--run',{'MOCK_FAIL_RESTORE':'1'})
         self.assertNotEqual(p.returncode,0)
@@ -254,7 +270,7 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertIn('BACKUP_INTEGRITY=FAIL',p.stdout)
         self.assertEqual(self.state()['kills'],0)
 
-    def test_hold_creation_failure_recovers_through_boot(self):
+    def test_hold_creation_failure_recovers_through_asf_only(self):
         p=self.run_phone('--run',{'MOCK_TMUX_HOLD_CREATE_FAIL':'1'})
         self.assertNotEqual(p.returncode,0)
         self.assertIn('PREMUTATION_SUPERVISOR_RECOVERED=YES',p.stdout)
@@ -297,10 +313,10 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertNotIn('proot-distro',body)
         self.assertNotIn(self.base_start,body)
 
-    def test_empty_pane_after_boot_is_not_false_success(self):
+    def test_empty_pane_after_asf_only_is_not_false_success(self):
         p=self.run_phone('--run',{'MOCK_BOOT_NO_SESSION':'1'})
         self.assertNotEqual(p.returncode,0)
-        self.assertIn('BOOT_RESTART=FAIL',p.stdout)
+        self.assertIn('ASF_ONLY_RESTART=FAIL',p.stdout)
         self.assertNotIn('GUARDED_ROLLBACK=PASS',p.stdout)
         marker=self.home/'.cache'/'asf-control-suite'/('rollback-phase-'+self.backup)
         self.assertTrue(marker.exists())
