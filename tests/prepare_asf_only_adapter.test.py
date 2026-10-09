@@ -56,6 +56,29 @@ class Tests(unittest.TestCase):
         self.assertNotEqual(p.returncode,0)
         self.assertIn('ASF_FRAGMENT=UNSAFE_TOKEN',p.stdout)
         self.assertFalse(self.out.exists())
+    def test_dotdot_alias_cannot_write_active_adapter(self):
+        home = self.p/'home'
+        active = home/'.config/asf/asf-only-session.sh'
+        active.parent.mkdir(parents=True)
+        self.env['HOME'] = str(home)
+        self.env['ASFC_CANDIDATE_PATH'] = str(active.parent/'..'/'asf'/'asf-only-session.sh')
+        p = self.run_it('--prepare')
+        self.assertEqual(p.returncode, 13, p.stdout+p.stderr)
+        self.assertIn('CANDIDATE_PATH=EXECUTABLE_PATH_REFUSED', p.stdout)
+        self.assertFalse(active.exists())
+
+    def test_symlinked_parent_cannot_write_active_adapter(self):
+        home = self.p/'home'
+        active = home/'.config/asf/asf-only-session.sh'
+        active.parent.mkdir(parents=True)
+        alias = self.p/'candidate-alias'
+        alias.symlink_to(active.parent, target_is_directory=True)
+        self.env['HOME'] = str(home)
+        self.env['ASFC_CANDIDATE_PATH'] = str(alias/'asf-only-session.sh')
+        p = self.run_it('--prepare')
+        self.assertEqual(p.returncode, 13, p.stdout+p.stderr)
+        self.assertFalse(active.exists())
+
     def test_no_secret_in_output(self):
         p=self.run_it('--audit')
         self.assertNotIn('PRIVATE_PASSWORD_123',p.stdout+p.stderr)
