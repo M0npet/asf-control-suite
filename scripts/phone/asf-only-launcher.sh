@@ -120,6 +120,12 @@ if ! bash "$STAGED" >/dev/null 2>&1; then
   exit 17
 fi
 has asf || { echo 'ASF_ONLY_SESSION_NOT_CREATED' >&2; exit 18; }
+# Observe the exact new session identity. A mere 'has-session' is insufficient:
+# a rapidly crashing/replaced supervisor must never pass the health gate.
+ASF_ID="$(sid asf)" || { echo 'ASF_ONLY_SESSION_ID_UNAVAILABLE' >&2; exit 18; }
+check_asf_identity() {
+  has asf && [[ "$(sid asf)" == "$ASF_ID" ]]
+}
 check_dependencies() {
   has asf-proxy && has tailscale-watch &&
     [[ "$(sid asf-proxy)" == "$PROXY_ID" ]] &&
@@ -130,12 +136,14 @@ check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRE
 for (( i=0; i<RETRIES; i++ )); do
   check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRED' >&2; exit 19; }
   has asf || { echo 'ASF_ONLY_SESSION_LOST; OPERATOR_REVIEW_REQUIRED' >&2; exit 21; }
+  check_asf_identity || { echo 'ASF_ONLY_SESSION_REPLACED; OPERATOR_REVIEW_REQUIRED' >&2; exit 25; }
   root="$(curl --noproxy '*' -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null || true)"
   api="$(curl --noproxy '*' -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/Api/ASF 2>/dev/null || true)"
   if [[ "$root" == 200 && "$api" == 401 ]]; then
     # A dependency could restart between the precheck and the HTTP response.
     check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRED' >&2; exit 19; }
     has asf || { echo 'ASF_ONLY_SESSION_LOST; OPERATOR_REVIEW_REQUIRED' >&2; exit 21; }
+    check_asf_identity || { echo 'ASF_ONLY_SESSION_REPLACED; OPERATOR_REVIEW_REQUIRED' >&2; exit 25; }
     echo 'ASF_ONLY_LAUNCH=PASS'
     exit 0
   fi
