@@ -37,11 +37,13 @@ done
 if [[ "$FRAGMENT" == *'asf-proxy'* || "$FRAGMENT" == *'tailscale-watch'* ||
       "$FRAGMENT" == *'kill-session'* || "$FRAGMENT" == *'kill-server'* ||
       "$FRAGMENT" == *'send-keys'* || "$FRAGMENT" == *'start-asf.sh'* ||
-      "$FRAGMENT" == *'eval '* || "$FRAGMENT" == *'${!'* ]]; then
+      "$FRAGMENT" == *'eval '* || "$FRAGMENT" == *'${!'* ||
+      "$FRAGMENT" == *'$('* || "$FRAGMENT" == *'`'* ]]; then
   echo 'ASF_FRAGMENT=UNSAFE_TOKEN'; exit 9
 fi
 # Reject suspiciously duplicated tmux operations in the ASF fragment.
-count=$(grep -oc 'tmux new-session' <<< "$FRAGMENT" || true)
+# grep -c counts *lines*, so two operations on one line previously looked safe.
+count=$(grep -o 'tmux new-session' <<< "$FRAGMENT" | wc -l | tr -d ' ')
 [[ "$count" == 1 ]] || { echo 'ASF_FRAGMENT=MULTIPLE_TMUX_OPS'; exit 10; }
 # Require a literal session identity. Indirection needs manual review.
 if [[ "$FRAGMENT" != *' -s asf '* && "$FRAGMENT" != *' -s "asf" '* &&
