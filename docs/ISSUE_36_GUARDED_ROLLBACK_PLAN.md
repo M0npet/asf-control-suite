@@ -8,7 +8,7 @@ The first guarded rollback attempt on Mi Max 2 stopped ASF after replacing the `
 - Use an independently verified HOLD marker on the tmux session and check that ASF is fully quiescent before modifying installed files.
 - Verify the original backup using its checksum manifest; perform a read-only `--precheck` first.
 - Restore the pre-install runtime, plugins, metadata and global config; compare restored bytes before releasing the guard.
-- Recover via the native Termux:Boot launcher, wait for a new session and verify the ASF HTTP health gates.
+- Recover only via a separately approved, SHA-256-pinned ASF-only launcher and private adapter, then verify the exact ASF session and HTTP readiness. Never replay the entire Termux:Boot script.
 - Do not auto-start from an ambiguous state or after partial file restoration; retain markers and require operator review.
 - Record only fingerprints of the original launch command, never plaintext command contents.
 - Require explicit typed authorization for `--run` in addition to approval of a field maintenance window.
@@ -20,3 +20,8 @@ An isolated v3 prototype and fifteen tests are available as a review patch in th
 **Not approved for deployment.** The tests are mocked and not a substitute for a real Termux:Boot review or an isolated Android test. The tested 1.1.0 release candidate remains unchanged. CI must not consume exhausted GitHub Actions quota; commits on this development branch must use `[skip ci]` until the quota is available.
 
 Tracks #36.
+
+
+## 2026-10-10 current constraints
+
+The historical rollback design has been replaced in the experimental branch by a dormant, separately pinned ASF-only recovery path. The `--run` entrypoint remains unconditionally disabled. The previous test-count note is historical and does not prove this refactored code safe in Android/PRoot. See Draft PR #38.
