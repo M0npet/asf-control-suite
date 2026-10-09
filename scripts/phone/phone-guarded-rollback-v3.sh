@@ -158,7 +158,7 @@ GUARD_MARK="asfc-rollback-v3-$ASFC_BACKUP"
 guard_active() {
   tmux has-session -t '=asf' 2>/dev/null || return 1
   [[ "$(tmux show-options -t '=asf' -v @asfc_guard 2>/dev/null || true)" == "$GUARD_MARK" ]] || return 1
-  [[ "$(tmux display-message -p -t '=asf' '#{pane_dead}')" == 0 ]] || return 1
+  [[ "$(tmux list-panes -t '=asf' -F '#{pane_dead}')" == 0 ]] || return 1
   [[ "$(tmux list-panes -t '=asf' -F '#{pane_id}' | wc -l | tr -d ' ')" == 1 ]] || return 1
 }
 # Require a separately reviewed ASF-only launcher at a fixed private path.
@@ -220,7 +220,8 @@ tmux new-session -d -s asf -c "$CWD" 'while :; do sleep 3600; done'
 tmux set-option -t '=asf' @asfc_guard "$GUARD_MARK"
 guard_active || { echo 'HOLD_SESSION_INVALID'; false; }
 # Do not inspect pane_start_command as exact text; tmux quotes it differently.
-[[ "$(tmux display-message -p -t '=asf' '#{pane_current_command}')" == sleep || "$(tmux display-message -p -t '=asf' '#{pane_current_command}')" == bash ]] || { echo 'HOLD_PANE_UNEXPECTED'; false; }
+PANE_CMD="$(tmux list-panes -t '=asf' -F '#{pane_current_command}')" || { echo 'HOLD_PANE_UNAVAILABLE'; false; }
+[[ "$PANE_CMD" == sleep || "$PANE_CMD" == bash ]] || { echo 'HOLD_PANE_UNEXPECTED'; false; }
 echo 'SUPERVISOR_HELD=PASS'
 
 # Once the Debian restoration starts, any failure must be handled as potentially
