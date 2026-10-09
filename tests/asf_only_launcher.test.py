@@ -61,6 +61,10 @@ if [[ -n "${MOCK_ORPHAN_CODE:-}" ]]; then
   printf '%s' "$MOCK_ORPHAN_CODE"
   exit 0
 fi
+if [[ "${MOCK_CURL_TIMEOUT:-0}" == 1 ]]; then
+  printf 000
+  exit 28
+fi
 if [[ "${MOCK_RESTART_PROXY_DURING_HEALTH:-0}" == 1 && -f "$MOCK_SESSIONS/asf" &&
       "$url" == */Api/ASF ]]; then
   printf '$999\n' > "$MOCK_SESSIONS/asf-proxy"
@@ -71,6 +75,7 @@ if [[ "${MOCK_ORPHAN:-}" == 1 ]] || {
   if [[ "$url" == *'/Api/ASF' ]]; then printf 401; else printf 200; fi
 else
   printf 000
+  exit 7
 fi
 '''
 
@@ -178,6 +183,13 @@ class AsfOnlyLauncherTests(unittest.TestCase):
                 self.assertEqual(p.returncode, 14, p.stdout+p.stderr)
                 self.assertIn('ORPHAN_ASF_HTTP_LISTENER', p.stderr)
                 self.assertEqual(self.get_state(), self.initial)
+
+    def test_ambiguous_http_000_timeout_must_not_start(self):
+        self.install_adapter()
+        p = self.run_launcher(extra={'MOCK_CURL_TIMEOUT': '1'})
+        self.assertEqual(p.returncode, 24, p.stdout+p.stderr)
+        self.assertIn('ASF_IPC_PROBE_INDETERMINATE', p.stderr)
+        self.assertEqual(self.get_state(), self.initial)
 
     def test_malformed_session_id_fails_closed(self):
         self.install_adapter()
