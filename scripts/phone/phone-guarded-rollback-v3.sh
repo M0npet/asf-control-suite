@@ -84,8 +84,8 @@ CWD="$(tmux display-message -p -t '=asf' '#{pane_current_path}')"
 [[ "$CMD" == *while* && "$CMD" == *proot-distro* && "$CMD" == *ArchiSteamFarm* ]] || { echo 'ASF_STARTUP_EXPECTATIONS=FAIL'; exit 14; }
 # tmux can reformat the command: do not parse or replay the reported text.
 # The captured command is forensic data only; tmux presentation is NOT round-trippable.
-# Do not use it to reconstruct the session. A known native boot entrypoint is
-# required for recovery.
+# Do not use it to reconstruct the session. Only the separately reviewed,
+# pinned ASF-only launcher is eligible for the dormant recovery path.
 BOOT="$HOME/.termux/boot/start-asf.sh"
 [[ -s "$BOOT" ]] || { echo 'BOOT_SCRIPT_MISSING'; exit 36; }
 bash -n "$BOOT" || { echo 'BOOT_SCRIPT_SYNTAX_FAIL'; exit 37; }
