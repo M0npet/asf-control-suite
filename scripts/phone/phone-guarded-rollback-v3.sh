@@ -47,6 +47,14 @@ else
 fi
 adb -s "$SERIAL" get-state | grep -qx device || { echo 'ADB_UNAVAILABLE'; exit 9; }
 
+# Future-only activation contract. A phone rollback MUST carry independently
+# reviewed hashes of the private launcher and adapter. The unconditional --run
+# hard-stop above still applies; these checks cannot enable live operation.
+if [[ "$MODE" == '--run' ]]; then
+  for pin in "${ASFC_ONLY_LAUNCHER_SHA256:-}" "${ASFC_ONLY_ADAPTER_SHA256:-}"; do
+    [[ "$pin" =~ ^[0-9a-f]{64}$ ]] || { echo 'ASF_ONLY_PINS_REQUIRED; NOT STARTED' >&2; exit 41; }
+  done
+fi
 CORE_SHA="$(sha256sum "$CORE" | awk '{print $1}')"
 REMOTE='/data/local/tmp/asfc-rollback-once.sh'
 if [[ "$MODE" == '--run' ]]; then
@@ -60,7 +68,7 @@ cleanup() {
 trap cleanup EXIT
 
 adb -s "$SERIAL" shell \
-"run-as com.termux env HOME=/data/data/com.termux/files/home PREFIX=/data/data/com.termux/files/usr PATH=/data/data/com.termux/files/usr/bin:/system/bin TMPDIR=/data/data/com.termux/files/usr/tmp ASFC_MODE='$MODE' ASFC_BACKUP='$BACKUP_ID' ASFC_CORE_SHA='$CORE_SHA' /data/data/com.termux/files/usr/bin/bash -s" <<'PHONE'
+"run-as com.termux env HOME=/data/data/com.termux/files/home PREFIX=/data/data/com.termux/files/usr PATH=/data/data/com.termux/files/usr/bin:/system/bin TMPDIR=/data/data/com.termux/files/usr/tmp ASFC_MODE='$MODE' ASFC_BACKUP='$BACKUP_ID' ASFC_CORE_SHA='$CORE_SHA' ASFC_ONLY_LAUNCHER_SHA256='${ASFC_ONLY_LAUNCHER_SHA256:-}' ASFC_ONLY_ADAPTER_SHA256='${ASFC_ONLY_ADAPTER_SHA256:-}' /data/data/com.termux/files/usr/bin/bash -s" <<'PHONE'
 set -Eeuo pipefail
 umask 077
 PD="$PREFIX/bin/proot-distro"
@@ -104,6 +112,25 @@ if [[ "$ASFC_MODE" == '--precheck' ]]; then
   echo 'GUARDED_ROLLBACK_PREFLIGHT=PASS'
   exit 0
 fi
+
+# Recovery must be fully provisioned and byte-pinned BEFORE terminating ASF.
+# Bash syntax and hash checks are necessary, not sufficient: the private
+# adapter remains trusted arbitrary code and requires independent review.
+LAUNCHER="$HOME/.config/asf/asf-only-launcher.sh"
+ADAPTER="$HOME/.config/asf/asf-only-session.sh"
+for pin in "$ASFC_ONLY_LAUNCHER_SHA256" "$ASFC_ONLY_ADAPTER_SHA256"; do
+  [[ "$pin" =~ ^[0-9a-f]{64}$ ]] || { echo 'ASF_ONLY_RECOVERY_PINS_INVALID'; exit 39; }
+done
+for script in "$LAUNCHER" "$ADAPTER"; do
+  [[ -f "$script" && ! -L "$script" && -r "$script" && -s "$script" ]] ||
+    { echo 'ASF_ONLY_RECOVERY_NOT_PROVISIONED'; exit 39; }
+  bash -n "$script" >/dev/null 2>&1 ||
+    { echo 'ASF_ONLY_RECOVERY_SCRIPT_INVALID'; exit 39; }
+done
+[[ "$(sha256sum "$LAUNCHER" | awk '{print $1}')" == "$ASFC_ONLY_LAUNCHER_SHA256" &&
+   "$(sha256sum "$ADAPTER" | awk '{print $1}')" == "$ASFC_ONLY_ADAPTER_SHA256" ]] ||
+  { echo 'ASF_ONLY_RECOVERY_PIN_MISMATCH'; exit 39; }
+echo 'ASF_ONLY_RECOVERY_PREFLIGHT=PASS'
 
 # Record only a digest and the working directory; never persist the original
 # supervisor command since it can contain command-line secrets.
@@ -156,7 +183,7 @@ on_guard_error() {
   trap - ERR HUP INT TERM
   set +e
   if [[ $STATE == 1 && $MUTATION_STARTED == 0 ]]; then
-    # Pre-mutation failure: restore original service through native bootstrap.
+    # Pre-mutation failure: recover solely via the separately pinned launcher.
     if guard_active; then
       tmux kill-session -t '=asf'
     elif tmux has-session -t '=asf' 2>/dev/null; then
