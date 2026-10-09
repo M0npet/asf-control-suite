@@ -68,8 +68,8 @@ has asf && { echo 'ASF_SESSION_ALREADY_EXISTS; NOT STARTED' >&2; exit 11; }
 for name in asf-proxy tailscale-watch; do
   has "$name" || { echo 'DEPENDENCY_SESSION_MISSING; NOT STARTED' >&2; exit 12; }
 done
-PROXY_ID="$(sid asf-proxy)"
-TAILSCALE_ID="$(sid tailscale-watch)"
+PROXY_ID="$(sid asf-proxy)" || { echo 'DEPENDENCY_ID_MISSING; NOT STARTED' >&2; exit 13; }
+TAILSCALE_ID="$(sid tailscale-watch)" || { echo 'DEPENDENCY_ID_MISSING; NOT STARTED' >&2; exit 13; }
 [[ -n "$PROXY_ID" && -n "$TAILSCALE_ID" ]] || { echo 'DEPENDENCY_ID_MISSING; NOT STARTED' >&2; exit 13; }
 
 # Validate health-check controls BEFORE executing the trusted adapter.
