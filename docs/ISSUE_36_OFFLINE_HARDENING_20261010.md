@@ -39,3 +39,32 @@ Two Bash scripts were reconstructed in an isolated local test directory, and the
 - curl exit status meanings: https://curl.se/docs/manpage.html
 - GNU coreutils `mv -n` skip behavior: https://www.gnu.org/s/coreutils/manual/html_node/mv-invocation.html
 - GNU hardlink creation: https://www.gnu.org/software/coreutils/manual/html_node/ln-invocation.html
+
+## Phase 2: 2026-10-10 independent exact-source regression
+
+A subsequent hardening pass (on the same PR branch) addressed:
+
+- **ASF supervisor identity:** snapshot the newly created `asf` tmux session ID and verify it remains unchanged both during polling and immediately before success. A session replaced during HTTP readiness must not be accepted.
+- **Shell injection in private candidate:** reject both `$(...)` and backtick substitutions during candidate preparation, prior to any candidate write.
+- **Duplicate launch on one line:** count occurrences of `tmux new-session`, not merely lines containing that string.
+- **Adapter path aliases:** canonicalize both candidate and active adapter paths using `realpath -m` so `../` components or symlinked parents cannot bypass the executable-adapter write exclusion. If canonicalization support is absent, the preparer fails closed.
+- Add targeted repository regression fixtures for the ASF ID race, unsafe substitutions, duplicate inline tmux operations and canonical path aliases.
+
+**Independent local execution (not GitHub Actions):** two exact Bash source files were transferred into an isolated Linux test directory, and `git hash-object` confirmed that their byte content matched the live GitHub branch blobs. `bash -n` passed both files. A separate fake tmux/curl/Boot harness exercised **36 focused scenarios: 36 PASS** (19 launcher cases and 17 preparer cases), including refusal, timeout, session replacements, malformed IDs, private output, secret suppression and path alias rejection.
+
+Verified exact Git blob IDs at this checkpoint:
+
+| File | Blob SHA-1 |
+|---|---|
+| `scripts/phone/asf-only-launcher.sh` | `5d524e49b05c77717ff9587e3bd45e1aac886e74` |
+| `scripts/phone/prepare-asf-only-adapter.sh` | `8e654465d7338fd5111f14d86ea89abab83b8568` |
+
+These **36 checks are independent focused tests**, not execution of the repository's own full `tests/run-all.sh` or its complete original test modules. They are intentionally device-independent. They prove neither the safety of an unreviewed private adapter nor compatibility with Mi Max 2 Termux/PRoot. No GitHub Actions, real network, ADB, rootfs or installed ASF process was used.
+
+### Remaining gates and exact boundaries
+
+- Keep v3 rollback `--run` unconditionally blocked. Its historical test-only body still contains a full Boot replay path and MUST NOT be field executed.
+- Validate the new candidate checks under the installed Termux toolchain, particularly `realpath -m` and curl's refused-socket behavior, before deploying preparer changes.
+- Do **not** treat `proot-distro login --isolated` as a clone of the Debian rootfs: it excludes selected host mounts but retains the same container root filesystem. Future execution testing requires a separately created, disposable rootfs, independent of production.
+- A trusted adapter is arbitrary shell code. An AST/semantic review and separate user-approved field rehearsal must precede any production restart.
+- Full repository tests and a PR diff review with separate approval are still needed; maintain Draft and do not merge/release.
