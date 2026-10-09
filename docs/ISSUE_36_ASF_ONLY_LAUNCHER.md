@@ -27,7 +27,7 @@ Termux:Boot is a boot-time script runner, not an ASF-only restart API.
   on normal and caught signal exits.
 - It refuses to start if `asf` already exists (exact tmux matching), a proxy
   or watcher session is missing, the proxy/watch session ID is unobservable,
-  or ASF HTTP already answers successfully while the tmux supervisor is absent.
+  or any ASF IPC HTTP response is present while the tmux supervisor is absent. Timeout/ambiguous probes also stop recovery rather than treating HTTP 000 alone as a free port.
 - The pinned adapter is **trusted code**. The wrapper does not sandbox it; a
   malicious or incorrectly written adapter could still stop other services.
   Session ID comparison detects unintended restarts *after the fact* and is
@@ -130,3 +130,8 @@ basis of these token-level classifications. The follow-up must inspect
 the isolated stanza's Bash syntax, exact tmux session targets, and
 whether it requires variable expansion or setup functions, without
 printing commands or values.
+
+
+## 2026-10-10 additional checks
+
+The launcher now validates retry parameters before any mutation, records a stable ASF tmux session ID, checks auxiliary sessions after HTTP readiness, and distinguishes refused IPC connections from ambiguous curl failures. Draft rollback code now references it as the only recovery launcher, but no adapter, file provisioning or live command is authorized yet.
