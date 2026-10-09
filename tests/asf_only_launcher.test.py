@@ -26,9 +26,16 @@ case "$cmd" in
     name="${target#=}" ;;
   new-session)
     name="$target" ;;
+  list-sessions)
+    [[ "${args[0]}" == '-F' && "${args[1]}" == '#{session_name}|#{session_id}' ]] || exit 58 ;;
   *) exit 56 ;;
 esac
 case "$cmd" in
+  list-sessions)
+    for f in "$state"/*; do
+      [[ -f "$f" ]] || continue
+      printf '%s|%s\n' "${f##*/}" "$(cat "$f")"
+    done ;;
   has-session)
     [[ -f "$state/$name" ]] ;;
   display-message)
@@ -50,6 +57,10 @@ esac
 CURL = r'''#!/usr/bin/env bash
 set -Eeuo pipefail
 url="${*: -1}"
+if [[ -n "${MOCK_ORPHAN_CODE:-}" ]]; then
+  printf '%s' "$MOCK_ORPHAN_CODE"
+  exit 0
+fi
 if [[ "${MOCK_ORPHAN:-}" == 1 ]] || {
     [[ -f "$MOCK_SESSIONS/asf" && "${MOCK_UNHEALTHY:-}" != 1 ]];
 }; then
@@ -155,6 +166,23 @@ class AsfOnlyLauncherTests(unittest.TestCase):
         p = self.run_launcher(extra={'MOCK_ORPHAN': '1'})
         self.assertEqual(p.returncode, 14)
         self.assertEqual(self.get_state(), self.initial)
+    def test_any_orphan_http_listener_refuses_duplicate(self):
+        self.install_adapter()
+        for code in ('200', '401', '404', '503'):
+            with self.subTest(http_code=code):
+                p = self.run_launcher(extra={'MOCK_ORPHAN_CODE': code})
+                self.assertEqual(p.returncode, 14, p.stdout+p.stderr)
+                self.assertIn('ORPHAN_ASF_HTTP_LISTENER', p.stderr)
+                self.assertEqual(self.get_state(), self.initial)
+
+    def test_malformed_session_id_fails_closed(self):
+        self.install_adapter()
+        corrupt = dict(self.initial, **{'asf-proxy': 'not-a-tmux-id'})
+        self.put_state(corrupt)
+        p = self.run_launcher()
+        self.assertEqual(p.returncode, 13, p.stdout+p.stderr)
+        self.assertEqual(self.get_state(), corrupt)
+
     def test_pinned_adapter_only_starts_asf(self):
         self.install_adapter()
         p = self.run_launcher()
@@ -207,7 +235,8 @@ class AsfOnlyLauncherTests(unittest.TestCase):
     def test_exact_targets_not_prefix_match(self):
         source = LAUNCHER.read_text()
         self.assertIn('tmux has-session -t "=$1"', source)
-        self.assertIn('tmux display-message -p -t "=$1"', source)
+        self.assertIn("tmux list-sessions -F '#{session_name}|#{session_id}'", source)
+        self.assertNotIn('tmux display-message -p -t "=$1"', source)
         self.assertNotIn('start-asf.sh', source)
         self.assertNotIn('pane_start_command', source.replace('# No eval and no pane_start_command round-trip are involved.', ''))
 
