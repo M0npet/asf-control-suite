@@ -1,0 +1,137 @@
+# Issue #36: isolated ASF-only launcher (experimental, NOT provisioned)
+
+## Why this exists
+
+Read-only analysis of the actual Mi Max 2 `~/.termux/boot/start-asf.sh` showed
+three distinct tmux sections: the ASF supervisor (lines 23–36), Tailscale
+watcher (around lines 42–54), and a proxy section (around lines 68–74) that
+terminates and recreates `asf-proxy`. Re-executing the **entire** Boot script
+as an ASF recovery mechanism is therefore unsafe for a control-plane endpoint.
+Termux:Boot is a boot-time script runner, not an ASF-only restart API.
+
+## Proposed separation
+
+- `scripts/phone/asf-only-launcher.sh` is **Termux-local**, not a boot script.
+- `--audit` reports session existence and adapter readiness. It is read-only.
+- `--start` is opt-in; without an explicitly reviewed and SHA-256-pinned
+  private adapter it exits before changing sessions. It must never be called
+  from production until device-specific approval.
+- The user-owned adapter path is fixed at
+  `~/.config/asf/asf-only-session.sh`; this file is **not included** here.
+  It must be derived from the actual, operator-reviewed ASF launch stanza,
+  preserving original PRoot, user, working-directory and environment semantics.
+  Do not infer it from tmux's `pane_start_command` and do not share secrets.
+- Before executing, the launcher requires `ASFC_ONLY_ADAPTER_SHA256` (64 hex)
+  equal to the private adapter SHA. It snapshots the adapter into a private
+  temporary file, checks the *executed bytes* again, and removes the snapshot
+  on normal and caught signal exits.
+- It refuses to start if `asf` already exists (exact tmux matching), a proxy
+  or watcher session is missing, the proxy/watch session ID is unobservable,
+  or any ASF IPC HTTP response is present while the tmux supervisor is absent. Timeout/ambiguous probes also stop recovery rather than treating HTTP 000 alone as a free port.
+- The pinned adapter is **trusted code**. The wrapper does not sandbox it; a
+  malicious or incorrectly written adapter could still stop other services.
+  Session ID comparison detects unintended restarts *after the fact* and is
+  not a substitute for auditing the adapter before provisioning.
+- The wrapper never executes `start-asf.sh`, evaluates tmux captured command
+  strings, kills a tmux session, or modifies runtime/backup files.
+- On success it requires the exact `asf` session, unchanged proxy and watcher
+  session identities and root=200 / unauthorized `/Api/ASF`=401.
+- On adapter failure or HTTP failure, it preserves the environment and
+  returns an explicit error for operator review. It never retries recovery
+  by deleting or relaunching other services.
+
+## Current safety gate
+
+**No on-device adapter has been created, reviewed or installed.**
+There is no permission to perform a live `--start`, rollback, or boot-script
+migration. The separate guarded rollback v3 `--run` remains unconditionally
+blocked pending an accepted, isolated ASF-only restart path.
+
+## Offline tests
+
+`python3 -S tests/asf_only_launcher.test.py`
+
+The tests use a synthetic, isolated tmux/curl/adapter implementation. They do
+not run ADB, use network connections or touch any device. They check read-only
+audit, explicit authorization, adapter pinning, exact session names,
+existing-server refusal, missing dependencies, orphan API, successful mock
+start, changed-proxy detection, failed adapter, health timeouts, private
+snapshot deletion, and absence of Boot dependencies.
+
+## Remaining acceptance gates
+
+1. Conduct a **privacy-preserving, read-only** semantic audit of the real ASF
+   launch block and all variables it depends on. Only names/line ranges and
+   boolean findings should leave the device, never raw boot-script contents.
+2. Construct the specific ASF-only adapter under human review, with no direct
+   or indirect `asf-proxy` or `tailscale-watch` changes.
+3. Rehearse on an isolated Termux/tmux/PRoot setup, verify credentials remain
+   private and runtime options match the existing launcher.
+4. Fresh code and safety review, tests, and separate operator approval before
+   any planned live maintenance. Do not remove the guarded rollback hard stop
+   before those gates have passed.
+
+## Device launch stanza inventory (read-only, sanitized)
+
+A second on-device audit confirmed the boot file passes Bash syntax validation and
+reported the following **structure only**, without extracting configuration values:
+
+- Lines 5, 7, 10, 13: variable references in the setup prelude. Their roles and
+  whether they are used by the ASF stanza are **not yet established**.
+- Line 23: tmux session check; line 26: ASF tmux session creation.
+- Line 27: supervisor loop; line 28: `proot-distro login debian` with a
+  shell command; line 29: change working directory; line 30: ASF executable;
+  line 32: pause before another iteration.
+- Earlier safe inspection separately confirmed that lines 68–74 recreate the
+  HTTPS proxy tmux session. Whole-file Boot replay remains prohibited.
+
+The next safe step is a **read-only def-use analysis on the phone**: report only
+line numbers, coarse statement types and whether variables assigned in the
+setup prelude are referenced by the ASF stanza. Do not expose variable
+values, shell arguments, IP addresses, credentials, or script source. Do not
+provision the adapter until that dependency review is complete.
+
+## Dependency audit follow-up (2026-10-08)
+
+A third on-device, read-only audit classified setup lines 3, 4, 5, 7, 8 as
+assignments and returned NO_DIRECT_REFERENCE in the ASF block (lines 23–36)
+for all five. Lines 10, 12, 13, and 15 remain OTHER under the audit's
+deliberately narrow classifier. This is *not proof of independence*: nested
+shell commands, special variables, indirect expansion, and environment
+inheritance are outside that analysis.
+
+Before creating an ASF-only adapter, inspect only dependency *categories*
+for these setup statements and the ASF stanza, leaving all values/arguments
+on the device. The adapter must preserve the exact loop/PRoot runtime
+semantics and must never source or execute the multi-service Boot script.
+
+## On-device semantic audit: latest result
+
+The subsequent read-only semantic audit of the actual boot script reported:
+
+- `BOOT_SYNTAX=PASS`
+- `SETUP_LINE_010=EXEC_OR_REDIRECTION`, `SETUP_STDIO_REDIRECT=YES`
+- `SETUP_LINE_012=UNCLASSIFIED`, `SETUP_LINE_014=OTHER`
+- `SETUP_LINE_013=LOGGING`, `SETUP_LINE_015=WAKE_LOCK`
+- `SETUP_FUNCTION_REFERENCED_BY_ASF=NO`
+- `ASF_TMUX_CHECK=YES`, `ASF_TMUX_CREATE=YES`
+- `ASF_TMUX_WORKDIR_OPTION=NO`, `ASF_DIRECTORY_CHANGE=YES`
+- `ASF_PROOT_DEBIAN=YES`, `ASF_NESTED_SHELL=YES`
+- `ASF_EXEC_REFERENCE=YES`
+- `ASF_BLOCK_REFERENCES_AUXILIARIES=NO`
+- `ASF_DYNAMIC_EXPANSION=NO`
+- `ASF_ADAPTER_PROVISIONED=NO`, `SEMANTIC_AUDIT_READ_ONLY=PASS`
+
+These observations support isolating the ASF supervisor stanza but **do not
+establish that the nested shell command is fully standalone**. The launch
+path's shell quoting and environment inheritance still require review.
+Do not copy/extract the ASF snippet or enable `--start` merely on the
+basis of these token-level classifications. The follow-up must inspect
+the isolated stanza's Bash syntax, exact tmux session targets, and
+whether it requires variable expansion or setup functions, without
+printing commands or values.
+
+
+## 2026-10-10 additional checks
+
+The launcher now validates retry parameters before any mutation, records a stable ASF tmux session ID, checks auxiliary sessions after HTTP readiness, and distinguishes refused IPC connections from ambiguous curl failures. Draft rollback code now references it as the only recovery launcher, but no adapter, file provisioning or live command is authorized yet.
