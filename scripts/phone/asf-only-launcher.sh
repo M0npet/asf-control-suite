@@ -43,6 +43,10 @@ fi
 
 command -v tmux >/dev/null || { echo 'TMUX_MISSING' >&2; exit 3; }
 command -v curl >/dev/null || { echo 'CURL_MISSING' >&2; exit 3; }
+RETRIES="${ASFC_ONLY_HEALTH_RETRIES:-60}"
+[[ "$RETRIES" =~ ^[1-9][0-9]*$ && ${#RETRIES} -le 3 ]] && (( RETRIES <= 120 )) || {
+  echo 'INVALID_HEALTH_RETRIES' >&2; exit 20;
+}
 adapter_ready || { echo 'ASF_ONLY_ADAPTER_NOT_APPROVED; NOT STARTED' >&2; exit 10; }
 has asf && { echo 'ASF_SESSION_ALREADY_EXISTS; NOT STARTED' >&2; exit 11; }
 for name in asf-proxy tailscale-watch; do
@@ -52,6 +56,8 @@ PROXY_ID="$(sid asf-proxy)"
 TAILSCALE_ID="$(sid tailscale-watch)"
 [[ -n "$PROXY_ID" && -n "$TAILSCALE_ID" ]] || { echo 'DEPENDENCY_ID_MISSING; NOT STARTED' >&2; exit 13; }
 
+# Validate health-check controls BEFORE executing the trusted adapter.
+# Malformed retry settings must not create an ASF session.
 # If the IPC is already healthy while the supervisor is absent, starting a
 # second ASF risks duplicate processes; require manual investigation instead.
 code="$(curl -sS --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:1242/ 2>/dev/null || true)"
@@ -96,10 +102,6 @@ check_dependencies() {
 }
 check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRED' >&2; exit 19; }
 
-RETRIES="${ASFC_ONLY_HEALTH_RETRIES:-60}"
-[[ "$RETRIES" =~ ^[1-9][0-9]*$ && ${#RETRIES} -le 3 ]] && (( RETRIES <= 120 )) || {
-  echo 'INVALID_HEALTH_RETRIES' >&2; exit 20;
-}
 for (( i=0; i<RETRIES; i++ )); do
   check_dependencies || { echo 'AUXILIARY_SESSION_CHANGED; OPERATOR_REVIEW_REQUIRED' >&2; exit 19; }
   has asf || { echo 'ASF_ONLY_SESSION_LOST; OPERATOR_REVIEW_REQUIRED' >&2; exit 21; }
