@@ -45,8 +45,17 @@ if a[0] == 'display-message':
     print(fields.get(field, 'unknown'))
     sys.exit(0)
 if a[0] == 'list-panes':
-    assert resolve_session()
-    print('%1')
+    key=resolve_session()
+    assert key
+    field=a[a.index('-F')+1]
+    state=s[key]
+    fields={
+      '#{pane_id}':'%1',
+      '#{pane_dead}':'0' if state.get('exists') else '1',
+      '#{pane_current_command}':'unexpected' if os.environ.get('MOCK_BAD_PANE') else ('sleep' if state.get('type')=='guard' else 'bash'),
+    }
+    assert field in fields
+    print(fields[field])
     sys.exit(0)
 if a[0] == 'kill-session':
     key = resolve_session()
