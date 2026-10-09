@@ -69,6 +69,10 @@ if [[ "${MOCK_RESTART_PROXY_DURING_HEALTH:-0}" == 1 && -f "$MOCK_SESSIONS/asf" &
       "$url" == */Api/ASF ]]; then
   printf '$999\n' > "$MOCK_SESSIONS/asf-proxy"
 fi
+if [[ "${MOCK_RESTART_ASF_DURING_HEALTH:-0}" == 1 && -f "$MOCK_SESSIONS/asf" &&
+      "$url" == */Api/ASF ]]; then
+  printf '$998\n' > "$MOCK_SESSIONS/asf"
+fi
 if [[ "${MOCK_ORPHAN:-}" == 1 ]] || {
     [[ -f "$MOCK_SESSIONS/asf" && "${MOCK_UNHEALTHY:-}" != 1 ]];
 }; then
@@ -237,6 +241,13 @@ class AsfOnlyLauncherTests(unittest.TestCase):
         p = self.run_launcher(extra={'MOCK_RESTART_PROXY_DURING_HEALTH': '1'})
         self.assertEqual(p.returncode, 19, p.stdout+p.stderr)
         self.assertIn('AUXILIARY_SESSION_CHANGED', p.stderr)
+        self.assertNotIn('ASF_ONLY_LAUNCH=PASS', p.stdout)
+
+    def test_asf_session_replaced_during_http_cannot_pass(self):
+        self.install_adapter()
+        p = self.run_launcher(extra={'MOCK_RESTART_ASF_DURING_HEALTH': '1'})
+        self.assertEqual(p.returncode, 25, p.stdout+p.stderr)
+        self.assertIn('ASF_ONLY_SESSION_REPLACED', p.stderr)
         self.assertNotIn('ASF_ONLY_LAUNCH=PASS', p.stdout)
 
     def test_no_health_never_reports_success(self):
