@@ -81,6 +81,21 @@ class Tests(unittest.TestCase):
         p=self.run_it('--prepare')
         self.assertEqual(p.returncode,14)
         self.assertEqual(self.out.read_text(),'KEEP_ORIGINAL')
+    def test_competing_candidate_commit_is_not_false_success(self):
+        # Simulate destination appearing between preflight and atomic link.
+        fakebin = self.p/'fakebin'
+        fakebin.mkdir()
+        fake_link = fakebin/'ln'
+        fake_link.write_text('#!/bin/sh\nprintf RACE_WINNER > "$ASFC_CANDIDATE_PATH"\nexit 1\n')
+        fake_link.chmod(0o700)
+        self.env['PATH'] = str(fakebin) + ':' + os.environ['PATH']
+        p = self.run_it('--prepare')
+        self.assertEqual(p.returncode, 18, p.stdout + p.stderr)
+        self.assertIn('CANDIDATE_COMMIT_REFUSED', p.stdout)
+        self.assertNotIn('CANDIDATE_FILE=PRIVATE_REVIEW_ONLY', p.stdout)
+        self.assertEqual(self.out.read_text(), 'RACE_WINNER')
+        self.assertEqual(list(self.out.parent.glob('.asfc-candidate.*')), [])
+
     def test_symlink_output_refused(self):
         target=self.p/'target'
         target.write_text('KEEP')
