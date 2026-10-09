@@ -68,3 +68,18 @@ These **36 checks are independent focused tests**, not execution of the reposito
 - Do **not** treat `proot-distro login --isolated` as a clone of the Debian rootfs: it excludes selected host mounts but retains the same container root filesystem. Future execution testing requires a separately created, disposable rootfs, independent of production.
 - A trusted adapter is arbitrary shell code. An AST/semantic review and separate user-approved field rehearsal must precede any production restart.
 - Full repository tests and a PR diff review with separate approval are still needed; maintain Draft and do not merge/release.
+
+## Phase 3: Dormant rollback recovery refactor (2026-10-10)
+
+After the 36 independently verified launcher/preparer checks above, the experimental v3 rollback source and its repository mock tests were refactored further:
+
+- Removed the dormant `boot_start_and_wait()` replay of the *multi-service* Termux:Boot script.
+- Added future-only private ASF-only launcher and adapter SHA-256 preflight before any supervisor stop, with exact regular-file and Bash syntax checks.
+- After invoking the privately pinned launcher, independently require the exact `asf` tmux session to exist.
+- Made HOLD pane inspection use `tmux list-panes` rather than `display-message` target-pane resolution; expanded corresponding fake-tmux regression assertions.
+- Added source-contract tests to prevent reintroduction of the full Boot replay and to check the sequence of safety gates.
+- Added a one-command offline developer harness: `bash scripts/phone/issue36-offline-check.sh`. It runs five repository test modules and Bash syntax checks without ADB/phone contact.
+
+**Execution limit:** these latest rollback refactor tests and the new one-command repository harness have been added but **NOT independently executed** against the complete current branch in this environment. The separately verified 36/36 checks are still valid for the two unchanged launcher/preparer source blobs only. No live change, merge, release, rootfs execution, GitHub Actions dispatch, or phone service interruption occurred.
+
+The v3 `--run` entrypoint continues to return exit 40 before ADB with no bypass. A human-approved, byte-pinned private adapter is still missing; no existing test substitutes for Android/PRoot acceptance. 
