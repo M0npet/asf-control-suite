@@ -74,7 +74,14 @@ printf '%s' "$CANDIDATE" > "$STAGED"
 chmod 600 "$STAGED"
 bash -n "$STAGED" >/dev/null 2>&1 || { echo 'CANDIDATE_SYNTAX=FAIL'; exit 16; }
 [[ ! -e "$OUT" && ! -L "$OUT" ]] || { echo 'CANDIDATE_ALREADY_EXISTS'; exit 14; }
-mv -n -- "$STAGED" "$OUT"
+# Atomically reserve the destination. 'mv -n' can silently skip an
+# existing target and still return success, yielding a false PASS on races.
+# Staged and destination are in the same private directory, so a hard link
+# is an exclusive, no-overwrite commit; cleanup removes the temporary name.
+if ! ln -- "$STAGED" "$OUT" 2>/dev/null; then
+  echo 'CANDIDATE_COMMIT_REFUSED'; exit 18
+fi
+rm -f -- "$STAGED"
 STAGED=''
 [[ -s "$OUT" && ! -L "$OUT" ]] || { echo 'CANDIDATE_INSTALL=FAIL'; exit 17; }
 echo 'CANDIDATE_FILE=PRIVATE_REVIEW_ONLY'
