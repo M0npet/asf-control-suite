@@ -117,13 +117,28 @@ class Tests(unittest.TestCase):
         p=self.run_it('--prepare')
         self.assertEqual(p.returncode,6)
         self.assertFalse(self.out.exists())
-    def test_launch_command_substitution_does_not_execute(self):
+    def test_launch_command_substitution_rejected_without_execution(self):
         body=boot().replace('echo redacted',f'echo $(touch {self.marker}) redacted')
         self.file.write_text(body)
         p=self.run_it('--prepare')
-        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertEqual(p.returncode,9,p.stdout+p.stderr)
+        self.assertIn('ASF_FRAGMENT=UNSAFE_TOKEN',p.stdout)
         self.assertFalse(self.marker.exists())
+        self.assertFalse(self.out.exists())
         self.assertNotIn(str(self.marker),p.stdout+p.stderr)
+    def test_backtick_command_substitution_rejected(self):
+        body=boot().replace('echo redacted',f'echo `touch {self.marker}` redacted')
+        self.file.write_text(body)
+        p=self.run_it('--prepare')
+        self.assertEqual(p.returncode,9,p.stdout+p.stderr)
+        self.assertFalse(self.marker.exists())
+        self.assertFalse(self.out.exists())
+    def test_two_tmux_operations_on_same_line_rejected(self):
+        body=boot().replace('echo redacted', 'tmux new-session -d -s asf; tmux new-session -d -s asf; echo redacted')
+        self.file.write_text(body)
+        p=self.run_it('--prepare')
+        self.assertEqual(p.returncode,10,p.stdout+p.stderr)
+        self.assertFalse(self.out.exists())
     def test_duplicate_tmux_new_session_refused(self):
         body=boot().replace('echo redacted', 'tmux new-session -d -s asf; echo redacted')
         self.file.write_text(body)
