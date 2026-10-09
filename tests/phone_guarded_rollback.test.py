@@ -328,6 +328,19 @@ tmux new-session -d -s asf -c "$HOME" 'while :; do proot-distro login debian -- 
         self.assertTrue(state['asf-proxy']['exists'])
         self.assertTrue(state['tailscale-watch']['exists'])
 
+    def test_source_requires_pinned_asf_only_recovery_without_boot_replay(self):
+        source=SOURCE.read_text()
+        body=source.split("<<'PHONE'\n",1)[1].rsplit('\nPHONE\n',1)[0]
+        self.assertNotIn('bash "$BOOT"',body)
+        self.assertNotIn('boot_start_and_wait()',body)
+        self.assertIn('asf_only_start_and_wait()',body)
+        self.assertIn('ASF_ONLY_RECOVERY_PIN_MISMATCH',body)
+        self.assertIn('ASF_ONLY_RECOVERY_NOT_PROVISIONED',body)
+        self.assertIn("tmux has-session -t '=asf' >/dev/null 2>&1 || return 1",body)
+        self.assertLess(body.index('ASF_ONLY_RECOVERY_PREFLIGHT=PASS'),
+                        body.index("STATE=1\ntmux kill-session -t '=asf'"))
+        self.assertIn('ASF_ONLY_RECOVERY_REQUIRED; LIVE_RUN_DISABLED',source)
+
     def test_source_and_harness_match_exactly(self):
         source=SOURCE.read_text()
         body=source.split("<<'PHONE'\n",1)[1].rsplit('\nPHONE\n',1)[0]
