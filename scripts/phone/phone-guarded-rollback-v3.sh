@@ -124,7 +124,7 @@ echo 'ROLLBACK_CORE_TRANSFER=PASS'
 # The guarded session must have a stable marker, not an exact pane_start_command
 # string. tmux can quote/normalize that string and it does not round-trip as a
 # shell script (the v1 failure was an example).
-BOOT_LOG="$HOME/.cache/asf-control-suite/rollback-boot-v3-$ASFC_BACKUP.log"
+BOOT_LOG="$HOME/.cache/asf-control-suite/rollback-asf-only-v3-$ASFC_BACKUP.log"
 STATE=0
 MUTATION_STARTED=0
 GUARD_MARK="asfc-rollback-v3-$ASFC_BACKUP"
@@ -134,21 +134,22 @@ guard_active() {
   [[ "$(tmux display-message -p -t '=asf' '#{pane_dead}')" == 0 ]] || return 1
   [[ "$(tmux list-panes -t '=asf' -F '#{pane_id}' | wc -l | tr -d ' ')" == 1 ]] || return 1
 }
-boot_start_and_wait() {
-  # Do not print the boot script or boot log: secrets may be present.
-  bash "$BOOT" >"$BOOT_LOG" 2>&1 || return 1
-  local i
-  # Termux:Boot may create tmux asynchronously. A successful exit alone
-  # does not prove ASF started; allow the session time to appear.
-  for i in $(seq 1 90); do
-    if tmux has-session -t '=asf' 2>/dev/null; then
-      if [[ "$(tmux show-options -t '=asf' -v @asfc_guard 2>/dev/null || true)" != "$GUARD_MARK" ]]; then
-        return 0
-      fi
-    fi
-    sleep 1
-  done
-  return 1
+# Require a separately reviewed ASF-only launcher at a fixed private path.
+# Never execute the multi-service Termux:Boot script as rollback recovery.
+# Both executable launcher bytes and the device-specific adapter must be pinned.
+asf_only_start_and_wait() {
+  local launcher="$HOME/.config/asf/asf-only-launcher.sh"
+  local expected="${ASFC_ONLY_LAUNCHER_SHA256:-}"
+  local adapter_hash="${ASFC_ONLY_ADAPTER_SHA256:-}"
+  [[ -f "$launcher" && ! -L "$launcher" && -s "$launcher" && -r "$launcher" ]] || return 1
+  [[ "$expected" =~ ^[0-9a-f]{64}$ && "$adapter_hash" =~ ^[0-9a-f]{64}$ ]] || return 1
+  [[ "$(sha256sum "$launcher" | awk '{print $1}')" == "$expected" ]] || return 1
+  bash -n "$launcher" >/dev/null 2>&1 || return 1
+  # The launcher owns exact session identity and root=200/api=401 checks.
+  # Output stays on the device in a private diagnostic file.
+  ASFC_ONLY_START_CONFIRMATION=I_APPROVE_ASF_ONLY_START \
+    ASFC_ONLY_ADAPTER_SHA256="$adapter_hash" \
+    bash "$launcher" --start >"$BOOT_LOG" 2>&1
 }
 on_guard_error() {
   local status="${1:-$?}"
@@ -163,7 +164,7 @@ on_guard_error() {
       echo 'PREMUTATION_UNVERIFIED_SESSION=YES; OPERATOR_REQUIRED=YES'
       exit "$status"
     fi
-    if boot_start_and_wait; then
+    if asf_only_start_and_wait; then
       echo 'PREMUTATION_SUPERVISOR_RECOVERED=YES'
     else
       echo 'PREMUTATION_RECOVERY_NEEDS_OPERATOR=YES'
@@ -252,14 +253,14 @@ done
 DEBIAN_IDLE
 
 # All restored files are already verified. It is now safe to unhold.
-# Never replay pane_start_command: the v1 incident demonstrated this is unsafe.
+# Never replay pane_start_command or invoke multi-service Termux:Boot.
 STATE=2
 tmux kill-session -t '=asf'
-if ! boot_start_and_wait; then
-  echo 'BOOT_RESTART=FAIL; OLD_FILES_VERIFIED; MANUAL_RECOVERY_REQUIRED'
+if ! asf_only_start_and_wait; then
+  echo 'ASF_ONLY_RESTART=FAIL; OLD_FILES_VERIFIED; MANUAL_RECOVERY_REQUIRED'
   exit 32
 fi
-echo 'SUPERVISOR_RESTORED_VIA_BOOT=PASS'
+echo 'SUPERVISOR_RESTORED_VIA_ASF_ONLY=PASS'
 
 # Old version has the same base IPC contract; verify its core and control UI.
 "$PD" login debian -- /bin/bash -s <<'DEBIAN_HEALTH'
